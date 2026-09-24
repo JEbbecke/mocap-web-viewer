@@ -90,7 +90,8 @@ function corners(
         out[f * 12 + c * 3 + a] = Number(values[(a * 4 + c) * count + f]) * scale;
   return {
     values: out,
-    rate: count === pointCount ? pointRate : forceRate,
+    // Static geometry has no time axis; keep a stable nominal rate even for one-frame trials.
+    rate: !isStatic && count === pointCount ? pointRate : forceRate,
     components: 12,
     startTime: 0,
   };

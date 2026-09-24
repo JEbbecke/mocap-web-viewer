@@ -4,6 +4,7 @@ import 'uplot/dist/uPlot.min.css';
 import type { MotionData, Series } from '../motion/types';
 import { frameAt } from '../motion/math';
 import { setFrame, useSession } from '../state/session';
+import { PanelToggle } from '../components/PanelToggle';
 function plotSeries(
   data: MotionData,
   selection: string,
@@ -55,26 +56,51 @@ function plotSeries(
     labels: signal.components === 1 ? ['Signal'] : ['X', 'Y', 'Z'],
   };
 }
-export function SignalPlot({ data }: { data: MotionData }) {
+export function SignalPlot({
+  data,
+  collapsed,
+  onToggle,
+}: {
+  data: MotionData;
+  collapsed: boolean;
+  onToggle: () => void;
+}) {
   const target = useRef<HTMLDivElement>(null),
+    resetZoom = useRef<(() => void) | null>(null),
     selected = useSession((s) => s.selected),
     selection = useSession((s) => s.plot);
-  const graph = useMemo(() => plotSeries(data, selection, selected), [data, selection, selected]);
+  const graph = useMemo(
+    () => (collapsed ? null : plotSeries(data, selection, selected)),
+    [data, selection, selected, collapsed],
+  );
   useEffect(() => {
-    if (!target.current) return;
+    if (!target.current || !graph) return;
     const cursor = document.createElement('div');
     cursor.className = 'playhead';
     let chart: uPlot;
+    const fullDuration = Math.max(0.01, data.timeline.duration);
     const sync = () => {
-      if (chart)
-        cursor.style.left = `${chart.valToPos(useSession.getState().frame / data.timeline.rate, 'x')}px`;
+      if (chart) {
+        const time = useSession.getState().frame / data.timeline.rate;
+        cursor.style.left = `${chart.valToPos(time, 'x')}px`;
+        cursor.hidden = time < chart.scales.x.min! || time > chart.scales.x.max!;
+      }
     };
     const options: uPlot.Options = {
       width: target.current.clientWidth,
       height: 180,
       padding: [12, 14, 0, 0],
-      scales: { x: { time: false, range: [0, Math.max(0.01, data.timeline.duration)] } },
-      cursor: { drag: { x: false, y: false }, points: { show: false } },
+      scales: {
+        x: {
+          time: false,
+          range: (_chart, min, max) =>
+            min == null || max == null || min === max
+              ? [0, fullDuration]
+              : [Math.max(0, min), Math.min(fullDuration, max)],
+        },
+      },
+      cursor: { drag: { x: true, y: false, dist: 5 }, points: { show: false } },
+      select: { show: true, over: true, left: 0, top: 0, width: 0, height: 0 },
       legend: { show: true },
       series: [
         { label: 'Time (s)' },
@@ -104,33 +130,54 @@ export function SignalPlot({ data }: { data: MotionData }) {
       hooks: { draw: [sync] },
     };
     chart = new uPlot(options, graph.values, target.current);
+    resetZoom.current = () => chart.setScale('x', { min: 0, max: fullDuration });
     chart.over.appendChild(cursor);
     sync();
     const unsub = useSession.subscribe((s, p) => {
       if (s.frame !== p.frame) sync();
     });
-    let dragging = false;
+    let pointerStart: { x: number; y: number } | null = null;
     const scrub = (event: PointerEvent) => {
       if (event.button !== 0 && event.type === 'pointerdown') return;
       const box = chart.over.getBoundingClientRect();
       const time = chart.posToVal(event.clientX - box.left, 'x');
+      useSession.setState({ playing: false });
       setFrame(frameAt(time, data.timeline.rate, data.timeline.frameCount));
     };
     const down = (e: PointerEvent) => {
-      dragging = true;
-      chart.over.setPointerCapture(e.pointerId);
-      scrub(e);
+      if (e.button === 0) pointerStart = { x: e.clientX, y: e.clientY };
     };
-    const move = (e: PointerEvent) => {
-      if (dragging) scrub(e);
+    const up = (e: PointerEvent) => {
+      if (pointerStart && Math.hypot(e.clientX - pointerStart.x, e.clientY - pointerStart.y) < 5)
+        scrub(e);
+      pointerStart = null;
     };
-    const up = () => {
-      dragging = false;
+    const cancel = () => {
+      pointerStart = null;
     };
+    const wheel = (event: WheelEvent) => {
+      if (event.ctrlKey || event.metaKey || event.deltaY === 0) return;
+      event.preventDefault();
+      if (pointerStart) return;
+      const box = chart.over.getBoundingClientRect();
+      if (!box.width) return;
+      const fraction = Math.max(0, Math.min(1, (event.clientX - box.left) / box.width));
+      const min = chart.scales.x.min!,
+        max = chart.scales.x.max!;
+      const delta =
+        event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? box.height : 1);
+      const factor = Math.exp(Math.max(-2, Math.min(2, delta * 0.002)));
+      const minimumSpan = Math.min(fullDuration, 1 / data.timeline.rate);
+      const span = Math.max(minimumSpan, Math.min(fullDuration, (max - min) * factor));
+      const anchor = min + fraction * (max - min);
+      const left = Math.max(0, Math.min(fullDuration - span, anchor - fraction * span));
+      chart.setScale('x', { min: left, max: left + span });
+    };
+    chart.over.addEventListener('wheel', wheel, { passive: false });
     chart.over.addEventListener('pointerdown', down);
-    chart.over.addEventListener('pointermove', move);
     chart.over.addEventListener('pointerup', up);
-    chart.over.addEventListener('pointercancel', up);
+    chart.over.addEventListener('pointercancel', cancel);
+    chart.over.addEventListener('pointerleave', cancel);
     const observer = new ResizeObserver((entries) => {
       chart.setSize({
         width: Math.max(200, Math.floor(entries[0].contentRect.width)),
@@ -142,11 +189,13 @@ export function SignalPlot({ data }: { data: MotionData }) {
     return () => {
       observer.disconnect();
       unsub();
+      chart.over.removeEventListener('wheel', wheel);
+      resetZoom.current = null;
       chart.destroy();
     };
   }, [data, graph]);
   return (
-    <section className="plot-panel">
+    <section id="signal-panel" className={`plot-panel ${collapsed ? 'is-collapsed' : ''}`}>
       <div className="panel-heading">
         <span>SIGNAL INSPECTOR</span>
         <select
@@ -174,9 +223,19 @@ export function SignalPlot({ data }: { data: MotionData }) {
             </optgroup>
           )}
         </select>
-        <span className="muted">Click or drag to scrub</span>
+        <span className="muted">
+          Scroll or drag to zoom · Click to scrub · Double-click to reset
+        </span>
+        {!collapsed && (
+          <button className="plot-reset" onClick={() => resetZoom.current?.()}>
+            Reset zoom
+          </button>
+        )}
+        <PanelToggle panel="plot" expanded={!collapsed} onToggle={onToggle} />
       </div>
-      <div className="plot-target" ref={target} />
+      <div id="signal-panel-content" hidden={collapsed}>
+        {!collapsed && <div className="plot-target" ref={target} />}
+      </div>
     </section>
   );
 }

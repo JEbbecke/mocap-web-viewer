@@ -23,7 +23,13 @@ export interface MotionEvent {
 }
 export interface MotionData {
   name: string;
-  source: { format: string; originalPositionUnit: string; metadata: Record<string, unknown> };
+  source: {
+    format: string;
+    originalPositionUnit: string;
+    metadata: Record<string, unknown>;
+    /** Cumulative point boundaries in the immutable original file. */
+    crop?: { start: number; end: number };
+  };
   timeline: { rate: number; frameCount: number; firstFrame: number; duration: number };
   markers: {
     labels: string[];

@@ -1,10 +1,17 @@
 import { create } from 'zustand';
 import type { MotionData } from '../motion/types';
+import { cropMotionData } from '../motion/crop';
+import { croppedFilename } from '../exporters';
 export type DisplayKey =
   'markers' | 'connections' | 'plates' | 'forces' | 'cop' | 'labels' | 'grid' | 'axes';
 export type CameraPreset = 'perspective' | 'front' | 'side' | 'top';
 interface Session {
   data: MotionData | null;
+  originalData: MotionData | null;
+  sourceFile: File | null;
+  cropSelection: { start: number; end: number } | null;
+  operation: 'import' | 'export';
+  saved: boolean;
   busy: boolean;
   error: string | null;
   frame: number;
@@ -24,6 +31,11 @@ interface Session {
 }
 export const useSession = create<Session>(() => ({
   data: null,
+  originalData: null,
+  sourceFile: null,
+  cropSelection: null,
+  operation: 'import',
+  saved: false,
   busy: false,
   error: null,
   frame: 0,
@@ -65,9 +77,13 @@ export function togglePlay() {
 export function setCamera(preset: CameraPreset) {
   useSession.setState((s) => ({ camera: { preset, revision: s.camera.revision + 1 } }));
 }
-export function setData(data: MotionData) {
+export function setData(data: MotionData, sourceFile: File | null = null) {
   useSession.setState({
     data,
+    sourceFile,
+    originalData: null,
+    cropSelection: null,
+    saved: false,
     busy: false,
     error: null,
     frame: 0,
@@ -100,7 +116,7 @@ export function openFile(file: File) {
     useSession.setState({ error: 'Choose a .c3d, .h5 or .hdf5 motion file.' });
     return;
   }
-  useSession.setState({ busy: true, error: null, playing: false });
+  useSession.setState({ busy: true, operation: 'import', error: null, playing: false });
   const worker = new Worker(new URL('../workers/import.worker.ts', import.meta.url), {
     type: 'module',
   });
@@ -110,7 +126,7 @@ export function openFile(file: File) {
     worker.terminate();
     active = undefined;
     if (event.data.error) useSession.setState({ busy: false, error: event.data.error });
-    else setData(event.data.data);
+    else setData(event.data.data, file);
   };
   worker.onerror = (event) => {
     if (active !== worker) return;
@@ -122,4 +138,85 @@ export function openFile(file: File) {
     });
   };
   worker.postMessage(file);
+}
+
+export function selectCrop(start: number, end: number) {
+  const { data } = useSession.getState();
+  if (
+    data &&
+    Number.isInteger(start) &&
+    Number.isInteger(end) &&
+    start >= 0 &&
+    start < end &&
+    end <= data.timeline.frameCount
+  )
+    useSession.setState({ cropSelection: { start, end }, playing: false });
+}
+export function applyCrop() {
+  const { data, cropSelection, originalData } = useSession.getState();
+  if (!data || !cropSelection) return;
+  try {
+    const cropped = cropMotionData(data, cropSelection.start, cropSelection.end);
+    useSession.setState({
+      data: cropped,
+      originalData: originalData ?? data,
+      cropSelection: null,
+      frame: 0,
+      playing: false,
+      error: null,
+      saved: false,
+    });
+  } catch (error) {
+    useSession.setState({ error: String(error) });
+  }
+}
+export function restoreOriginal() {
+  const { originalData, sourceFile } = useSession.getState();
+  if (originalData) setData(originalData, sourceFile);
+}
+export function saveAs() {
+  const { data, sourceFile, busy } = useSession.getState();
+  if (!data || !sourceFile || busy) return;
+  useSession.setState({
+    busy: true,
+    operation: 'export',
+    error: null,
+    playing: false,
+    saved: false,
+  });
+  const worker = new Worker(new URL('../workers/export.worker.ts', import.meta.url), {
+    type: 'module',
+  });
+  active = worker;
+  worker.onmessage = (event) => {
+    if (active !== worker) return;
+    worker.terminate();
+    active = undefined;
+    if (event.data.error) {
+      useSession.setState({ busy: false, error: event.data.error });
+      return;
+    }
+    const url = URL.createObjectURL(
+      new Blob([event.data.buffer], { type: 'application/octet-stream' }),
+    );
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = croppedFilename(sourceFile.name);
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    useSession.setState({ busy: false, saved: true });
+  };
+  worker.onerror = () => {
+    if (active !== worker) return;
+    worker.terminate();
+    active = undefined;
+    useSession.setState({ busy: false, error: 'Export failed. Check available browser memory.' });
+  };
+  worker.postMessage({
+    file: sourceFile,
+    start: data.source.crop?.start ?? 0,
+    end: data.source.crop?.end ?? data.timeline.frameCount,
+  });
 }

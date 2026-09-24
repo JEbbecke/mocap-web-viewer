@@ -31,7 +31,9 @@ Choose **Open file**, drop a recording anywhere, or explore the synthetic demo. 
 - Force types 2, 3 and 4, including 6×6 calibration and type-3 COP polynomial correction.
 - Orbit, pan, zoom, reset, front, side and top camera presets; Z-up lab axes and ground grid.
 - True-rate playback, scrubbing, stepping, beginning/end, speed and loop controls.
-- Synchronized marker XYZ, force, moment, COP and analog plots, with plot scrubbing.
+- Non-destructive timeline cropping, range preview, restoration and local **Export** in the source C3D/H5 format. See [crop conventions and export limits](docs/CROPPING_EXPORT.md).
+- Synchronized marker XYZ, force, moment, COP and analog plots. Scroll up/down over the plot to zoom in/out around the pointer, or drag horizontally to select a zoom range. Click to scrub; double-click or use **Reset zoom** to restore the full time range.
+- Arrow toggles in the plot and sidebar headers collapse or expand each panel; a compact edge control remains available to reopen it.
 - Standard C3D events, file statistics, source metadata and visible import warnings.
 - Explicit SI units: positions/COP in m, force in N, moments in Nm. Display arrow scale defaults to 1 mm/N; threshold defaults to 10 N and changes display only.
 
@@ -48,7 +50,7 @@ DEC/VAX C3D encoding and nonstandard rotation records are explicitly rejected. U
 
 H5 coordinate conventions contain contradictions in the reference exporter. Recognized legacy output keeps its already-global values with a warning. Other unresolved force frames remain available for signal inspection, but require explicit confirmation of stored-global coordinates for spatial force display. Missing legacy marker units assume mm with a warning. H5 Type codes and event/rigid-body schemas are not guessed. See [H5 format](docs/H5_FORMAT.md) and [open questions](docs/OPEN_QUESTIONS.md).
 
-No trajectory editing, scientific filtering, export, inferred joint centres, gait-event detection, video, or persistent file storage is included. Marker timelines must be present. Mobile is secondary; current Chromium browsers are the runtime validation target. Large file limits depend on browser memory. There is no service worker yet: a cached tab can keep working, but reliable offline reload/PWA installation is not claimed.
+No general trajectory editing, scientific filtering, format conversion, inferred joint centres, gait-event detection, video, or persistent file storage is included. Marker timelines must be present. Mobile is secondary; current Chromium browsers are the runtime validation target. Large file limits depend on browser memory. There is no service worker yet: a cached tab can keep working, but reliable offline reload/PWA installation is not claimed.
 
 ## Architecture
 

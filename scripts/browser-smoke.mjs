@@ -72,7 +72,9 @@ try {
   await page.waitForTimeout(180);
   await page.getByRole('button', { name: 'Pause', exact: true }).click();
   assert(
-    Number(await page.getByRole('slider', { name: 'Frame', exact: true }).inputValue()) > 0,
+    Number(
+      await page.getByRole('slider', { name: 'Frame', exact: true }).getAttribute('aria-valuenow'),
+    ) > 0,
     'playback advances',
   );
   await page.getByRole('button', { name: 'Next frame', exact: true }).click();
@@ -85,10 +87,74 @@ try {
   const plotBox = await page.locator('.u-over').boundingBox();
   await page.mouse.click(plotBox.x + plotBox.width * 0.6, plotBox.y + plotBox.height * 0.5);
   assert(
-    Number(await page.getByRole('slider', { name: 'Frame', exact: true }).inputValue()) > 150,
+    Number(
+      await page.getByRole('slider', { name: 'Frame', exact: true }).getAttribute('aria-valuenow'),
+    ) > 150,
     'plot scrubbing changes timeline',
   );
+  const plotFrame = page.getByRole('slider', { name: 'Frame', exact: true });
+  const frameBeforeZoom = await plotFrame.getAttribute('aria-valuenow');
+  await page.mouse.move(plotBox.x + plotBox.width * 0.2, plotBox.y + plotBox.height * 0.5);
+  await page.mouse.down();
+  await page.mouse.move(plotBox.x + plotBox.width * 0.4, plotBox.y + plotBox.height * 0.5, {
+    steps: 12,
+  });
+  await page.mouse.up();
+  assert.equal(
+    await plotFrame.getAttribute('aria-valuenow'),
+    frameBeforeZoom,
+    'zoom does not scrub',
+  );
+  await page.mouse.click(plotBox.x + plotBox.width * 0.5, plotBox.y + plotBox.height * 0.5);
+  const zoomedFrame = Number(await plotFrame.getAttribute('aria-valuenow'));
+  assert(zoomedFrame > 95 && zoomedFrame < 120, 'click uses the zoomed time range');
+  await page.getByRole('button', { name: 'Reset zoom', exact: true }).click();
+  await page.mouse.click(plotBox.x + plotBox.width * 0.6, plotBox.y + plotBox.height * 0.5);
+  assert(
+    Number(await plotFrame.getAttribute('aria-valuenow')) > 200,
+    'reset restores full time range',
+  );
+  await page.mouse.move(plotBox.x + plotBox.width * 0.2, plotBox.y + plotBox.height * 0.5);
+  await page.mouse.down();
+  await page.mouse.move(plotBox.x + plotBox.width * 0.4, plotBox.y + plotBox.height * 0.5, {
+    steps: 12,
+  });
+  await page.mouse.up();
+  await page.mouse.dblclick(plotBox.x + plotBox.width * 0.5, plotBox.y + plotBox.height * 0.5);
+  await page.mouse.click(plotBox.x + plotBox.width * 0.6, plotBox.y + plotBox.height * 0.5);
+  assert(Number(await plotFrame.getAttribute('aria-valuenow')) > 200, 'double-click resets zoom');
+  const beforeWheel = await plotFrame.getAttribute('aria-valuenow');
+  await page.mouse.move(plotBox.x + plotBox.width * 0.5, plotBox.y + plotBox.height * 0.5);
+  await page.mouse.wheel(0, -400);
+  await page.waitForTimeout(100);
+  assert.equal(
+    await plotFrame.getAttribute('aria-valuenow'),
+    beforeWheel,
+    'wheel zoom does not scrub',
+  );
+  await page.mouse.click(plotBox.x + plotBox.width * 0.75, plotBox.y + plotBox.height * 0.5);
+  const wheelZoomed = Number(await plotFrame.getAttribute('aria-valuenow'));
+  assert(wheelZoomed > 205 && wheelZoomed < 240, 'wheel zooms in around pointer');
+  await page.mouse.move(plotBox.x + plotBox.width * 0.5, plotBox.y + plotBox.height * 0.5);
+  await page.mouse.wheel(0, 1000);
+  await page.waitForTimeout(100);
+  await page.mouse.click(plotBox.x + plotBox.width * 0.75, plotBox.y + plotBox.height * 0.5);
+  assert(
+    Number(await plotFrame.getAttribute('aria-valuenow')) > 260,
+    'wheel zooms out to full range',
+  );
   await page.getByRole('tab', { name: 'Display', exact: true }).click();
+  const sidebarFrame = Number(await plotFrame.getAttribute('aria-valuenow'));
+  await page.keyboard.press('ArrowLeft');
+  assert.equal(
+    Number(await plotFrame.getAttribute('aria-valuenow')),
+    sidebarFrame - 1,
+    'frame shortcuts work after clicking a sidebar tab',
+  );
+  await page.keyboard.press('Space');
+  await page.getByRole('button', { name: 'Pause', exact: true }).waitFor();
+  await page.keyboard.press('Space');
+  await page.getByRole('button', { name: 'Play', exact: true }).waitFor();
   await page.getByLabel('Marker labels', { exact: true }).check();
   await page.getByRole('button', { name: 'Top', exact: true }).click();
   await page.getByRole('button', { name: 'Reset', exact: true }).click();
@@ -100,7 +166,7 @@ try {
       !document.body.textContent.includes('Reading your recording'),
   );
   assert.equal(
-    await page.getByRole('slider', { name: 'Frame', exact: true }).getAttribute('max'),
+    await page.getByRole('slider', { name: 'Frame', exact: true }).getAttribute('aria-valuemax'),
     '2',
   );
   const privatePaths = ['03_PRE_GANG12_01.c3d', '03_PRE_GANG12_01.h5', 'virtual_marker.h5']
@@ -111,11 +177,123 @@ try {
     await page.waitForFunction(() => !document.body.textContent.includes('Reading your recording'));
     assert.equal(await page.getByRole('alert').count(), 0, 'reference file loads without error');
     assert(
-      Number(await page.getByRole('slider', { name: 'Frame', exact: true }).getAttribute('max')) >=
-        2,
+      Number(
+        await page
+          .getByRole('slider', { name: 'Frame', exact: true })
+          .getAttribute('aria-valuemax'),
+      ) >= 2,
     );
     await page.getByRole('button', { name: 'Jump to end', exact: true }).click();
     await page.getByRole('button', { name: 'Jump to beginning', exact: true }).click();
+  }
+  // Actual worker export/download/re-import, with request and storage monitoring still active.
+  for (const extension of ['c3d', 'h5']) {
+    await page
+      .getByLabel('Open motion file')
+      .setInputFiles(resolve(`.local/synthetic.${extension}`));
+    await page.waitForFunction(() => !document.body.textContent.includes('Reading your recording'));
+    assert.equal(
+      await page.locator('.timeline input[type="number"]').count(),
+      0,
+      'no crop frame inputs',
+    );
+    const start = page.getByRole('slider', { name: 'Crop start', exact: true });
+    const end = page.getByRole('slider', { name: 'Crop end', exact: true });
+    await start.press('End');
+    await end.press('Home');
+    assert.equal(await start.getAttribute('aria-valuenow'), '2');
+    assert.equal(await end.getAttribute('aria-valuenow'), '3', 'handles cannot cross');
+    await page.getByRole('button', { name: 'Cancel crop', exact: true }).click();
+    assert.equal(await start.getAttribute('aria-valuenow'), '0', 'cancel restores full range');
+    const rail = await page.locator('.timeline-slider').boundingBox();
+    const handle = await start.boundingBox();
+    await page.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(
+      handle.x + handle.width / 2 + rail.width / 3,
+      handle.y + handle.height / 2,
+      { steps: 8 },
+    );
+    const playhead = page.getByRole('slider', { name: 'Frame', exact: true });
+    assert.equal(
+      await playhead.getAttribute('aria-valuenow'),
+      '1',
+      'frame follows start handle while dragging',
+    );
+    await page.mouse.up();
+    assert.equal(await start.getAttribute('aria-valuenow'), '1', 'drag adjusts start boundary');
+    await page.keyboard.press('ArrowRight');
+    assert.equal(
+      await playhead.getAttribute('aria-valuenow'),
+      '2',
+      'frame shortcuts work after crop drag',
+    );
+    assert.equal(
+      await start.getAttribute('aria-valuenow'),
+      '1',
+      'frame shortcut does not edit crop',
+    );
+    await page.keyboard.press('ArrowLeft');
+    await page.keyboard.press('Space');
+    await page.getByRole('button', { name: 'Pause', exact: true }).waitFor();
+    await page.keyboard.press('Space');
+    await page.getByRole('button', { name: 'Play', exact: true }).waitFor();
+    const endHandle = await end.boundingBox();
+    await page.mouse.move(endHandle.x + endHandle.width / 2, endHandle.y + endHandle.height / 2);
+    await page.mouse.down();
+    assert.equal(
+      await playhead.getAttribute('aria-valuenow'),
+      '2',
+      'exclusive recording end previews last frame',
+    );
+    await page.mouse.move(
+      endHandle.x + endHandle.width / 2 - rail.width / 3,
+      endHandle.y + endHandle.height / 2,
+      { steps: 8 },
+    );
+    assert.equal(
+      await playhead.getAttribute('aria-valuenow'),
+      '2',
+      'frame follows end handle while dragging',
+    );
+    await page.mouse.up();
+    assert.equal(await end.getAttribute('aria-valuenow'), '2', 'end adjusts independently');
+    await end.press('ArrowRight');
+    await page.getByRole('button', { name: 'Play', exact: true }).click();
+    await page.waitForTimeout(80);
+    await page.getByRole('button', { name: 'Pause', exact: true }).click();
+    assert(
+      Number(
+        await page
+          .getByRole('slider', { name: 'Frame', exact: true })
+          .getAttribute('aria-valuenow'),
+      ) >= 1,
+      'preview stays in crop range',
+    );
+    if (extension === 'h5') await page.screenshot({ path: '.local/crop-selection.png' });
+    await page.getByRole('button', { name: 'Crop', exact: true }).click();
+    assert.equal(
+      await page.getByRole('slider', { name: 'Frame', exact: true }).getAttribute('aria-valuemax'),
+      '1',
+    );
+    const downloadPromise = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Export', exact: true }).click();
+    const download = await downloadPromise;
+    assert.equal(download.suggestedFilename(), `synthetic_cropped.${extension}`);
+    const downloaded = resolve(`.local/synthetic_cropped.${extension}`);
+    await download.saveAs(downloaded);
+    await page.getByRole('button', { name: 'Restore original', exact: true }).click();
+    assert.equal(
+      await page.getByRole('slider', { name: 'Frame', exact: true }).getAttribute('aria-valuemax'),
+      '2',
+    );
+    await page.getByLabel('Open motion file').setInputFiles(downloaded);
+    await page.waitForFunction(() => !document.body.textContent.includes('Reading your recording'));
+    assert.equal(await page.getByRole('alert').count(), 0);
+    assert.equal(
+      await page.getByRole('slider', { name: 'Frame', exact: true }).getAttribute('aria-valuemax'),
+      '1',
+    );
   }
   // Bad file must leave the previous usable trial in place.
   assert.deepEqual(errors, [], 'no runtime/CSP errors while opening valid files');

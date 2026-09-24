@@ -60,6 +60,60 @@ header {
   border-radius: 3px;
   color: #a5c4d7;
 }
+.panel-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  padding: 3px;
+  color: #8ce0c9;
+}
+.panel-toggle svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+}
+.panel-toggle[aria-expanded='false'] svg {
+  transform: rotate(180deg);
+}
+.inspector.is-collapsed,
+.empty-inspector.is-collapsed {
+  width: 36px;
+}
+.is-collapsed > .sidebar-heading {
+  padding: 12px 4px;
+  justify-content: center;
+}
+.is-collapsed > .sidebar-heading > span,
+.inspector.is-collapsed > :not(.sidebar-heading),
+.empty-inspector.is-collapsed > :not(.sidebar-heading) {
+  display: none;
+}
+.plot-panel.is-collapsed {
+  height: auto;
+}
+.plot-panel.is-collapsed .panel-heading {
+  padding: 5px 20px;
+}
+.plot-panel.is-collapsed .panel-heading select,
+.plot-panel.is-collapsed .panel-heading > .muted {
+  display: none;
+}
+.panel-heading > .panel-toggle {
+  margin-left: auto;
+}
+.sidebar-heading .sidebar-title {
+  color: #b3c3d1;
+  letter-spacing: 1.2px;
+}
+.sidebar-heading {
+  align-items: center;
+  gap: 8px;
+}
 .workspace {
   display: flex;
   flex: 1;
@@ -432,6 +486,109 @@ dd {
   margin-top: 25px;
   font-size: 11px;
 }
+.timeline-section {
+  flex: none;
+}
+.timeline-slider {
+  position: relative;
+  height: 28px;
+  margin: 0 10px;
+  touch-action: none;
+}
+.timeline-rail,
+.timeline-included {
+  position: absolute;
+  top: 11px;
+  height: 6px;
+  border-radius: 3px;
+}
+.timeline-rail {
+  width: 100%;
+  background: #080f16;
+}
+.timeline-included {
+  background: #55cbb8;
+}
+.timeline-seek {
+  position: absolute;
+  inset: 0;
+  cursor: pointer;
+}
+.timeline-seek:focus-visible {
+  outline: 1px solid #8ce0c9;
+  outline-offset: 2px;
+}
+.timeline-playhead {
+  position: absolute;
+  top: 4px;
+  height: 20px;
+  width: 2px;
+  background: #fff;
+  pointer-events: none;
+}
+.crop-handle {
+  position: absolute;
+  top: 2px;
+  height: 24px;
+  width: 16px;
+  padding: 0;
+  border: 1px solid #b9f5e5;
+  background: #8ce0c9;
+  color: #15372c;
+  touch-action: none;
+  cursor: ew-resize;
+  z-index: 1;
+}
+.crop-handle-start {
+  transform: translateX(-100%);
+  border-radius: 5px 0 0 5px;
+}
+.crop-handle-end {
+  border-radius: 0 5px 5px 0;
+}
+.crop-handle span {
+  display: block;
+  height: 12px;
+  width: 4px;
+  margin: auto;
+  border-inline: 1px solid currentColor;
+}
+.crop-handle:hover {
+  background: #b9f5e5;
+}
+.crop-handle:focus-visible {
+  outline: 2px solid white;
+  outline-offset: 2px;
+}
+.crop-readout {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 3px 8px;
+  font-size: 10px;
+  color: #a9c8c0;
+  font-variant-numeric: tabular-nums;
+}
+.timeline-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: none;
+}
+.timeline-actions button {
+  padding: 4px 8px;
+  font-size: 11px;
+}
+.timeline-actions [role='status'] {
+  font-size: 9px;
+  color: #8ce0c9;
+}
+.scrubber:has(.timeline-slider) .events-track {
+  left: 10px;
+  right: 10px;
+  top: 42px;
+  bottom: auto;
+}
 .timeline {
   display: flex;
   align-items: center;
@@ -441,7 +598,7 @@ dd {
   border-top: 1px solid #2b3b49;
   border-bottom: 1px solid #2b3b49;
   flex: none;
-  height: 86px;
+  min-height: 96px;
 }
 .transport {
   display: flex;
@@ -530,6 +687,11 @@ dd {
   max-width: 45%;
   padding: 4px 8px;
 }
+.plot-reset {
+  padding: 4px 8px;
+  font-size: 11px;
+  white-space: nowrap;
+}
 .panel-heading > .muted {
   margin-left: auto;
   font-size: 10px;
@@ -538,6 +700,11 @@ dd {
 .plot-target {
   width: 100%;
   padding: 0 10px;
+}
+.plot-panel .u-select {
+  background: rgba(140, 224, 201, 0.24);
+  border-inline: 1px solid #8ce0c9;
+  pointer-events: none;
 }
 .uplot {
   font-family: inherit;
@@ -719,7 +886,16 @@ footer .privacy-dot {
   }
   header {
     padding: 12px;
-    height: 65px;
+    min-height: 65px;
+    height: auto;
+    flex-wrap: wrap;
+  }
+  .inspector.is-collapsed {
+    width: 100%;
+  }
+  .inspector.is-collapsed > .sidebar-heading {
+    justify-content: flex-end;
+    padding: 5px 12px;
   }
   .brand > span,
   .header-file,

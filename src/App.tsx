@@ -6,6 +6,7 @@ import { SignalPlot } from './plots/SignalPlot';
 import { startClock } from './playback/clock';
 import { cancelImport, openFile, setData, setFrame, togglePlay, useSession } from './state/session';
 import { makeDemo } from './motion/demo';
+import { PanelToggle } from './components/PanelToggle';
 class ViewerBoundary extends Component<{ children: ReactNode }, { error: string | null }> {
   state = { error: null as string | null };
   static getDerivedStateFromError(error: Error) {
@@ -24,18 +25,22 @@ class ViewerBoundary extends Component<{ children: ReactNode }, { error: string 
 export function App() {
   const data = useSession((s) => s.data),
     busy = useSession((s) => s.busy),
+    operation = useSession((s) => s.operation),
     error = useSession((s) => s.error),
     input = useRef<HTMLInputElement>(null),
+    [showPlot, setShowPlot] = useState(true),
+    [showSidebar, setShowSidebar] = useState(true),
     [dragging, setDragging] = useState(false);
   useEffect(startClock, []);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (e.defaultPrevented || e.isComposing || e.ctrlKey || e.metaKey || e.altKey) return;
       if (
         (e.target as HTMLElement).closest('input,select,textarea,button,[contenteditable="true"]')
       )
         return;
       const s = useSession.getState();
-      if (!s.data) return;
+      if (!s.data || s.busy) return;
       if (e.code === 'Space') {
         e.preventDefault();
         togglePlay();
@@ -58,6 +63,15 @@ export function App() {
   return (
     <main
       className={`app ${dragging ? 'dragging' : ''}`}
+      onClick={(event) => {
+        // Mouse/touch actions should not trap subsequent playback shortcuts on a control.
+        // Keyboard-activated controls keep their focus and normal Space/Enter behavior.
+        if (event.detail === 0) return;
+        const control = (event.target as HTMLElement).closest<HTMLElement>(
+          'button,input[type="checkbox"],input[type="radio"]',
+        );
+        if (control === document.activeElement) control?.blur();
+      }}
       onDragOver={(e) => {
         e.preventDefault();
         setDragging(true);
@@ -91,7 +105,10 @@ export function App() {
           {data ? (
             <>
               <span className="file-badge">{data.source.format}</span>
-              <span>{data.name}</span>
+              <span>
+                {data.name}
+                {data.source.crop ? ' · Cropped (modified)' : ''}
+              </span>
             </>
           ) : (
             <span className="muted">No trial loaded</span>
@@ -115,7 +132,7 @@ export function App() {
       </header>
       {error && (
         <div className="error-banner" role="alert">
-          <strong>Could not open file.</strong> {error}
+          <strong>Operation could not be completed.</strong> {error}
           <button onClick={() => useSession.setState({ error: null })} aria-label="Dismiss error">
             ×
           </button>
@@ -177,15 +194,33 @@ export function App() {
           {data && (
             <>
               <Timeline data={data} />
-              <SignalPlot data={data} />
+              <SignalPlot
+                data={data}
+                collapsed={!showPlot}
+                onToggle={() => setShowPlot((value) => !value)}
+              />
             </>
           )}
         </div>
         {data ? (
-          <Inspector data={data} />
+          <Inspector
+            data={data}
+            collapsed={!showSidebar}
+            onToggle={() => setShowSidebar((value) => !value)}
+          />
         ) : (
-          <aside className="empty-inspector">
-            <div className="sidebar-heading">TRIAL INSPECTOR</div>
+          <aside
+            id="trial-inspector"
+            className={`empty-inspector ${showSidebar ? '' : 'is-collapsed'}`}
+          >
+            <div className="sidebar-heading">
+              <span className="sidebar-title">TRIAL INSPECTOR</span>
+              <PanelToggle
+                panel="sidebar"
+                expanded={showSidebar}
+                onToggle={() => setShowSidebar((value) => !value)}
+              />
+            </div>
             <div className="empty-inspector-content">
               <span className="empty-icon">⌁</span>
               <h3>A closer look at your trial</h3>
@@ -220,8 +255,10 @@ export function App() {
         <div className="loading-overlay" role="status">
           <div className="loading-card">
             <span className="spinner" />
-            <h2>Reading your recording</h2>
-            <p>Parsing locally. Your file stays on this device.</p>
+            <h2>
+              {operation === 'export' ? 'Preparing your cropped file' : 'Reading your recording'}
+            </h2>
+            <p>Processing locally. Your file stays on this device.</p>
             <button onClick={cancelImport}>Cancel</button>
           </div>
         </div>

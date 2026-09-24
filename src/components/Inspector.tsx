@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { MotionData } from '../motion/types';
 import { connectionSets, resolveConnections } from '../motion/connections';
 import { setFrame, toggleMarker, useSession, type DisplayKey } from '../state/session';
+import { PanelToggle } from './PanelToggle';
 function SelectedMarker({ data }: { data: MotionData }) {
   const selected = useSession((s) => s.selected),
     frame = useSession((s) => s.frame),
@@ -31,7 +32,15 @@ function SelectedMarker({ data }: { data: MotionData }) {
     </section>
   );
 }
-export function Inspector({ data }: { data: MotionData }) {
+export function Inspector({
+  data,
+  collapsed,
+  onToggle,
+}: {
+  data: MotionData;
+  collapsed: boolean;
+  onToggle: () => void;
+}) {
   const [tab, setTab] = useState('Markers'),
     selected = useSession((s) => s.selected),
     hidden = useSession((s) => s.hidden),
@@ -45,9 +54,11 @@ export function Inspector({ data }: { data: MotionData }) {
     .map((name, index) => ({ name, index }))
     .filter((m) => m.name.toLowerCase().includes(search.toLowerCase()));
   return (
-    <aside className="inspector">
+    <aside id="trial-inspector" className={`inspector ${collapsed ? 'is-collapsed' : ''}`}>
       <div className="sidebar-heading">
-        TRIAL INSPECTOR <span>{data.markers.labels.length} markers</span>
+        <span className="sidebar-title">TRIAL INSPECTOR</span>
+        <span>{data.markers.labels.length} markers</span>
+        <PanelToggle panel="sidebar" expanded={!collapsed} onToggle={onToggle} />
       </div>
       <SelectedMarker data={data} />
       <div className="tabs" role="tablist">

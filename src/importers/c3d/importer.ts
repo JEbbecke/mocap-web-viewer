@@ -14,20 +14,24 @@ export function parseC3D(buffer: ArrayBuffer, name: string): MotionData {
   const u16 = (offset: number) => view.getUint16(offset, little),
     f32 = (offset: number) => view.getFloat32(offset, little);
   const rate = positiveRate(number(p, 'POINT:RATE', f32(20)), 'Point');
-  const count = number(p, 'POINT:USED', u16(2));
+  let count = number(p, 'POINT:USED', u16(2));
+  if (p.get('POINT:USED')?.storage?.kind === 2) count &= 65535;
   const startFields = nums(p, 'TRIAL:ACTUAL_START_FIELD'),
     endFields = nums(p, 'TRIAL:ACTUAL_END_FIELD');
   const field = (values: number[]) => (values[0] & 65535) + (values[1] & 65535) * 65536;
   const firstFrame = (startFields.length === 2 ? field(startFields) : u16(6)) - 1;
-  const frames = number(
+  let frames = number(
     p,
-    'POINT:LONG_FRAMES',
-    number(
-      p,
-      'POINT:FRAMES',
-      endFields.length === 2 ? field(endFields) - firstFrame : u16(8) - u16(6) + 1,
-    ),
+    'POINT:FRAMES',
+    endFields.length === 2 ? field(endFields) - firstFrame : u16(8) - u16(6) + 1,
   );
+  if (p.get('POINT:FRAMES')?.storage?.kind === 2) frames &= 65535;
+  if (frames === 65535)
+    frames = number(
+      p,
+      'POINT:LONG_FRAMES',
+      endFields.length === 2 ? field(endFields) - firstFrame : frames,
+    );
   const scale = number(p, 'POINT:SCALE', f32(12)),
     floating = scale < 0;
   const channels = number(p, 'ANALOG:USED', 0),
