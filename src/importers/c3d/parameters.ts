@@ -1,6 +1,7 @@
 export interface Parameter {
   dimensions: number[];
   values: number[] | string[];
+  storage?: { kind: number; offset: number; bytes: number };
 }
 export type Parameters = Map<string, Parameter>;
 export function readParameters(view: DataView): {
@@ -61,7 +62,15 @@ export function readParameters(view: DataView): {
               ? view.getInt16(pos + 2 * i, little)
               : view.getFloat32(pos + 4 * i, little),
         );
-      records.push({ group: id, name, parameter: { dimensions, values } });
+      records.push({
+        group: id,
+        name,
+        parameter: {
+          dimensions,
+          values,
+          storage: { kind, offset: pos, bytes },
+        },
+      });
     }
     if (jump === 0) break;
     pos = end;

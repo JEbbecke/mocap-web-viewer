@@ -33,7 +33,7 @@ The older virtual-marker file has 69 markers, 423 frames at 200 Hz, 56 analogs a
 
 Explicit: trajectories, labels, rates, force streams, corners, unit attributes where present, optional residuals, opaque metadata. Inferred: time starts at zero and regular sampling; missing marker unit follows Python's mm default with a warning; Location sampled at marker rate when its sample count matches markers, at force rate when matching forces, or static when all corners are identical. Unrecognized dynamic geometry timing is omitted with a warning.
 
-Calculated after reading: metre/N/Nm normalization, validity from finite XYZ and negative residuals, timeline alignment during display. Type and the homogeneous fourth row are ignored by normalization; they are not interpreted as validity rules. The original file is never rewritten.
+Calculated after reading: metre/N/Nm normalization, validity from finite XYZ and negative residuals, timeline alignment during display. Type and the homogeneous fourth row are ignored by normalization; they are not interpreted as validity rules. Crop export preserves and slices those raw rows as well. The original file is never rewritten; Export generates a separate file. See [cropping/export](CROPPING_EXPORT.md) for temporal metadata, preservation and unsupported schemas.
 
 CoordinateSystem uses documented container codes 1=global, 0=local, but the converter writes 0 for already-global ezc3d outputs. Web policy: code 1 is global; known converter layout with zero placeholder rotations uses the reference's stored-global convention with a visible warning. Other code-0 layouts require an explicit user choice of stored-global interpretation before spatial force rendering; force signals remain inspectable. No speculative double rotation.
 
