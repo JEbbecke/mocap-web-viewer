@@ -1,0 +1,43 @@
+{
+  "name": "ibo-mocap-visualizer-webapp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "typecheck": "tsc --noEmit",
+    "build": "npm run typecheck && vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "format": "prettier --write src tests scripts/*.mjs docs/*.md README.md *.json *.ts index.html .github/workflows/*.yml",
+    "format:check": "prettier --check src tests scripts/*.mjs docs/*.md README.md *.json *.ts index.html .github/workflows/*.yml",
+    "test:browser": "node scripts/browser-smoke.mjs",
+    "validate:reference": "vitest run tests/reference.test.ts"
+  },
+  "dependencies": {
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.3.0",
+    "h5wasm": "0.10.3",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "three": "^0.180.0",
+    "uplot": "^1.6.32",
+    "zustand": "^5.0.8"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@types/three": "^0.180.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "prettier": "^3.9.9",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.0",
+    "vitest": "^4.1.11"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}
