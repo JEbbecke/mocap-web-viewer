@@ -1,10 +1,12 @@
-# IBO Motion workspace
+# JE Motion
 
-A browser-based C3D and institute H5 motion-capture viewer for biomechanics. Built with TypeScript, React, Vite, Three.js / React Three Fiber, drei, Zustand, uPlot and h5wasm.
+**MoCap Viewer & Editor**
+
+A browser-based C3D and institute H5 motion-capture viewer and editor for biomechanics. Built with TypeScript, React, Vite, Three.js / React Three Fiber, drei, Zustand, uPlot and h5wasm.
 
 **Motion-capture files are processed entirely locally in the browser. Files are not uploaded to a server.** No backend, database, telemetry, analytics, remote fonts, or runtime CDN dependencies. Opening a file may fetch bundled application code, but never sends the filename, labels, metadata or measurements.
 
-![Motion workspace with synthetic demo data](docs/screenshot.png)
+![JE Motion | MoCap Viewer & Editor with synthetic demo data](docs/screenshot.png)
 
 The screenshot uses generated demonstration data, not a participant recording.
 
@@ -23,6 +25,8 @@ Choose **Open file**, drop a recording anywhere, or explore the synthetic demo. 
 
 ## Features
 
+- Use the **Split plots** icon beside the hide toggle in the signal inspector to switch between one and two plots. Split view shows two side-by-side plots with independent marker/force/analog selection and zoom. Both follow the same playback cursor; clicking either plot scrubs the recording. On narrow windows, the split area scrolls horizontally.
+
 - Local `.c3d`, `.h5` and `.hdf5` loading in a cancellable Web Worker.
 - Shared format-independent 3D viewer and playback for both formats.
 - Instanced markers, missing-sample handling, residuals, selection, search and individual visibility.
@@ -34,7 +38,7 @@ Choose **Open file**, drop a recording anywhere, or explore the synthetic demo. 
 - Non-destructive timeline cropping, range preview, restoration and local **Export** in the source C3D/H5 format. See [crop conventions and export limits](docs/CROPPING_EXPORT.md).
 - Synchronized marker XYZ, force, moment, COP and analog plots. Scroll up/down over the plot to zoom in/out around the pointer, or drag horizontally to select a zoom range. Click to scrub; double-click or use **Reset zoom** to restore the full time range.
 - Arrow toggles in the plot and sidebar headers collapse or expand each panel; a compact edge control remains available to reopen it.
-- Standard C3D events, file statistics, source metadata and visible import warnings.
+- Labeled C3D timeline events with add/edit/delete, context/description/subject editing, crop-aware export and restoration. H5 event editing awaits an established institute schema. File statistics, source metadata and import warnings remain visible.
 - Explicit SI units: positions/COP in m, force in N, moments in Nm. Display arrow scale defaults to 1 mm/N; threshold defaults to 10 N and changes display only.
 
 Keyboard: **Space** play/pause, **← / →** step, **Home / End** first/last frame, when focus is outside a form control. The timeline shows ordinal frames starting at 1; the marker inspector also shows the source's zero-based frame number.
@@ -112,3 +116,5 @@ Outside CI, the default base is relative (`./`). Source measurements, local comp
 ## Roadmap
 
 Establish a versioned H5 coordinate/event schema; extend C3D variants using validation fixtures; configurable marker-set import; gap inspection; local export; app-only PWA caching; then consider filtering, editing and additional formats behind the existing importer boundary.
+
+See [event visualization and editing](docs/EVENT_EDITING.md) for immutable event operations, relative-second timing, C3D serialization and the unsupported institute H5 event schema. H5 event editing requires an established schema and reference fixture.

@@ -156,9 +156,118 @@ try {
   await page.keyboard.press('Space');
   await page.getByRole('button', { name: 'Play', exact: true }).waitFor();
   await page.getByLabel('Marker labels', { exact: true }).check();
+  await page.getByLabel('Force plate numbers', { exact: true }).uncheck();
+  assert.equal(await page.getByLabel('Force plates', { exact: true }).isChecked(), true);
+  await page.getByLabel('Force plate numbers', { exact: true }).check();
   await page.getByRole('button', { name: 'Top', exact: true }).click();
+  await page.screenshot({ path: '.local/plate-numbers-top.png' });
   await page.getByRole('button', { name: 'Reset', exact: true }).click();
+  await page.getByRole('button', { name: 'Split plots', exact: true }).click();
+  assert.equal(await page.locator('.u-over').count(), 2, 'split view creates two plots');
+  await page.getByLabel('Second signal to plot', { exact: true }).selectOption('marker:1');
+  assert.equal(await page.getByLabel('Signal to plot', { exact: true }).inputValue(), 'marker');
+  await page.getByRole('button', { name: 'Reset zoom', exact: true }).click();
+  const secondPlot = page.getByRole('group', { name: 'Second plot', exact: true });
+  const secondBox = await secondPlot.locator('.u-over').boundingBox();
+  await page.mouse.click(secondBox.x + secondBox.width * 0.4, secondBox.y + secondBox.height * 0.5);
+  const splitFrame = Number(
+    await page.getByRole('slider', { name: 'Frame', exact: true }).getAttribute('aria-valuenow'),
+  );
+  assert(splitFrame > 135 && splitFrame < 150, 'second plot scrubs shared playback');
+  const fractions = await page
+    .locator('.u-over')
+    .evaluateAll((plots) =>
+      plots.map(
+        (plot) => parseFloat(plot.querySelector('.playhead').style.left) / plot.clientWidth,
+      ),
+    );
+  assert(Math.abs(fractions[0] - fractions[1]) < 0.01, 'both plots show the shared cursor');
+  await page.mouse.move(secondBox.x + secondBox.width * 0.2, secondBox.y + secondBox.height * 0.5);
+  await page.mouse.down();
+  await page.mouse.move(secondBox.x + secondBox.width * 0.6, secondBox.y + secondBox.height * 0.5, {
+    steps: 12,
+  });
+  await page.mouse.up();
+  const zoomFractions = await page
+    .locator('.u-over')
+    .evaluateAll((plots) =>
+      plots.map(
+        (plot) => parseFloat(plot.querySelector('.playhead').style.left) / plot.clientWidth,
+      ),
+    );
+  assert(
+    Math.abs(zoomFractions[0] - fractions[0]) < 0.01,
+    'zooming second plot leaves first plot unchanged',
+  );
+  assert(Math.abs(zoomFractions[1] - fractions[1]) > 0.05, 'second plot has independent zoom');
+  await page.getByRole('button', { name: 'Reset second plot zoom', exact: true }).click();
+  await page.screenshot({ path: '.local/split-plots.png' });
+  await page.getByRole('button', { name: 'Hide plot panel', exact: true }).click();
+  assert.equal(await page.locator('.u-over').count(), 0);
+  await page.getByRole('button', { name: 'Show plot panel', exact: true }).click();
+  assert.equal(await page.locator('.u-over').count(), 2);
+  await page.getByRole('button', { name: 'Split plots', exact: true }).click();
+  assert.equal(await page.locator('.u-over').count(), 1, 'single view releases the second chart');
+  await page.getByRole('button', { name: 'Split plots', exact: true }).click();
+  assert.equal(
+    await page.getByLabel('Second signal to plot', { exact: true }).inputValue(),
+    'marker:1',
+  );
+  await page.getByRole('button', { name: 'Split plots', exact: true }).click();
   await page.screenshot({ path: '.local/screenshot.png' });
+  await page.getByLabel('Open motion file').setInputFiles(resolve('.local/synthetic.c3d'));
+  await page.getByRole('button', { name: 'Add Event', exact: true }).click();
+  await page.getByLabel('Event label', { exact: true }).fill('Synthetic added event');
+  await page.getByLabel('Time (s)', { exact: true }).fill('0.015');
+  await page.getByLabel('Context', { exact: true }).fill('Right');
+  await page.getByRole('button', { name: 'Save event', exact: true }).click();
+  await page.getByRole('button', { name: 'Edit event Synthetic added event', exact: true }).click();
+  await page.getByLabel('Event label', { exact: true }).fill('Synthetic edited event');
+  await page.getByLabel('Time (s)', { exact: true }).fill('0.02');
+  await page.screenshot({ path: '.local/event-editor.png' });
+  await page.getByRole('button', { name: 'Save event', exact: true }).click();
+  const eventDownload = page.waitForEvent('download');
+  // Compare the arrow's geometric tip with the playback axis, including a scroll gutter.
+  const alignment = await page.evaluate(() => {
+    const marker = document.querySelector(
+      '[aria-label="Edit event Synthetic edited event"] .event-pin',
+    );
+    const slider = document.querySelector('.timeline-slider');
+    const strip = document.querySelector('.event-scroll');
+    const offset = () => {
+      const pin = marker.getBoundingClientRect(),
+        rail = slider.getBoundingClientRect();
+      return pin.left + pin.width / 2 - (rail.left + (rail.width * 2) / 3);
+    };
+    const normal = offset();
+    const previous = strip.style.maxHeight;
+    strip.style.maxHeight = '6px';
+    const scrolling = offset();
+    strip.style.maxHeight = previous;
+    return { normal, scrolling };
+  });
+  assert(Math.abs(alignment.normal) < 0.1, 'event tip aligns with its frame');
+  assert(Math.abs(alignment.scrolling) < 0.1, 'event scrolling preserves the time axis');
+  await page.getByRole('button', { name: 'Export', exact: true }).click();
+  const eventFile = await eventDownload;
+  assert.equal(eventFile.suggestedFilename(), 'synthetic_edited.c3d');
+  await eventFile.saveAs(resolve('.local/events-edited.c3d'));
+  await page.getByLabel('Open motion file').setInputFiles(resolve('.local/events-edited.c3d'));
+  await page
+    .getByRole('button', { name: 'Edit event Synthetic edited event', exact: true })
+    .click();
+  assert(
+    Math.abs(Number(await page.getByLabel('Time (s)', { exact: true }).inputValue()) - 0.02) < 1e-6,
+  );
+  assert.equal(await page.getByLabel('Context', { exact: true }).inputValue(), 'Right');
+  await page.getByRole('button', { name: 'Delete event', exact: true }).click();
+  await page.getByRole('button', { name: 'Confirm delete event', exact: true }).click();
+  assert.equal(
+    await page
+      .getByRole('button', { name: 'Edit event Synthetic edited event', exact: true })
+      .count(),
+    0,
+  );
   await page.getByLabel('Open motion file').setInputFiles(resolve('.local/synthetic.c3d'));
   await page.waitForFunction(
     () =>

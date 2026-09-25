@@ -1,11 +1,28 @@
 import { parseC3D } from '../importers/c3d/importer';
 import { readParameters, number, nums, type Parameter } from '../importers/c3d/parameters';
 import { cropInterval, eventInInterval } from '../motion/crop';
+import type { MotionEvent } from '../motion/types';
+import { writeC3DEvents } from './c3dEvents';
 
 /** Source-preserving crop serializer. Never requantizes scientific samples. */
-export function exportC3D(source: ArrayBuffer, start: number, end: number): ArrayBuffer {
+export function exportC3D(
+  source: ArrayBuffer,
+  start: number,
+  end: number,
+  events?: MotionEvent[],
+): ArrayBuffer {
   const original = parseC3D(source, 'source.c3d');
   const interval = cropInterval(original, start, end);
+  if (events !== undefined)
+    return exportC3D(
+      writeC3DEvents(
+        source,
+        events,
+        (original.timeline.firstFrame + start) / original.timeline.rate,
+      ),
+      start,
+      end,
+    );
   if (start === 0 && end === original.timeline.frameCount) return source.slice(0);
   const { params: p, little } = readParameters(new DataView(source));
   const input = new DataView(source);

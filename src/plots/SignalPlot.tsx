@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import uPlot from 'uplot';
 import 'uplot/dist/uPlot.min.css';
 import type { MotionData, Series } from '../motion/types';
@@ -10,6 +10,11 @@ function plotSeries(
   selection: string,
   marker: number,
 ): { values: uPlot.AlignedData; unit: string; labels: string[] } {
+  if (selection.startsWith('marker:')) {
+    const index = Number(selection.split(':')[1]);
+    if (Number.isInteger(index) && index >= 0 && index < data.markers.labels.length) marker = index;
+    selection = 'marker';
+  }
   if (selection === 'marker') {
     const n = data.timeline.frameCount,
       m = data.markers.labels.length;
@@ -65,14 +70,83 @@ export function SignalPlot({
   collapsed: boolean;
   onToggle: () => void;
 }) {
+  const [split, setSplit] = useState(false);
+  const [secondSelection, setSecondSelection] = useState('marker');
+  const selection = useSession((s) => s.plot);
+  return (
+    <section id="signal-panel" className={`plot-panel ${collapsed ? 'is-collapsed' : ''}`}>
+      <div className="panel-heading">
+        <span>SIGNAL INSPECTOR</span>
+        <span className="muted">
+          Scroll or drag to zoom · Click to scrub · Double-click to reset
+        </span>
+        <div className="plot-view-controls">
+          <button
+            type="button"
+            className="panel-toggle plot-split-toggle"
+            aria-label="Split plots"
+            aria-pressed={split}
+            title={split ? 'Switch to single plot' : 'Split plots'}
+            onClick={() => setSplit((value) => !value)}
+          >
+            <svg viewBox="0 0 20 20" aria-hidden="true">
+              <rect x="3" y="4" width="14" height="12" rx="1" />
+              <path d="M10 4v12" />
+            </svg>
+          </button>
+          <PanelToggle panel="plot" expanded={!collapsed} onToggle={onToggle} />
+        </div>
+      </div>
+      <div id="signal-panel-content" hidden={collapsed}>
+        {!collapsed && (
+          <div className={`plot-panes ${split ? 'is-split' : ''}`}>
+            <SignalPane
+              data={data}
+              selection={selection}
+              onSelection={(plot) => useSession.setState({ plot })}
+            />
+            {split && (
+              <SignalPane
+                data={data}
+                selection={secondSelection}
+                onSelection={setSecondSelection}
+                secondary
+              />
+            )}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+function SignalPane({
+  data,
+  selection: requestedSelection,
+  onSelection,
+  secondary = false,
+}: {
+  data: MotionData;
+  selection: string;
+  onSelection: (value: string) => void;
+  secondary?: boolean;
+}) {
   const target = useRef<HTMLDivElement>(null),
     resetZoom = useRef<(() => void) | null>(null),
-    selected = useSession((s) => s.selected),
-    selection = useSession((s) => s.plot);
-  const graph = useMemo(
-    () => (collapsed ? null : plotSeries(data, selection, selected)),
-    [data, selection, selected, collapsed],
-  );
+    selected = useSession((s) => s.selected);
+  const [kind, index, field] = requestedSelection.split(':');
+  const valid =
+    requestedSelection === 'marker' ||
+    (Number.isInteger(Number(index)) &&
+      Number(index) >= 0 &&
+      (kind === 'marker'
+        ? Number(index) < data.markers.labels.length
+        : kind === 'analog'
+          ? Number(index) < data.analogs.length
+          : kind === 'plate' &&
+            Number(index) < data.forcePlatforms.length &&
+            ['force', 'moment', 'cop'].includes(field)));
+  const selection = valid ? requestedSelection : 'marker';
+  const graph = useMemo(() => plotSeries(data, selection, selected), [data, selection, selected]);
   useEffect(() => {
     if (!target.current || !graph) return;
     const cursor = document.createElement('div');
@@ -88,7 +162,7 @@ export function SignalPlot({
     };
     const options: uPlot.Options = {
       width: target.current.clientWidth,
-      height: 180,
+      height: 155,
       padding: [12, 14, 0, 0],
       scales: {
         x: {
@@ -181,7 +255,7 @@ export function SignalPlot({
     const observer = new ResizeObserver((entries) => {
       chart.setSize({
         width: Math.max(200, Math.floor(entries[0].contentRect.width)),
-        height: 180,
+        height: 155,
       });
       sync();
     });
@@ -195,15 +269,21 @@ export function SignalPlot({
     };
   }, [data, graph]);
   return (
-    <section id="signal-panel" className={`plot-panel ${collapsed ? 'is-collapsed' : ''}`}>
-      <div className="panel-heading">
-        <span>SIGNAL INSPECTOR</span>
+    <div className="signal-pane" role="group" aria-label={secondary ? 'Second plot' : 'First plot'}>
+      <div className="plot-pane-heading">
         <select
-          aria-label="Signal to plot"
+          aria-label={secondary ? 'Second signal to plot' : 'Signal to plot'}
           value={selection}
-          onChange={(e) => useSession.setState({ plot: e.target.value })}
+          onChange={(e) => onSelection(e.target.value)}
         >
           <option value="marker">Marker · {data.markers.labels[selected]}</option>
+          <optgroup label="Markers">
+            {data.markers.labels.map((label, i) => (
+              <option key={i} value={`marker:${i}`}>
+                {label}
+              </option>
+            ))}
+          </optgroup>
           {data.forcePlatforms.map((p, i) => (
             <optgroup key={i} label={p.name}>
               {['force', 'moment', 'cop'].map((field) => (
@@ -223,19 +303,15 @@ export function SignalPlot({
             </optgroup>
           )}
         </select>
-        <span className="muted">
-          Scroll or drag to zoom · Click to scrub · Double-click to reset
-        </span>
-        {!collapsed && (
-          <button className="plot-reset" onClick={() => resetZoom.current?.()}>
-            Reset zoom
-          </button>
-        )}
-        <PanelToggle panel="plot" expanded={!collapsed} onToggle={onToggle} />
+        <button
+          className="plot-reset"
+          aria-label={secondary ? 'Reset second plot zoom' : 'Reset zoom'}
+          onClick={() => resetZoom.current?.()}
+        >
+          Reset zoom
+        </button>
       </div>
-      <div id="signal-panel-content" hidden={collapsed}>
-        {!collapsed && <div className="plot-target" ref={target} />}
-      </div>
-    </section>
+      <div className="plot-target" ref={target} />
+    </div>
   );
 }

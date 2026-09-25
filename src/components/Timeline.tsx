@@ -7,7 +7,7 @@ import {
   useSession,
 } from '../state/session';
 import type { MotionData } from '../motion/types';
-import { TimelineSlider } from './TimelineSlider';
+import { EventEditor } from './EventEditor';
 export function Timeline({ data }: { data: MotionData }) {
   const frame = useSession((s) => s.frame),
     playing = useSession((s) => s.playing),
@@ -73,22 +73,7 @@ export function Timeline({ data }: { data: MotionData }) {
             </span>
             <span>{(data.timeline.frameCount / data.timeline.rate).toFixed(3)} s</span>
           </div>
-          <TimelineSlider data={data} />
-          <div className="events-track">
-            {data.events
-              .filter((e) => e.time >= 0 && e.time <= data.timeline.duration)
-              .map((e, i) => (
-                <button
-                  key={i}
-                  style={{
-                    left: `${(100 * e.time * data.timeline.rate) / data.timeline.frameCount}%`,
-                  }}
-                  title={`${e.context} ${e.label} · ${e.time.toFixed(3)} s`}
-                  aria-label={`Jump to ${e.label}`}
-                  onClick={() => setFrame(e.time * data.timeline.rate)}
-                />
-              ))}
-          </div>
+          <EventEditor data={data} />
         </div>
         <label className="speed-label">
           Speed
@@ -125,7 +110,7 @@ export function Timeline({ data }: { data: MotionData }) {
               Cancel crop
             </button>
           )}
-          {data.source.crop && (
+          {(data.source.crop || data.source.eventsEdited) && (
             <>
               <button className="primary" onClick={saveAs} disabled={!file || Boolean(selection)}>
                 Export

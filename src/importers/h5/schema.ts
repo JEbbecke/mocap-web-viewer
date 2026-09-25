@@ -236,7 +236,8 @@ export function parseH5Tree(root: H5Node, name: string): MotionData {
       );
     }
   }
-  if (node(root, 'Events')?.keys?.().length)
+  const eventGroup = node(root, 'Events');
+  if (eventGroup?.keys?.().length || Object.keys(eventGroup?.attrs ?? {}).length)
     warnings.push(
       'H5 Events is nonempty, but its schema is undocumented; events were not interpreted.',
     );

@@ -1,4 +1,4 @@
-import type { MotionData } from '../../motion/types';
+import type { MotionData, MotionEvent } from '../../motion/types';
 import { metres, positiveRate, uniqueLabels } from '../../motion/math';
 import { validateMotion } from '../../motion/validation';
 import { readParameters, number, nums, strings, labels } from './parameters';
@@ -116,12 +116,15 @@ export function parseC3D(buffer: ArrayBuffer, name: string): MotionData {
   const eventTimes = nums(p, 'EVENT:TIMES'),
     eventLabels = labels(p, 'EVENT:LABELS'),
     contexts = labels(p, 'EVENT:CONTEXTS');
-  const events = Array.from({ length: number(p, 'EVENT:USED', 0) }, (_, i) => ({
+  const events: MotionEvent[] = Array.from({ length: number(p, 'EVENT:USED', 0) }, (_, i) => ({
     label: eventLabels[i] || `Event ${i + 1}`,
     context: contexts[i] || '',
+    description: labels(p, 'EVENT:DESCRIPTIONS')[i] || '',
+    subject: labels(p, 'EVENT:SUBJECTS')[i] || '',
+    sourceIndex: i,
     time: eventTimes[2 * i] * 60 + eventTimes[2 * i + 1] - firstFrame / rate,
   })).filter((e) => Number.isFinite(e.time));
-  if (!events.length && u16(298) === 12345) {
+  if (!p.has('EVENT:USED') && !events.length && u16(298) === 12345) {
     const n = Math.min(u16(300), 18);
     for (let i = 0; i < n; i++) {
       const label = new TextDecoder().decode(new Uint8Array(buffer, 396 + i * 4, 4)).trim();
