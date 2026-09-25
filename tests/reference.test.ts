@@ -74,7 +74,10 @@ describe.skipIf(!available)('private local reference comparisons (never deployed
       expect(c3d).toBeDefined();
       expect(data.timeline).toEqual(c3d.timeline);
       expect(data.markers.labels).toEqual(c3d.markers.labels);
-      expect(difference(data.markers.positions, c3d.markers.positions, c3d.markers.valid)).toBe(0);
+      // H5 now retains float64 display precision; C3D's display buffer is float32.
+      expect(
+        difference(data.markers.positions, c3d.markers.positions, c3d.markers.valid),
+      ).toBeLessThan(1e-6);
       expect(data.markers.valid).toEqual(c3d.markers.valid);
       data.analogs.forEach((a, i) =>
         expect(difference(a.signal.values, c3d.analogs[i].signal.values)).toBeLessThan(1e-10),

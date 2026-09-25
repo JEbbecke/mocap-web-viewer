@@ -11,6 +11,8 @@ const fixtures = JSON.parse(await readFile('tests/fixtures/c3d.json', 'utf8'));
 await writeFile('.local/synthetic.c3d', Buffer.from(fixtures.intelFloat, 'base64'));
 const h5Fixture = JSON.parse(await readFile('tests/fixtures/h5.json', 'utf8'));
 await writeFile('.local/synthetic.h5', Buffer.from(h5Fixture.base64, 'base64'));
+const populatedH5 = JSON.parse(await readFile('tests/fixtures/institute-h5.json', 'utf8'));
+await writeFile('.local/populated.h5', Buffer.from(populatedH5.base64, 'base64'));
 const development = process.env.SMOKE_MODE === 'development';
 const base =
   process.env.VITE_BASE_PATH && process.env.VITE_BASE_PATH !== './'
@@ -295,6 +297,108 @@ try {
     await page.getByRole('button', { name: 'Jump to end', exact: true }).click();
     await page.getByRole('button', { name: 'Jump to beginning', exact: true }).click();
   }
+  // Populated schema, actual import/export workers, events and no-op byte identity.
+  for (const [label, path] of [
+    ['populated', resolve('.local/populated.h5')],
+    ['authoritative', resolve('reference-data/authoritative_reference.h5')],
+  ].filter(([, p]) => existsSync(p))) {
+    const open = async (file) => {
+      await page.getByLabel('Open motion file').setInputFiles(file);
+      await page.waitForFunction(
+        () => !document.body.textContent.includes('Reading your recording'),
+      );
+      assert.equal(await page.getByRole('alert').count(), 0);
+    };
+    const save = async (suffix) => {
+      const pending = page.waitForEvent('download');
+      await page.getByRole('button', { name: 'Export', exact: true }).click();
+      const downloaded = await pending,
+        target = resolve(`.local/h5-validation/${label}-browser-${suffix}.h5`);
+      await downloaded.saveAs(target);
+      return target;
+    };
+    await mkdir('.local/h5-validation', { recursive: true });
+    await open(path);
+    assert.equal(
+      await page.getByRole('button', { name: 'Add Event', exact: true }).isEnabled(),
+      true,
+    );
+    const copy = await save('unchanged');
+    assert.deepEqual(
+      await readFile(copy),
+      await readFile(path),
+      'unchanged H5 worker export is byte-identical',
+    );
+    const options = await page
+      .getByLabel('Signal to plot', { exact: true })
+      .locator('option')
+      .allTextContents();
+    for (const group of ['EMG', 'RigidBodies'])
+      assert(
+        options.some((o) => o.includes(group)),
+        `${group} signals exposed`,
+      );
+    const signalSelect = page.getByLabel('Signal to plot', { exact: true });
+    for (const group of ['IKResults', 'IDResults']) {
+      assert(!options.some((o) => o.includes(group)), `${group} signals ignored`);
+      assert(
+        !(await page.locator('body').innerText()).includes(`${group}:`),
+        `${group} has no import notes`,
+      );
+    }
+    for (const group of ['EMG', 'RigidBodies']) {
+      await signalSelect.selectOption({ index: options.findIndex((o) => o.includes(group)) });
+      await page.waitForTimeout(50);
+    }
+    await signalSelect.selectOption('plate:0:freeMoment');
+    await page.getByRole('slider', { name: 'Frame', exact: true }).press('PageUp');
+    await page.screenshot({ path: `.local/h5-validation/${label}-view.png` });
+    await page.getByLabel('Select event', { exact: true }).selectOption('0');
+    await page.getByLabel('Event label', { exact: true }).fill('Browser edited event');
+    await page.getByLabel('Description', { exact: true }).fill('Browser event description');
+    await page.getByLabel('Time (s)', { exact: true }).fill('0.1');
+    assert.equal(
+      await page.getByLabel('Context', { exact: true }).count(),
+      0,
+      'unsupported context is not offered',
+    );
+    await page.getByRole('button', { name: 'Save event', exact: true }).click();
+    const edited = await save('edited');
+    await open(edited);
+    assert(
+      (await page.getByLabel('Select event').locator('option').allTextContents()).some((o) =>
+        o.includes('Browser edited event'),
+      ),
+    );
+    await page.getByRole('button', { name: 'Add Event', exact: true }).click();
+    await page.getByLabel('Event label', { exact: true }).fill('Browser added event');
+    await page.getByLabel('Time (s)', { exact: true }).fill('0.2');
+    await page.getByRole('button', { name: 'Save event', exact: true }).click();
+    const added = await save('added');
+    await open(added);
+    const choices = await page.getByLabel('Select event').locator('option').allTextContents();
+    const row = choices.findIndex((o) => o.includes('Browser added event'));
+    assert(row > 0);
+    await page.getByLabel('Select event').selectOption({ index: row });
+    await page.getByRole('button', { name: 'Delete event', exact: true }).click();
+    await page.getByRole('button', { name: 'Confirm delete event', exact: true }).click();
+    const deleted = await save('deleted');
+    await open(deleted);
+    assert(
+      !(await page.getByLabel('Select event').locator('option').allTextContents()).some((o) =>
+        o.includes('Browser added event'),
+      ),
+    );
+    await page.getByRole('slider', { name: 'Crop start', exact: true }).press('ArrowRight');
+    await page.getByRole('slider', { name: 'Crop end', exact: true }).press('Home');
+    await page.getByRole('button', { name: 'Crop', exact: true }).click();
+    const cropped = await save('cropped');
+    await open(cropped);
+    assert.equal(
+      await page.getByRole('slider', { name: 'Frame', exact: true }).getAttribute('aria-valuemax'),
+      '0',
+    );
+  }
   // Actual worker export/download/re-import, with request and storage monitoring still active.
   for (const extension of ['c3d', 'h5']) {
     await page
@@ -403,6 +507,47 @@ try {
       await page.getByRole('slider', { name: 'Frame', exact: true }).getAttribute('aria-valuemax'),
       '1',
     );
+  }
+  // Created by the moving-plate tests: real H5 with marker-rate global corners,
+  // independently sampled forces and a translating/tilting pose.
+  if (existsSync('.local/moving-plates.h5')) {
+    await page.getByLabel('Open motion file').setInputFiles(resolve('.local/moving-plates.h5'));
+    await page.waitForFunction(() => !document.body.textContent.includes('Reading your recording'));
+    assert.equal(await page.getByRole('alert').count(), 0);
+    await page.getByRole('button', { name: 'Top', exact: true }).click();
+    await page.getByRole('tab', { name: 'Display', exact: true }).click();
+    for (const name of [
+      'Markers',
+      'Marker connections',
+      'Force plate numbers',
+      'Ground reaction forces',
+      'Centre of pressure',
+      'Marker labels',
+      'Ground grid',
+      'Coordinate axes',
+    ])
+      await page.getByRole('checkbox', { name, exact: true }).uncheck();
+    const plates = page.getByRole('checkbox', { name: 'Force plates', exact: true });
+    const frame = page.getByRole('slider', { name: 'Frame', exact: true });
+    const canvas = page.locator('.viewport canvas');
+    await frame.press('Home');
+    await plates.uncheck();
+    await page.waitForTimeout(250);
+    const empty = await canvas.screenshot();
+    await plates.check();
+    await page.waitForTimeout(100);
+    const first = await canvas.screenshot({ path: '.local/moving-plate-frame-0.png' });
+    assert(!first.equals(empty), 'moving H5 plate surface is visible without force or markers');
+    await frame.press('ArrowRight');
+    await page.waitForTimeout(100);
+    const middle = await canvas.screenshot({ path: '.local/moving-plate-frame-1.png' });
+    assert(!middle.equals(empty), 'translated and tilted plate remains visible');
+    assert(!middle.equals(first), 'plate surface follows its geometry frame');
+    await frame.press('ArrowRight');
+    await page.waitForTimeout(100);
+    const last = await canvas.screenshot({ path: '.local/moving-plate-frame-2.png' });
+    assert(!last.equals(empty), 'final plate frame remains in camera bounds');
+    assert(!last.equals(middle), 'plate advances to final geometry frame');
   }
   // Bad file must leave the previous usable trial in place.
   assert.deepEqual(errors, [], 'no runtime/CSP errors while opening valid files');

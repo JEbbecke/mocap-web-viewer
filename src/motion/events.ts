@@ -5,12 +5,17 @@ export type EventFields = Pick<
   'label' | 'context' | 'time' | 'description' | 'subject'
 >;
 export function eventEditingAvailable(data: MotionData) {
-  return data.source.format !== 'H5';
+  return data.source.format !== 'H5' || data.source.eventSchema === 'institute-v1';
+}
+export function eventContextAvailable(data: MotionData) {
+  return data.source.eventSchema !== 'institute-v1';
 }
 export function validateEvent(data: MotionData, event: EventFields) {
   if (!eventEditingAvailable(data))
     throw new Error('H5 event editing requires an established institute event schema.');
   if (!event.label.trim()) throw new Error('Enter an event label.');
+  if (data.source.eventSchema === 'institute-v1' && (event.context || event.subject))
+    throw new Error('This event format has no context or subject field. Use Description.');
   if (
     !Number.isFinite(event.time) ||
     event.time < 0 ||

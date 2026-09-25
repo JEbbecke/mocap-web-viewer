@@ -14,6 +14,15 @@ function bounds(data: MotionData) {
   const p = data.markers.positions;
   for (let i = 0; i < data.markers.valid.length; i++)
     if (data.markers.valid[i]) box.expandByPoint(v.fromArray(p, i * 3));
+  // Moving plates can travel outside the marker envelope. Fit their full recorded path.
+  for (const plate of data.forcePlatforms) {
+    const values = plate.corners?.values;
+    if (values)
+      for (let i = 0; i < values.length; i += 3) {
+        v.fromArray(values, i);
+        if ([v.x, v.y, v.z].every(Number.isFinite)) box.expandByPoint(v);
+      }
+  }
   if (box.isEmpty()) box.set(new THREE.Vector3(-1, -1, 0), new THREE.Vector3(1, 1, 2));
   return {
     center: box.getCenter(new THREE.Vector3()),
@@ -217,8 +226,12 @@ function Plates({ data }: { data: MotionData }) {
             color: '#3b8e8d',
             side: THREE.DoubleSide,
             transparent: true,
-            opacity: 0.25,
+            opacity: 0.55,
             depthWrite: false,
+            // Plate surfaces commonly coincide with the ground grid.
+            polygonOffset: true,
+            polygonOffsetFactor: -1,
+            polygonOffsetUnits: -1,
           }),
         );
         const outline = new THREE.LineLoop(
@@ -229,6 +242,8 @@ function Plates({ data }: { data: MotionData }) {
           'position',
           new THREE.BufferAttribute(new Float32Array(12), 3),
         );
+        mesh.renderOrder = 1;
+        outline.renderOrder = 2;
         const arrow = new THREE.ArrowHelper(
           new THREE.Vector3(0, 0, 1),
           new THREE.Vector3(),
@@ -265,7 +280,7 @@ function Plates({ data }: { data: MotionData }) {
             polygonOffsetUnits: -1,
           }),
         );
-        number.renderOrder = 1;
+        number.renderOrder = 3;
         return {
           mesh,
           outline,
@@ -276,6 +291,7 @@ function Plates({ data }: { data: MotionData }) {
           axisY: new THREE.Vector3(),
           normal: new THREE.Vector3(),
           basis: new THREE.Matrix4(),
+          posePosition: new THREE.Vector3(),
         };
       }),
     [data],
@@ -346,6 +362,23 @@ function Plates({ data }: { data: MotionData }) {
             positions[11] - positions[2],
           );
           o.normal.crossVectors(o.axisX, o.axisY);
+          // Rotation maps plate-local axes into lab XYZ. Use it to orient the
+          // label, not to transform Corners a second time: those are already global.
+          if (plate.rotation && plate.poseFrame === 'global') {
+            const r = Array.from({ length: 9 }, (_, j) => sample(plate.rotation!, time, j, true));
+            const x = new THREE.Vector3(r[0], r[3], r[6]);
+            const y = new THREE.Vector3(r[1], r[4], r[7]);
+            if (
+              r.every(Number.isFinite) &&
+              Math.abs(x.lengthSq() - 1) < 1e-4 &&
+              Math.abs(y.lengthSq() - 1) < 1e-4 &&
+              Math.abs(x.dot(y)) < 1e-4
+            ) {
+              o.axisX.copy(x);
+              o.axisY.copy(y);
+              o.normal.crossVectors(x, y);
+            }
+          }
           if (o.normal.lengthSq() > 1e-16 && size > 0) {
             o.axisX.normalize();
             o.normal.normalize();
@@ -355,6 +388,22 @@ function Plates({ data }: { data: MotionData }) {
             o.number.quaternion.setFromRotationMatrix(
               o.basis.makeBasis(o.axisX, o.axisY, o.normal),
             );
+            if (plate.position && plate.poseFrame === 'global') {
+              o.posePosition.set(
+                ...([0, 1, 2].map((j) => sample(plate.position!, time, j, true)) as [
+                  number,
+                  number,
+                  number,
+                ]),
+              );
+              if ([o.posePosition.x, o.posePosition.y, o.posePosition.z].every(Number.isFinite)) {
+                // Position is the global origin. Project it onto the surface so
+                // a below-plane sensor origin does not hide the label inside it.
+                const distance = o.posePosition.clone().sub(o.number.position).dot(o.normal);
+                o.number.position.copy(o.posePosition).addScaledVector(o.normal, -distance);
+              }
+            }
+            o.number.position.addScaledVector(o.normal, 0.001);
             o.number.visible = o.mesh.visible && state.display.plateNumbers;
           }
         }

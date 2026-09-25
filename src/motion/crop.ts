@@ -20,14 +20,30 @@ export function sampleBoundary(time: number, rate: number, origin = 0) {
   return Math.abs(x - nearest) < 1e-8 ? nearest : Math.ceil(x);
 }
 
+export function timeBoundary(times: ArrayLike<number>, time: number) {
+  let lo = 0,
+    hi = times.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >>> 1;
+    if (times[mid] < time - 1e-9) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
+}
+
 export function cropSeries(series: Series, start: number, end: number): Series {
   const count = series.values.length / series.components;
-  const a = Math.max(0, Math.min(count, sampleBoundary(start, series.rate, series.startTime)));
-  const b = Math.max(a, Math.min(count, sampleBoundary(end, series.rate, series.startTime)));
+  const a = series.times
+    ? timeBoundary(series.times, start)
+    : Math.max(0, Math.min(count, sampleBoundary(start, series.rate, series.startTime)));
+  const b = series.times
+    ? timeBoundary(series.times, end)
+    : Math.max(a, Math.min(count, sampleBoundary(end, series.rate, series.startTime)));
   return {
     ...series,
     values: series.values.slice(a * series.components, b * series.components),
-    startTime: series.startTime + a / series.rate - start,
+    startTime: (series.times?.[a] ?? series.startTime + a / series.rate) - start,
+    ...(series.times ? { times: series.times.slice(a, b).map((t) => t - start) } : {}),
   };
 }
 
@@ -48,6 +64,9 @@ export function cropMotionData(data: MotionData, startFrame: number, endFrame: n
     ...data,
     source: {
       ...data.source,
+      ...(data.source.timeOrigin !== undefined
+        ? { timeOrigin: data.source.timeOrigin + interval.start }
+        : {}),
       crop: {
         start: (data.source.crop?.start ?? 0) + startFrame,
         end: (data.source.crop?.start ?? 0) + endFrame,
@@ -64,14 +83,38 @@ export function cropMotionData(data: MotionData, startFrame: number, endFrame: n
       positions: data.markers.positions.slice(startFrame * count * 3, endFrame * count * 3),
       valid: data.markers.valid.slice(startFrame * count, endFrame * count),
       residuals: data.markers.residuals?.slice(startFrame * count, endFrame * count),
+      ...(data.markers.quality
+        ? {
+            quality: {
+              ...data.markers.quality,
+              type: data.markers.quality.type?.slice(startFrame * count, endFrame * count),
+              cameraMasks: data.markers.quality.cameraMasks?.slice(
+                startFrame * count * data.markers.quality.cameraCount,
+                endFrame * count * data.markers.quality.cameraCount,
+              ),
+            },
+          }
+        : {}),
     },
     analogs: data.analogs.map((a) => ({ ...a, signal: cut(a.signal) })),
+    signals: data.signals?.map((a) => ({ ...a, signal: cut(a.signal) })),
+    rigidBodies: data.rigidBodies?.map((b) => ({
+      ...b,
+      position: cut(b.position),
+      rotation: b.rotation && cut(b.rotation),
+    })),
     forcePlatforms: data.forcePlatforms.map((p) => ({
       ...p,
       force: cut(p.force),
       moment: cut(p.moment),
       cop: cut(p.cop),
       freeMoment: p.freeMoment && cut(p.freeMoment),
+      position:
+        p.position &&
+        (p.position.values.length === p.position.components ? p.position : cut(p.position)),
+      rotation:
+        p.rotation &&
+        (p.rotation.values.length === p.rotation.components ? p.rotation : cut(p.rotation)),
       corners:
         p.corners &&
         (p.corners.values.length === p.corners.components

@@ -52,8 +52,21 @@ export function sample(
   staticGeometry = false,
 ): number {
   const n = series.values.length / series.components;
+  if (!n) return NaN;
   if (staticGeometry && n === 1) return series.values[component];
-  const index = (time - series.startTime) * series.rate;
+  let index = (time - series.startTime) * series.rate;
+  if (series.times) {
+    const times = series.times;
+    if (!n || time < times[0] - 1e-8 || time > times[n - 1] + 1e-8) return NaN;
+    let lo = 0,
+      hi = n - 1;
+    while (lo < hi) {
+      const mid = Math.ceil((lo + hi) / 2);
+      if (times[mid] <= time) lo = mid;
+      else hi = mid - 1;
+    }
+    index = lo === n - 1 ? lo : lo + (time - times[lo]) / (times[lo + 1] - times[lo]);
+  }
   if (index < -1e-8 || index > n - 1 + 1e-8) return NaN;
   const clamped = Math.max(0, Math.min(n - 1, index));
   const lo = Math.floor(clamped),

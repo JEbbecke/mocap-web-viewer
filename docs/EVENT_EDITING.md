@@ -4,7 +4,7 @@ Click a timeline event to edit it, or move playback and choose **Add Event**. Sa
 
 ## Architecture and timing
 
-MotionData.events is authoritative. Immutable operations in motion/events.ts add, update, delete and sort by time, preserving equal-time order. The session retains originalData and marks source.eventsEdited. sourceIndex identifies the original C3D event row for opaque metadata preservation; it is not editable. React holds only the editor draft. No server or persistence is involved.
+MotionData.events is authoritative. Immutable operations in motion/events.ts add, update, delete and sort by time, preserving equal-time order. The session retains originalData and marks source.eventsEdited. sourceIndex identifies the original source event row for opaque metadata preservation; it is not editable. React holds only the editor draft. No server or persistence is involved.
 
 MotionEvent.time is unrounded relative seconds from the current recording's first sample. No independent frame value is stored. The editor derives C3D source frame as firstFrame + time * rate + 1, matching one-based header numbering. Fractional frames represent subframe timing. Playback uses zero-based array indices; new events default to frame / rate. Valid editing times are in [0, frameCount / rate), including the last sample interval. The event track shares the crop/playback boundary axis.
 
@@ -18,14 +18,16 @@ Parameter storage grows when needed, updating header and POINT:DATA_START. Scien
 
 Edited exports clear legacy header event slots and use full-label EVENT parameters, avoiding stale duplicates. Header-only readers cannot display edited events. Crop-only header behavior is unchanged. Limits: 255 events, 255 UTF-8 bytes per text field, signed parameter record-offset capacity, and 255 parameter blocks. Segmented EVENT arrays are rejected on export. Proprietary parameters containing offsets or undocumented timing require vendor validation. C3D's float32 storage precision remains a format limitation; UI editing does not round times.
 
-## H5 limitation
+## H5 schema version 1
 
-There is **no established institute H5 event schema**. Rechecked sources: docs/H5_FORMAT.md, sibling ibo-biomech/handlers/h5Handler.py (load_data/save_data) and biomech_io/file_converter.py. The converter creates an empty Events group, loading ignores events, and saving preserves the group opaquely. No timing/label datasets are defined.
+The authoritative file establishes `/Events/{Name,Description,Frame,Time}`, with parallel rows, SchemaVersion=1 and a Scope identifying trial-clock seconds and zero-based source frames. H5 events now use the same immutable editor and timeline as C3D. Context and Subject controls are omitted because this format has no such columns; Description is preserved exactly, including Unicode and whitespace.
 
-H5 event editing is disabled with an explanation. The worker rejects event replacement for H5. Nonempty Events datasets or attributes produce an import warning. Full-range H5 export retains original bytes; cropping nonempty Events is still rejected because timestamps cannot safely be rebased. Event CRUD round trips require a documented schema and reference fixture. No new schema or event-only format is introduced. Existing empty-Events H5 crop round trips remain covered.
+Import subtracts the marker clock origin from Time. Export adds the current source origin back, retaining untouched Time/Frame values exactly and recomputing Frame only after a time edit. Crop filters rows by physical time, preserves source frame numbering and adjusts relative UI time. Original row identity carries unknown one-dimensional event columns through sorting and deletion; adding an event with unknown columns fails explicitly because their values cannot be invented. Unknown event schemas remain read-only and block cropping when populated.
+
+See [H5 schema](H5_FORMAT.md) and [lifecycle validation](H5_VALIDATION.md) for reference-file coverage and limits.
 
 ## Validation and manual checks
 
 Tests cover immutable CRUD, chronological/equal-time ordering, timeline mapping, source frames, validation, dirty state/restoration, repeated crops, boundary exclusion, parameter growth, and edited C3D round trips across synthetic encodings. Existing crop tests cover H5 preservation and nonempty Events rejection. Browser smoke exercises add/edit/export/reopen/delete via the real worker alongside playback, crop and H5 checks.
 
-Before a PR, check crowded/equal-time labels, keyboard editing, crop before/after edits, and restoration. Reopen edited downloads in the institute viewer and an independent C3D reader; compare labels, timing, contexts, descriptions, subjects and scientific signals. Verify H5's unsupported-events explanation. Synthetic event fixtures contain no participant measurements. Private references/downloads stay in ignored local locations.
+Before a PR, check crowded/equal-time labels, keyboard editing, crop before/after edits, and restoration. Reopen edited downloads in the institute viewer and an independent C3D reader; compare labels, timing, contexts, descriptions, subjects and scientific signals. Check H5 event descriptions, absolute-time preservation, and cropping before/after an edit. Synthetic event fixtures contain no participant measurements. Private references/downloads stay in ignored local locations.

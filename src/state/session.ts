@@ -234,7 +234,10 @@ export function saveAs() {
     link.href = url;
     link.download = data.source.crop
       ? croppedFilename(sourceFile.name)
-      : sourceFile.name.replace(/\.(c3d|h5|hdf5)$/i, '_edited.$1');
+      : sourceFile.name.replace(
+          /\.(c3d|h5|hdf5)$/i,
+          data.source.eventsEdited ? '_edited.$1' : '_copy.$1',
+        );
     document.body.append(link);
     link.click();
     link.remove();

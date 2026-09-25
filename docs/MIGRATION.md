@@ -14,7 +14,7 @@
 | plot windows                      | XYZ/analog/force/moment/COP           | synchronized uPlot; complete                                                      |
 | H5/TRC exports                    | scientific export                     | deferred; no editing or export in first viewer                                    |
 | none                              | marker connections                    | selectable labelled presets, no inferred joint centres; complete                  |
-| ignored Events                    | event display                         | standard C3D events implemented; H5 events pending schema                         |
+| ignored Events                    | event display                         | standard C3D and versioned institute H5 events implemented                        |
 | installation scripts              | desktop file associations             | static GitHub Pages workflow configured; publication requires a repository        |
 
 Intentional corrections: honor stored units; preserve invalid samples instead of zeroing; carry residual validity; use C3D corners instead of default zero geometry; recognize geometry's independent rate; use a physical GRF display scale; reset playback anchor on scrub. No speculative force sign changes, OpenSim export rotation, or skeleton anatomy is introduced into normalization.

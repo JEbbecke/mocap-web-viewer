@@ -38,7 +38,7 @@ Choose **Open file**, drop a recording anywhere, or explore the synthetic demo. 
 - Non-destructive timeline cropping, range preview, restoration and local **Export** in the source C3D/H5 format. See [crop conventions and export limits](docs/CROPPING_EXPORT.md).
 - Synchronized marker XYZ, force, moment, COP and analog plots. Scroll up/down over the plot to zoom in/out around the pointer, or drag horizontally to select a zoom range. Click to scrub; double-click or use **Reset zoom** to restore the full time range.
 - Arrow toggles in the plot and sidebar headers collapse or expand each panel; a compact edge control remains available to reopen it.
-- Labeled C3D timeline events with add/edit/delete, context/description/subject editing, crop-aware export and restoration. H5 event editing awaits an established institute schema. File statistics, source metadata and import warnings remain visible.
+- C3D and versioned institute H5 timeline events with add/edit/delete, format-supported text fields, crop-aware export and restoration. File statistics, source metadata and import warnings remain visible.
 - Explicit SI units: positions/COP in m, force in N, moments in Nm. Display arrow scale defaults to 1 mm/N; threshold defaults to 10 N and changes display only.
 
 Keyboard: **Space** play/pause, **← / →** step, **Home / End** first/last frame, when focus is outside a form control. The timeline shows ordinal frames starting at 1; the marker inspector also shows the source's zero-based frame number.
@@ -52,7 +52,7 @@ Keyboard: **Space** play/pause, **← / →** step, **Home / End** first/last fr
 
 DEC/VAX C3D encoding and nonstandard rotation records are explicitly rejected. Unsupported force-platform types are reported and omitted, while marker and analog data remain accessible. Other HDF5 schemas are not supported.
 
-H5 coordinate conventions contain contradictions in the reference exporter. Recognized legacy output keeps its already-global values with a warning. Other unresolved force frames remain available for signal inspection, but require explicit confirmation of stored-global coordinates for spatial force display. Missing legacy marker units assume mm with a warning. H5 Type codes and event/rigid-body schemas are not guessed. See [H5 format](docs/H5_FORMAT.md) and [open questions](docs/OPEN_QUESTIONS.md).
+H5 coordinate conventions contain contradictions in the reference exporter. Recognized legacy output keeps its already-global values with a warning. Other unresolved force frames remain available for signal inspection, but require explicit confirmation of stored-global coordinates for spatial force display. Missing legacy marker units assume mm with a warning. The authoritative H5 adds explicit clocks, events, EMG, rigid-body data and quality flags. IKResults and IDResults are currently ignored by the viewer; their source data remains available for export. Type codes and unprovided coordinate conventions are not guessed. See [H5 format](docs/H5_FORMAT.md) and [open questions](docs/OPEN_QUESTIONS.md).
 
 No general trajectory editing, scientific filtering, format conversion, inferred joint centres, gait-event detection, video, or persistent file storage is included. Marker timelines must be present. Mobile is secondary; current Chromium browsers are the runtime validation target. Large file limits depend on browser memory. There is no service worker yet: a cached tab can keep working, but reliable offline reload/PWA installation is not claimed.
 
@@ -115,6 +115,6 @@ Outside CI, the default base is relative (`./`). Source measurements, local comp
 
 ## Roadmap
 
-Establish a versioned H5 coordinate/event schema; extend C3D variants using validation fixtures; configurable marker-set import; gap inspection; local export; app-only PWA caching; then consider filtering, editing and additional formats behind the existing importer boundary.
+Extend independently validated H5 coordinate variants; extend C3D variants using validation fixtures; configurable marker-set import; gap inspection; local export; app-only PWA caching; then consider filtering, editing and additional formats behind the existing importer boundary.
 
-See [event visualization and editing](docs/EVENT_EDITING.md) for immutable event operations, relative-second timing, C3D serialization and the unsupported institute H5 event schema. H5 event editing requires an established schema and reference fixture.
+See [event visualization and editing](docs/EVENT_EDITING.md) for immutable event operations, relative-second timing, C3D serialization and the supported versioned institute H5 event schema. See [authoritative H5 validation](docs/H5_VALIDATION.md) for round-trip results and remaining limits.

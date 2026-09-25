@@ -26,6 +26,6 @@ Privacy: no backend, uploads, telemetry, persistence, remote fonts, images, or C
 
 Vite emits static dist assets with a configurable base path. GitHub Actions installs lockfile dependencies, runs tests/typechecks/build and deploys only dist. Private reference files and locally generated validation outputs are ignored and never part of dist.
 
-See [event visualization and editing](EVENT_EDITING.md) for immutable event operations, relative-second timing, C3D serialization and the unsupported institute H5 event schema. H5 event editing requires an established schema and reference fixture.
+See [event visualization and editing](EVENT_EDITING.md) for immutable event operations, relative-second timing, C3D serialization and the supported versioned institute H5 event schema. Explicit Series clocks, structured quality/body data and additional named signals keep H5 details at the importer/exporter boundary. The original File backs preservation of unknown data.
 
 The signal inspector offers one or two side-by-side plot panes. Each pane reuses the same chart component, with independent signal selection and zoom and a shared session playback cursor. Layout and the second selection remain local UI state. Removing or collapsing a pane destroys its chart, resize observer and playback subscription; only visible plots materialize signal arrays.
