@@ -29,8 +29,8 @@ function Camera({ data }: { data: MotionData }) {
     camera.up.set(0, 0, 1);
     const offset: Record<CameraPreset, number[]> = {
       perspective: [1.3, -1.8, 1.0],
-      front: [0, -2, 0],
-      side: [2, 0, 0],
+      front: [2, 0, 0],
+      side: [0, -2, 0],
       top: [0, -0.001, 2],
     };
     camera.position
@@ -207,7 +207,7 @@ function MarkerLabels({ data }: { data: MotionData }) {
 function Plates({ data }: { data: MotionData }) {
   const objects = useMemo(
     () =>
-      data.forcePlatforms.map(() => {
+      data.forcePlatforms.map((_, index) => {
         const geometry = new THREE.BufferGeometry();
         geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(12), 3));
         geometry.setIndex([0, 1, 2, 0, 2, 3]);
@@ -241,7 +241,42 @@ function Plates({ data }: { data: MotionData }) {
           new THREE.SphereGeometry(0.012, 12, 8),
           new THREE.MeshBasicMaterial({ color: '#ffdeac' }),
         );
-        return { mesh, outline, arrow, point };
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = 128;
+        const context = canvas.getContext('2d')!;
+        context.font = '600 80px system-ui';
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.lineWidth = 7;
+        context.strokeStyle = '#111c26';
+        context.fillStyle = '#b9f5e5';
+        context.strokeText(String(index + 1), 64, 66);
+        context.fillText(String(index + 1), 64, 66);
+        const number = new THREE.Mesh(
+          new THREE.PlaneGeometry(1, 1),
+          new THREE.MeshBasicMaterial({
+            map: new THREE.CanvasTexture(canvas),
+            transparent: true,
+            opacity: 0.5,
+            side: THREE.DoubleSide,
+            depthWrite: false,
+            polygonOffset: true,
+            polygonOffsetFactor: -1,
+            polygonOffsetUnits: -1,
+          }),
+        );
+        number.renderOrder = 1;
+        return {
+          mesh,
+          outline,
+          arrow,
+          point,
+          number,
+          axisX: new THREE.Vector3(),
+          axisY: new THREE.Vector3(),
+          normal: new THREE.Vector3(),
+          basis: new THREE.Matrix4(),
+        };
       }),
     [data],
   );
@@ -255,6 +290,9 @@ function Plates({ data }: { data: MotionData }) {
         o.point.geometry.dispose();
         o.point.material.dispose();
         o.arrow.dispose();
+        o.number.material.map?.dispose();
+        o.number.material.dispose();
+        o.number.geometry.dispose();
       }
     },
     [objects],
@@ -266,6 +304,7 @@ function Plates({ data }: { data: MotionData }) {
       const o = objects[i],
         global = plate.coordinateFrame === 'global' || state.assumeGlobal;
       o.mesh.visible = o.outline.visible = !!plate.corners && state.display.plates;
+      o.number.visible = false;
       if (plate.corners) {
         const positions = o.mesh.geometry.attributes.position.array as Float32Array;
         for (let j = 0; j < 12; j++) positions[j] = sample(plate.corners, time, j, true);
@@ -275,6 +314,49 @@ function Plates({ data }: { data: MotionData }) {
           o.mesh.geometry.attributes.position.needsUpdate = true;
           (o.outline.geometry.attributes.position.array as Float32Array).set(positions);
           o.outline.geometry.attributes.position.needsUpdate = true;
+          // Center the identifier on the current plate, including moving H5 geometry.
+          o.number.position.set(0, 0, 0);
+          let shortestEdge = Infinity;
+          for (let corner = 0; corner < 4; corner++) {
+            const a = corner * 3,
+              b = ((corner + 1) % 4) * 3;
+            o.number.position.x += positions[a] / 4;
+            o.number.position.y += positions[a + 1] / 4;
+            o.number.position.z += positions[a + 2] / 4;
+            shortestEdge = Math.min(
+              shortestEdge,
+              Math.hypot(
+                positions[a] - positions[b],
+                positions[a + 1] - positions[b + 1],
+                positions[a + 2] - positions[b + 2],
+              ),
+            );
+          }
+          const size = shortestEdge * 0.45;
+          o.number.scale.set(size, size, 1);
+          // Follow the plate's own plane rather than the camera, also for tilted plates.
+          o.axisX.set(
+            positions[3] - positions[0],
+            positions[4] - positions[1],
+            positions[5] - positions[2],
+          );
+          o.axisY.set(
+            positions[9] - positions[0],
+            positions[10] - positions[1],
+            positions[11] - positions[2],
+          );
+          o.normal.crossVectors(o.axisX, o.axisY);
+          if (o.normal.lengthSq() > 1e-16 && size > 0) {
+            o.axisX.normalize();
+            o.normal.normalize();
+            // Corner winding varies by source; keep the text's front face toward lab +Z.
+            if (o.normal.z < 0) o.normal.negate();
+            o.axisY.crossVectors(o.normal, o.axisX).normalize();
+            o.number.quaternion.setFromRotationMatrix(
+              o.basis.makeBasis(o.axisX, o.axisY, o.normal),
+            );
+            o.number.visible = o.mesh.visible && state.display.plateNumbers;
+          }
         }
       }
       const force = sample3(plate.force, time),
@@ -305,6 +387,7 @@ function Plates({ data }: { data: MotionData }) {
           <primitive object={o.outline} frustumCulled={false} />
           <primitive object={o.arrow} />
           <primitive object={o.point} />
+          <primitive object={o.number} />
         </group>
       ))}
     </group>

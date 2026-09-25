@@ -106,6 +106,15 @@ header {
 .panel-heading > .panel-toggle {
   margin-left: auto;
 }
+.plot-view-controls {
+  display: flex;
+  gap: 5px;
+  margin-left: auto;
+}
+.plot-split-toggle[aria-pressed='true'] {
+  background: #29463f;
+  border-color: #8ce0c9;
+}
 .sidebar-heading .sidebar-title {
   color: #b3c3d1;
   letter-spacing: 1.2px;
@@ -658,6 +667,94 @@ dd {
   bottom: -3px;
   height: 4px;
 }
+.event-workspace {
+  margin: 0;
+  container-type: inline-size;
+}
+.event-toolbar {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin: 3px 10px 0;
+  font-size: 10px;
+  color: #b9cbd6;
+}
+.event-toolbar button,
+.event-toolbar select {
+  font-size: 10px;
+  padding: 2px 6px;
+}
+.event-toolbar select {
+  max-width: 210px;
+}
+.event-scroll {
+  margin: 2px 10px 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: 36px;
+}
+.event-markers {
+  position: relative;
+  margin: 0;
+  /* Keep the same axis width as the slider, even when the event strip scrolls. */
+  width: calc(100cqw - 20px);
+}
+.event-markers button {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #ffcd87;
+  transform: translateX(-50%);
+  line-height: 12px;
+}
+.event-markers button.event-context-left {
+  color: #ff6b6b;
+}
+.event-markers button.event-context-right {
+  color: #65dc8c;
+}
+.event-markers button.selected-event {
+  background: #263947;
+  outline: 1px solid currentColor;
+  border-radius: 2px;
+}
+.event-markers button:hover {
+  background: #263947;
+}
+.event-pin {
+  position: absolute;
+  left: 50%;
+  top: 2px;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 8px solid currentColor;
+}
+.event-editor {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 0;
+  align-items: end;
+}
+.event-editor label {
+  display: flex;
+  flex-direction: column;
+  font-size: 11px;
+  gap: 3px;
+}
+.event-editor input {
+  width: 130px;
+}
+.event-editor [role='alert'] {
+  color: #ffaeae;
+  width: 100%;
+}
 .events-track button {
   position: absolute;
   width: 5px;
@@ -700,6 +797,33 @@ dd {
 .plot-target {
   width: 100%;
   padding: 0 10px;
+}
+.plot-panes {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  overflow-x: auto;
+}
+.plot-panes.is-split {
+  grid-template-columns: repeat(2, minmax(250px, 1fr));
+}
+.signal-pane {
+  min-width: 0;
+}
+.signal-pane + .signal-pane {
+  border-left: 1px solid #2a3846;
+}
+.plot-pane-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 14px 4px;
+}
+.plot-pane-heading select {
+  min-width: 0;
+  max-width: 70%;
+  font-size: 11px;
+  padding: 3px 7px;
 }
 .plot-panel .u-select {
   background: rgba(140, 224, 201, 0.24);

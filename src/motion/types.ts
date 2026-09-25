@@ -20,6 +20,10 @@ export interface MotionEvent {
   label: string;
   context: string;
   time: number;
+  description?: string;
+  subject?: string;
+  /** Original EVENT row, used only to preserve opaque per-event metadata. */
+  sourceIndex?: number;
 }
 export interface MotionData {
   name: string;
@@ -29,6 +33,7 @@ export interface MotionData {
     metadata: Record<string, unknown>;
     /** Cumulative point boundaries in the immutable original file. */
     crop?: { start: number; end: number };
+    eventsEdited?: boolean;
   };
   timeline: { rate: number; frameCount: number; firstFrame: number; duration: number };
   markers: {

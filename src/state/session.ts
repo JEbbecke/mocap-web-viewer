@@ -2,8 +2,17 @@ import { create } from 'zustand';
 import type { MotionData } from '../motion/types';
 import { cropMotionData } from '../motion/crop';
 import { croppedFilename } from '../exporters';
+import { addEvent, updateEvent, deleteEvent, type EventFields } from '../motion/events';
 export type DisplayKey =
-  'markers' | 'connections' | 'plates' | 'forces' | 'cop' | 'labels' | 'grid' | 'axes';
+  | 'markers'
+  | 'connections'
+  | 'plates'
+  | 'plateNumbers'
+  | 'forces'
+  | 'cop'
+  | 'labels'
+  | 'grid'
+  | 'axes';
 export type CameraPreset = 'perspective' | 'front' | 'side' | 'top';
 interface Session {
   data: MotionData | null;
@@ -49,6 +58,7 @@ export const useSession = create<Session>(() => ({
     markers: true,
     connections: true,
     plates: true,
+    plateNumbers: true,
     forces: true,
     cop: true,
     labels: false,
@@ -174,6 +184,27 @@ export function restoreOriginal() {
   const { originalData, sourceFile } = useSession.getState();
   if (originalData) setData(originalData, sourceFile);
 }
+export function editSessionEvent(
+  action: 'add' | 'update' | 'delete',
+  index: number,
+  fields?: EventFields,
+) {
+  const { data, originalData, busy } = useSession.getState();
+  if (!data || busy) return;
+  const next =
+    action === 'delete'
+      ? deleteEvent(data, index)
+      : action === 'add'
+        ? addEvent(data, fields!)
+        : updateEvent(data, index, fields!);
+  useSession.setState({
+    data: next,
+    originalData: originalData ?? data,
+    saved: false,
+    playing: false,
+    error: null,
+  });
+}
 export function saveAs() {
   const { data, sourceFile, busy } = useSession.getState();
   if (!data || !sourceFile || busy) return;
@@ -201,7 +232,9 @@ export function saveAs() {
     );
     const link = document.createElement('a');
     link.href = url;
-    link.download = croppedFilename(sourceFile.name);
+    link.download = data.source.crop
+      ? croppedFilename(sourceFile.name)
+      : sourceFile.name.replace(/\.(c3d|h5|hdf5)$/i, '_edited.$1');
     document.body.append(link);
     link.click();
     link.remove();
@@ -218,5 +251,6 @@ export function saveAs() {
     file: sourceFile,
     start: data.source.crop?.start ?? 0,
     end: data.source.crop?.end ?? data.timeline.frameCount,
+    events: data.source.eventsEdited ? data.events : undefined,
   });
 }

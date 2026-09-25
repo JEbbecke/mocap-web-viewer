@@ -115,6 +115,7 @@ export function Inspector({
                   markers: 'Markers',
                   connections: 'Marker connections',
                   plates: 'Force plates',
+                  plateNumbers: 'Force plate numbers',
                   forces: 'Ground reaction forces',
                   cop: 'Centre of pressure',
                   labels: 'Marker labels',
@@ -198,7 +199,9 @@ export function Inspector({
             {data.forcePlatforms.length ? (
               data.forcePlatforms.map((p, i) => (
                 <div className="plate-card" key={i}>
-                  <strong>{p.name}</strong>
+                  <strong>
+                    {i + 1} · {p.name}
+                  </strong>
                   <span>
                     {p.force.rate} Hz · {p.coordinateFrame}
                   </span>

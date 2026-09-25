@@ -38,3 +38,5 @@ Calculated after reading: metre/N/Nm normalization, validity from finite XYZ and
 CoordinateSystem uses documented container codes 1=global, 0=local, but the converter writes 0 for already-global ezc3d outputs. Web policy: code 1 is global; known converter layout with zero placeholder rotations uses the reference's stored-global convention with a visible warning. Other code-0 layouts require an explicit user choice of stored-global interpretation before spatial force rendering; force signals remain inspectable. No speculative double rotation.
 
 No H5 event semantics have been established. Nonempty Events is reported as unsupported instead of fabricating times.
+
+See [event visualization and editing](EVENT_EDITING.md) for immutable event operations, relative-second timing, C3D serialization and the unsupported institute H5 event schema. H5 event editing requires an established schema and reference fixture.

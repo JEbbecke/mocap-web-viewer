@@ -97,9 +97,9 @@ export function App() {
         </div>
         <div className="brand">
           <strong>
-            IBO <span>Motion workspace</span>
+            JE <span>Motion</span>
           </strong>
-          <span>LOCAL MOCAP VIEWER</span>
+          <span>MoCap Viewer &amp; Editor</span>
         </div>
         <div className="header-file">
           {data ? (
@@ -108,6 +108,7 @@ export function App() {
               <span>
                 {data.name}
                 {data.source.crop ? ' · Cropped (modified)' : ''}
+                {data.source.eventsEdited ? ' · Events modified' : ''}
               </span>
             </>
           ) : (
@@ -166,9 +167,9 @@ export function App() {
                   frame by frame.
                 </h1>
                 <p>
-                  Open a C3D or institute H5 recording to inspect
+                  Open a C3D or H5 recording to inspect and edit
                   <br />
-                  trajectories, forces and synchronized signals.
+                  trajectories, forces, analogs and events.
                 </p>
                 <button className="primary" onClick={open}>
                   Open a recording
@@ -229,10 +230,10 @@ export function App() {
                 <span>01</span> Navigate in 3D
               </div>
               <div className="feature-line">
-                <span>02</span> Inspect every frame
+                <span>02</span> Inspect frame by frame
               </div>
               <div className="feature-line">
-                <span>03</span> Compare synchronized signals
+                <span>03</span> Basic file editing
               </div>
             </div>
           </aside>
