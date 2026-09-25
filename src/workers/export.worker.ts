@@ -7,11 +7,9 @@ self.onmessage = async (
 ) => {
   try {
     const { file, start, end, events } = event.data;
-    if (!/\.c3d$/i.test(file.name) && events !== undefined)
-      throw new Error('H5 event serialization has no established schema.');
     const buffer = /\.c3d$/i.test(file.name)
       ? exportC3D(await file.arrayBuffer(), start, end, events)
-      : await exportH5(file, start, end);
+      : await exportH5(file, start, end, events);
     self.postMessage({ buffer }, { transfer: [buffer] });
   } catch (error) {
     self.postMessage({ error: error instanceof Error ? error.message : 'Export failed.' });

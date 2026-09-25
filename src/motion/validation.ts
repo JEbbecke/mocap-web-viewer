@@ -15,7 +15,7 @@ export function validateMotion(data: MotionData): MotionData {
   for (const plate of data.forcePlatforms) {
     for (const signal of [plate.force, plate.moment, plate.cop]) {
       positiveRate(signal.rate, plate.name);
-      if (signal.components !== 3 || !signal.values.length || signal.values.length % 3)
+      if (signal.components !== 3 || signal.values.length % 3)
         throw new Error(`${plate.name}: invalid vector samples.`);
     }
     if (

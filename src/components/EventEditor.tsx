@@ -1,7 +1,12 @@
 import { useEffect, useState } from 'react';
 import { TimelineSlider } from './TimelineSlider';
 import type { MotionData } from '../motion/types';
-import { eventEditingAvailable, eventSourceFrame, timelineEvents } from '../motion/events';
+import {
+  eventEditingAvailable,
+  eventContextAvailable,
+  eventSourceFrame,
+  timelineEvents,
+} from '../motion/events';
 import { editSessionEvent, setFrame, useSession } from '../state/session';
 
 export function EventEditor({ data }: { data: MotionData }) {
@@ -84,9 +89,7 @@ export function EventEditor({ data }: { data: MotionData }) {
             ))}
           </select>
         )}
-        {!available && (
-          <span>H5 event editing unavailable: institute event schema is not established.</span>
-        )}
+        {!available && <span>Event editing unavailable for this file's event schema.</span>}
       </div>
       {selected !== null && (
         <form
@@ -137,18 +140,22 @@ export function EventEditor({ data }: { data: MotionData }) {
               }
             />
           </label>
-          <label>
-            Context
-            <input value={context} onChange={(e) => setContext(e.target.value)} />
-          </label>
+          {eventContextAvailable(data) && (
+            <label>
+              Context
+              <input value={context} onChange={(e) => setContext(e.target.value)} />
+            </label>
+          )}
           <label>
             Description
             <input value={description} onChange={(e) => setDescription(e.target.value)} />
           </label>
-          <label>
-            Subject
-            <input value={subject} onChange={(e) => setSubject(e.target.value)} />
-          </label>
+          {eventContextAvailable(data) && (
+            <label>
+              Subject
+              <input value={subject} onChange={(e) => setSubject(e.target.value)} />
+            </label>
+          )}
           <button type="submit" disabled={busy}>
             Save event
           </button>

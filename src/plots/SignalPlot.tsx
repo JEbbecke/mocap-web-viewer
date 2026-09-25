@@ -34,21 +34,28 @@ function plotSeries(
   }
   const [kind, index, field] = selection.split(':');
   let signal: Series, unit: string;
-  if (kind === 'analog') {
-    const a = data.analogs[Number(index)];
+  if (kind === 'analog' || kind === 'signal') {
+    const a = kind === 'analog' ? data.analogs[Number(index)] : data.signals?.[Number(index)];
     if (!a) return plotSeries(data, 'marker', marker);
     signal = a.signal;
     unit = a.unit;
   } else {
     const p = data.forcePlatforms[Number(index)];
     if (!p) return plotSeries(data, 'marker', marker);
-    signal = field === 'moment' ? p.moment : field === 'cop' ? p.cop : p.force;
-    unit = field === 'moment' ? 'Nm' : field === 'cop' ? 'm' : 'N';
+    signal =
+      field === 'moment'
+        ? p.moment
+        : field === 'freeMoment'
+          ? p.freeMoment!
+          : field === 'cop'
+            ? p.cop
+            : p.force;
+    unit = field === 'moment' || field === 'freeMoment' ? 'Nm' : field === 'cop' ? 'm' : 'N';
   }
   const n = signal.values.length / signal.components;
   return {
     values: [
-      Array.from({ length: n }, (_, i) => signal.startTime + i / signal.rate),
+      Array.from({ length: n }, (_, i) => signal.times?.[i] ?? signal.startTime + i / signal.rate),
       ...Array.from({ length: signal.components }, (_, a) =>
         Array.from({ length: n }, (_, i) =>
           Number.isFinite(signal.values[i * signal.components + a])
@@ -142,9 +149,12 @@ function SignalPane({
         ? Number(index) < data.markers.labels.length
         : kind === 'analog'
           ? Number(index) < data.analogs.length
-          : kind === 'plate' &&
-            Number(index) < data.forcePlatforms.length &&
-            ['force', 'moment', 'cop'].includes(field)));
+          : kind === 'signal'
+            ? Number(index) < (data.signals?.length ?? 0)
+            : kind === 'plate' &&
+              Number(index) < data.forcePlatforms.length &&
+              (['force', 'moment', 'cop'].includes(field) ||
+                (field === 'freeMoment' && !!data.forcePlatforms[Number(index)].freeMoment))));
   const selection = valid ? requestedSelection : 'marker';
   const graph = useMemo(() => plotSeries(data, selection, selected), [data, selection, selected]);
   useEffect(() => {
@@ -152,7 +162,8 @@ function SignalPane({
     const cursor = document.createElement('div');
     cursor.className = 'playhead';
     let chart: uPlot;
-    const fullDuration = Math.max(0.01, data.timeline.duration);
+    const fullStart = Math.min(0, graph.values[0][0] ?? 0);
+    const fullDuration = Math.max(0.01, data.timeline.duration, graph.values[0].at(-1) ?? 0);
     const sync = () => {
       if (chart) {
         const time = useSession.getState().frame / data.timeline.rate;
@@ -169,8 +180,8 @@ function SignalPane({
           time: false,
           range: (_chart, min, max) =>
             min == null || max == null || min === max
-              ? [0, fullDuration]
-              : [Math.max(0, min), Math.min(fullDuration, max)],
+              ? [fullStart, fullDuration]
+              : [Math.max(fullStart, min), Math.min(fullDuration, max)],
         },
       },
       cursor: { drag: { x: true, y: false, dist: 5 }, points: { show: false } },
@@ -204,7 +215,7 @@ function SignalPane({
       hooks: { draw: [sync] },
     };
     chart = new uPlot(options, graph.values, target.current);
-    resetZoom.current = () => chart.setScale('x', { min: 0, max: fullDuration });
+    resetZoom.current = () => chart.setScale('x', { min: fullStart, max: fullDuration });
     chart.over.appendChild(cursor);
     sync();
     const unsub = useSession.subscribe((s, p) => {
@@ -241,10 +252,10 @@ function SignalPane({
       const delta =
         event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? box.height : 1);
       const factor = Math.exp(Math.max(-2, Math.min(2, delta * 0.002)));
-      const minimumSpan = Math.min(fullDuration, 1 / data.timeline.rate);
-      const span = Math.max(minimumSpan, Math.min(fullDuration, (max - min) * factor));
+      const minimumSpan = Math.min(fullDuration - fullStart, 1 / data.timeline.rate);
+      const span = Math.max(minimumSpan, Math.min(fullDuration - fullStart, (max - min) * factor));
       const anchor = min + fraction * (max - min);
-      const left = Math.max(0, Math.min(fullDuration - span, anchor - fraction * span));
+      const left = Math.max(fullStart, Math.min(fullDuration - span, anchor - fraction * span));
       chart.setScale('x', { min: left, max: left + span });
     };
     chart.over.addEventListener('wheel', wheel, { passive: false });
@@ -286,7 +297,7 @@ function SignalPane({
           </optgroup>
           {data.forcePlatforms.map((p, i) => (
             <optgroup key={i} label={p.name}>
-              {['force', 'moment', 'cop'].map((field) => (
+              {['force', 'moment', 'cop', ...(p.freeMoment ? ['freeMoment'] : [])].map((field) => (
                 <option key={field} value={`plate:${i}:${field}`}>
                   {p.name} · {field === 'cop' ? 'COP' : field}
                 </option>
@@ -298,6 +309,15 @@ function SignalPane({
               {data.analogs.map((a, i) => (
                 <option key={i} value={`analog:${i}`}>
                   {a.name} · {a.unit}
+                </option>
+              ))}
+            </optgroup>
+          )}
+          {(data.signals?.length ?? 0) > 0 && (
+            <optgroup label="Additional signals">
+              {data.signals!.map((s, i) => (
+                <option key={i} value={`signal:${i}`}>
+                  {s.group} · {s.name} · {s.unit}
                 </option>
               ))}
             </optgroup>

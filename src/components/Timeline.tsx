@@ -110,12 +110,14 @@ export function Timeline({ data }: { data: MotionData }) {
               Cancel crop
             </button>
           )}
-          {(data.source.crop || data.source.eventsEdited) && (
+          {file && (
             <>
               <button className="primary" onClick={saveAs} disabled={!file || Boolean(selection)}>
                 Export
               </button>
-              <button onClick={restoreOriginal}>Restore original</button>
+              {(data.source.crop || data.source.eventsEdited) && (
+                <button onClick={restoreOriginal}>Restore original</button>
+              )}
               {saved && <span role="status">Download prepared</span>}
             </>
           )}

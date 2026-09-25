@@ -37,3 +37,7 @@ The browser check also covers marker search/selection/visibility and plot scrubb
 Recorded request traffic contains only same-origin GET requests for the document, icon and hashed JS/CSS/worker/HDF5 assets, with no query parameters or request bodies. No filenames, marker labels, participant metadata or sample contents occur in request URLs. Local/session storage, Cache Storage and IndexedDB remain empty. The browser report stays in `.local/browser-report.json` and is not deployed.
 
 This covers Chromium and the inspected datasets, not every vendor encoding, arbitrary H5 schema, browser or very large recording. No performance claim has been made for unmeasured dataset sizes. GitHub Pages publication itself requires a repository and Pages settings; the workflow is configured but has not been run on GitHub from this workspace.
+
+## Authoritative populated H5
+
+The 25 September schema/lifecycle audit supersedes earlier empty-event H5 assumptions. See [H5_VALIDATION.md](H5_VALIDATION.md) for complete recursive comparisons, actual worker downloads, enum preservation, Python reader compatibility and known limits. H5 marker display arrays now retain float64; comparison to C3D float32 display arrays uses a 1e-6 metre tolerance. H5 raw export comparisons remain exact.
