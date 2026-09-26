@@ -248,7 +248,9 @@ export function App() {
           {data
             ? `${data.timeline.rate} Hz · ${data.markers.labels.length} markers · ${data.forcePlatforms.length} plates`
             : 'C3D + institute H5'}
-          <span className="footer-version">v0.1</span>
+          <span className="footer-version" aria-label={`JE Motion version ${__APP_VERSION__}`}>
+            v{__APP_VERSION__}
+          </span>
         </span>
       </footer>
       {dragging && <div className="drop-overlay">Drop your motion file to open it locally</div>}

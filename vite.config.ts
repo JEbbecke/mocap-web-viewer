@@ -1,8 +1,10 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
+import { version } from './package.json';
 
 export default defineConfig(({ command }) => ({
   base: process.env.VITE_BASE_PATH || './',
+  define: { __APP_VERSION__: JSON.stringify(version) },
   plugins: [
     react(),
     {

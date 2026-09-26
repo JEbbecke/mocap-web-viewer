@@ -6,6 +6,7 @@ import { resolve } from 'node:path';
 import assert from 'node:assert/strict';
 
 const root = process.cwd();
+const { version } = JSON.parse(await readFile('package.json', 'utf8'));
 await mkdir('.local', { recursive: true });
 const fixtures = JSON.parse(await readFile('tests/fixtures/c3d.json', 'utf8'));
 await writeFile('.local/synthetic.c3d', Buffer.from(fixtures.intelFloat, 'base64'));
@@ -69,6 +70,7 @@ try {
     requests.push({ url: request.url(), method: request.method(), body: request.postData() }),
   );
   await page.goto(`http://127.0.0.1:4173${base}`);
+  assert.equal(await page.locator('.footer-version').textContent(), `v${version}`);
   await page.getByText('Explore the synthetic demo').click();
   await page.getByRole('button', { name: 'Play', exact: true }).click();
   await page.waitForTimeout(180);
