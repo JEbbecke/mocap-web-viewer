@@ -1,4 +1,5 @@
 import {
+  metadataText,
   metadataValue,
   metadataValues,
   originalFiles,
@@ -20,9 +21,24 @@ export function h5RecordingInfo(root: H5Node): RecordingInfo {
     const data = group(`${path}/Data`);
     if (!data) return;
     const shape = data.shape;
-    return shape?.length === 2 && Number.isSafeInteger(shape[0]) && shape[0] >= 0
-      ? { variables: shape[0] }
-      : {};
+    if (shape?.length !== 2 || !Number.isSafeInteger(shape[0]) || shape[0] < 0) return {};
+    const attrs = group(path)?.attrs;
+    // Preserve column indices: filtering empty labels/units would shift associations.
+    const list = (raw: unknown): unknown[] =>
+      Array.isArray(raw) ? raw : typeof raw === 'string' ? [raw] : [];
+    const labels = list(attrs?.Labels?.value),
+      units = list(attrs?.Units?.value);
+    const namesMatch = labels.length === shape[0];
+    const storedRate = Number(metadataText(attrs?.SamplingFrequency?.value));
+    const rate = Number.isFinite(storedRate) && storedRate > 0 ? storedRate : undefined;
+    const entries = Array.from({ length: shape[0] }, (_, i) => {
+      const name = namesMatch ? metadataText(labels[i]) : undefined;
+      // The institute schema can include its independent time row in Data.
+      if (name?.toLowerCase() === 'time') return [];
+      const unit = units.length === shape[0] ? metadataText(units[i]) : undefined;
+      return [{ name: name ?? `Variable ${i + 1} (unlabelled)`, unit, rate }];
+    }).flat();
+    return { variables: entries.length, entries };
   };
   const coordinates = metadataValues(group('Trajectories')?.attrs?.GlobalCoordinateSystem?.value);
   const emgShape = group('EMG/Data')?.shape;

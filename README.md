@@ -37,7 +37,7 @@ Open the local URL printed by Vite, normally http://127.0.0.1:5173. On Windows P
 
 - Local `.c3d`, `.h5`, and `.hdf5` loading in a cancellable Web Worker.
 - Shared format-independent 3D viewer and playback for both formats.
-- Instanced markers, missing-sample handling, residuals, selection, search and individual visibility.
+- Instanced markers, missing-sample handling, residuals, selection and individual visibility. The [Data sidebar](docs/DATA_BROWSER.md) browses available MoCap collections with counted sections, cross-category search, existing plot selection and event seeking.
 - Named marker connection presets for the inspected IBO sets and Plug-in Gait; selectable or disabled. These are display links, not an anatomical model.
 - Static and time-varying force-platform geometry, global ground reaction force (GRF) arrows originating at the centre of pressure (COP), and COP points where coordinate conventions are established.
 - Force types 2, 3 and 4, including 6×6 calibration and type-3 COP polynomial correction.
@@ -60,7 +60,7 @@ Keyboard: **Space** play/pause, **← / →** step, **Home / End** first/last fr
 
 DEC/VAX C3D encoding and nonstandard rotation records are explicitly rejected. Unsupported force-platform types are reported and omitted, while marker and analog data remain accessible. Other HDF5 schemas are not supported.
 
-H5 coordinate conventions contain contradictions in the reference exporter. Recognized legacy output keeps its already-global values with a warning. Other unresolved force frames remain available for signal inspection, but require explicit confirmation of stored-global coordinates for spatial force display. Missing legacy marker units assume mm with a warning. The authoritative H5 adds explicit clocks, events, EMG, rigid-body data and quality flags. File Info summarizes IKResults and IDResults presence/variable counts; their signals are not plotted, and their source data remains available for export. Type codes and unprovided coordinate conventions are not guessed. See [H5 format](docs/H5_FORMAT.md) and [open questions](docs/OPEN_QUESTIONS.md).
+H5 coordinate conventions contain contradictions in the reference exporter. Recognized legacy output keeps its already-global values with a warning. Other unresolved force frames remain available for signal inspection, but require explicit confirmation of stored-global coordinates for spatial force display. Missing legacy marker units assume mm with a warning. The authoritative H5 adds explicit clocks, events, EMG, rigid-body data and quality flags. Data lists IKResults and IDResults variables, with counts in File Info; labelled time rows are excluded. Their signals are not plotted, and their source data remains available for export. Type codes and unprovided coordinate conventions are not guessed. See [H5 format](docs/H5_FORMAT.md) and [open questions](docs/OPEN_QUESTIONS.md).
 
 No general trajectory editing, scientific filtering, format conversion, inferred joint centres, gait-event detection, video, or persistent file storage is included. Marker timelines must be present. Mobile is secondary; current Chromium browsers are the runtime validation target. Large file limits depend on browser memory. There is no service worker yet: a cached tab can keep working, but reliable offline reload/PWA installation is not claimed.
 
