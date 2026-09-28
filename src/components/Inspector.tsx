@@ -24,9 +24,9 @@ function SelectedMarker({ data }: { data: MotionData }) {
         ))}
       </div>
       <div className="muted small">
-        Position in metres · source frame {data.timeline.firstFrame + frame}
+        Position in {data.units.position} · source frame {data.timeline.firstFrame + frame}
         {data.markers.residuals && valid
-          ? ` · residual ${(data.markers.residuals[i] * 1000).toFixed(2)} mm`
+          ? ` · residual ${data.markers.residuals[i].toFixed(2)} mm`
           : ''}
       </div>
     </section>
@@ -164,10 +164,10 @@ export function Inspector({
                 min="0.01"
                 max="10"
                 step="0.1"
-                value={scale * 1000}
+                value={scale}
                 onChange={(e) => {
                   const v = Number(e.target.value);
-                  if (v > 0 && v <= 10) useSession.setState({ forceScale: v / 1000 });
+                  if (v > 0 && v <= 10) useSession.setState({ forceScale: v });
                 }}
               />
             </label>

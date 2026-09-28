@@ -90,15 +90,15 @@ it('animates global marker-rate plate geometry independently of the force clock,
     expect(p.rotation!.rate).toBe(100);
     expect(p.position!.rate).toBe(100);
     expect(p.force.rate).toBe(200);
-    expect(p.origin).toEqual(new Float64Array([0, 0, -0.05]));
+    expect(p.origin).toEqual(new Float64Array([0, 0, -50]));
     for (let f = 0; f < 3; f++)
       for (let j = 0; j < 4; j++)
         for (let a = 0; a < 3; a++)
           expect(sample(p.corners!, f / 100, j * 3 + a, true)).toBeCloseTo(
-            corners[(a * 4 + j) * 3 + f] * 0.001,
+            corners[(a * 4 + j) * 3 + f],
             12,
           );
-    expect(sample(p.corners!, 0.005, 0, true)).toBeCloseTo((corners[0] + corners[1]) * 0.0005, 12);
+    expect(sample(p.corners!, 0.005, 0, true)).toBeCloseTo((corners[0] + corners[1]) * 0.5, 9);
     const cropped = cropMotionData(data, 1, 3);
     const output = createH5Output(h5, input, resolve('.local/moving-plates-cropped.h5'));
     try {
@@ -143,7 +143,7 @@ it('retains visible corners with static 3x3 Rotation and vector Position', async
     expect(data.forcePlatforms).toHaveLength(1);
     expect(data.warnings).toEqual([]);
     expect(data.forcePlatforms[0].rotation!.values.length).toBe(9);
-    expect(data.forcePlatforms[0].position!.values).toEqual(new Float64Array([2, 0, 0.05]));
+    expect(data.forcePlatforms[0].position!.values).toEqual(new Float64Array([2000, 0, 50]));
     expect(data.forcePlatforms[0].corners!.values.length).toBe(36);
   } finally {
     input.close();

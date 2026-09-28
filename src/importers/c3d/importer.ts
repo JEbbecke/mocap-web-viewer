@@ -1,5 +1,6 @@
 import type { MotionData, MotionEvent } from '../../motion/types';
-import { metres, positiveRate, uniqueLabels } from '../../motion/math';
+import { positiveRate, uniqueLabels } from '../../motion/math';
+import { millimetres, MOTION_UNITS } from '../../motion/units';
 import { validateMotion } from '../../motion/validation';
 import { readParameters, number, nums, strings, labels } from './parameters';
 import { extractPlatforms } from './forces';
@@ -55,7 +56,7 @@ export function parseC3D(buffer: ArrayBuffer, name: string): MotionData {
   )
     throw new Error('Truncated C3D sample data.');
   const unit = strings(p, 'POINT:UNITS')[0] || '',
-    lengthScale = metres(unit),
+    lengthScale = millimetres(unit),
     warnings: string[] = [];
   const rawLabels = labels(p, 'POINT:LABELS');
   const markerLabels = uniqueLabels(
@@ -136,6 +137,7 @@ export function parseC3D(buffer: ArrayBuffer, name: string): MotionData {
     }
   }
   return validateMotion({
+    units: MOTION_UNITS,
     name,
     source: {
       format: 'C3D',

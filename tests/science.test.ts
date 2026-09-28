@@ -1,13 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import {
-  frameAt,
-  metres,
-  momentScale,
-  plateBasis,
-  rotate,
-  sample,
-  uniqueLabels,
-} from '../src/motion/math';
+import { frameAt, plateBasis, rotate, sample, uniqueLabels } from '../src/motion/math';
+import { millimetres, momentScale } from '../src/motion/units';
 import { localWrench } from '../src/importers/c3d/forces';
 import { parseC3D } from '../src/importers/c3d/importer';
 import { parseH5Tree, type H5Node } from '../src/importers/h5/schema';
@@ -76,11 +69,11 @@ function h5Fixture() {
 
 describe('units, coordinates and force mechanics', () => {
   it('normalizes physical units without axis swaps', () => {
-    expect(metres('mm')).toBe(0.001);
-    expect(metres('CM')).toBe(0.01);
-    expect(metres('m')).toBe(1);
+    expect(millimetres('mm')).toBe(1);
+    expect(millimetres('CM')).toBe(10);
+    expect(millimetres('m')).toBe(1000);
     expect(momentScale('N mm')).toBe(0.001);
-    expect(() => metres('inch')).toThrow();
+    expect(() => millimetres('inch')).toThrow();
   });
   it('rotates a platform vector without translating it', () => {
     const basis = plateBasis([
@@ -153,10 +146,10 @@ describe('C3D binary import', () => {
       const d = parseC3D(buffer(encoded), 'synthetic.c3d');
       expect(d.timeline).toEqual({ rate: 100, frameCount: 3, firstFrame: 10, duration: 0.02 });
       expect(d.markers.labels).toEqual(['A', 'B']);
-      expect(d.markers.positions[0]).toBeCloseTo(0.1);
-      expect(d.markers.positions[6]).toBeCloseTo(0.11);
+      expect(d.markers.positions[0]).toBeCloseTo(100);
+      expect(d.markers.positions[6]).toBeCloseTo(110);
       expect(d.markers.valid).toEqual(new Uint8Array([1, 1, 1, 0, 1, 1]));
-      expect(d.markers.residuals![0]).toBeCloseTo(0.001);
+      expect(d.markers.residuals![0]).toBeCloseTo(1);
       expect(d.analogs[0].signal.values[5]).toBeCloseTo(1);
       expect(d.events[0].time).toBeCloseTo(0.01);
       expect(d.events[0].context).toBe('Left');
@@ -186,18 +179,18 @@ describe('institute H5 normalization', () => {
     const plate = parseH5Tree(root, 'moving.h5').forcePlatforms[0];
     expect(plate.force.rate).toBe(200);
     expect(plate.corners!.rate).toBe(100);
-    expect(sample(plate.corners!, 0.02, 0)).toBeCloseTo(0.12);
+    expect(sample(plate.corners!, 0.02, 0)).toBeCloseTo(120);
     expect(sample(plate.corners!, 0.03, 0)).toBeNaN();
   });
   it('honors stored units and residual missingness; independently rates analogs/forces', () => {
     const d = parseH5Tree(h5Fixture(), 'fixture.h5');
-    expect(d.markers.positions[0]).toBeCloseTo(0.01);
+    expect(d.markers.positions[0]).toBeCloseTo(10);
     expect(d.markers.valid).toEqual(new Uint8Array([1, 0, 1]));
     expect(d.timeline.firstFrame).toBe(10);
     expect(d.analogs[0].signal.rate).toBe(200);
     expect(d.forcePlatforms[0].moment.values[0]).toBe(1);
-    expect(d.forcePlatforms[0].cop.values[0]).toBe(0.1);
-    expect(d.forcePlatforms[0].corners!.values[0]).toBe(0.1);
+    expect(d.forcePlatforms[0].cop.values[0]).toBe(100);
+    expect(d.forcePlatforms[0].corners!.values[0]).toBe(100);
   });
   it('rejects generic HDF5 and missing marker dataset', () => {
     expect(() => parseH5Tree(group({}), 'x')).toThrow('missing Trajectories');

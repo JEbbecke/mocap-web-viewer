@@ -1,8 +1,10 @@
 import type { ForcePlatform, MotionData, Vec3 } from '../../motion/types';
-import { add, cross, forceScale, mul, plateBasis, rotate } from '../../motion/math';
+import { add, cross, mul, plateBasis, rotate } from '../../motion/math';
+import { forceScale, momentScale, METRES_PER_MILLIMETRE } from '../../motion/units';
 import { nums, number, strings, type Parameters } from './parameters';
 
-/** Matches the reference ezc3d surface moment/COP conventions; inputs already analog-scaled. */
+/** Surface moment/COP conventions: forces in N, lengths in source POINT units,
+ * moments in N × source length. Calibration (type 4) precedes wrench transport. */
 export function localWrench(
   type: number,
   channels: number[],
@@ -98,18 +100,39 @@ export function extractPlatforms(
         cop = new Float64Array(samples * 3),
         freeMoment = new Float64Array(samples * 3);
       const fs = forceScale(strings(p, 'FORCE_PLATFORM:UNITS')[0] || 'N');
+      const sourceLengthInMetres = lengthScale * METRES_PER_MILLIMETRE;
+      let acquisitionUnits = false;
+      // Type 2/3 channels are already analog-scaled physical quantities. Respect
+      // explicit channel units; absent units follow the C3D force × POINT convention.
+      // Type 4 channels are matrix inputs (usually volts), not force/moment channels.
+      const channelScales = signals.map((_, j) => {
+        if (type === 4) return fs;
+        const unit = analogs[channels[plate * stride + j] - 1].unit.trim();
+        if (!unit || unit === 'unknown') return fs;
+        // Legacy acquisition systems retain V labels although ANALOG:SCALE
+        // already performs type 2/3 calibration (the C3D/ezc3d convention).
+        if (unit.toLowerCase() === 'v') {
+          acquisitionUnits = true;
+          return fs;
+        }
+        return type === 2 && j >= 3 ? momentScale(unit) / sourceLengthInMetres : forceScale(unit);
+      });
+      if (acquisitionUnits)
+        warnings.push(
+          `Force platform ${plate + 1}: type ${type} channels labelled V; using the C3D convention that ANALOG:SCALE calibrates force and force × POINT-unit moment values. Verify acquisition calibration if these are actually voltages.`,
+        );
       for (let i = 0; i < samples; i++) {
         const w = localWrench(
           type,
-          signals.map((s) => s.values[i]),
+          signals.map((s, j) => s.values[i] * channelScales[j]),
           origin,
           cal,
           poly.slice(plate * 12, plate * 12 + 12),
         );
-        force.set(mul(rotate(basis, w.force), fs), i * 3);
-        moment.set(mul(rotate(basis, w.moment), fs * lengthScale), i * 3);
+        force.set(rotate(basis, w.force), i * 3);
+        moment.set(mul(rotate(basis, w.moment), sourceLengthInMetres), i * 3);
         cop.set(mul(add(rotate(basis, w.cop), center), lengthScale), i * 3);
-        freeMoment.set(mul(rotate(basis, w.freeMoment), fs * lengthScale), i * 3);
+        freeMoment.set(mul(rotate(basis, w.freeMoment), sourceLengthInMetres), i * 3);
       }
       const series = (values: Float64Array, components = 3) => ({
         values,
@@ -123,6 +146,7 @@ export function extractPlatforms(
         moment: series(moment),
         cop: series(cop),
         freeMoment: series(freeMoment),
+        origin: Float64Array.from(origin, (x) => x * lengthScale),
         corners: series(
           Float64Array.from(c.flat(), (x) => x * lengthScale),
           12,

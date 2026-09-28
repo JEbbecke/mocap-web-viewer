@@ -12,3 +12,5 @@
 10. Independent h5py validation passes for authoritative H5 exports. The installed institute Python reader fails on the authoritative source itself because it expects legacy Location/Offset; validation with the reader that produced this reference remains a manual check. Modified exports may change chunks/maxshape but preserve the reference scientific dtypes and values, including boolean enums. See H5_VALIDATION.md.
 
 See [event visualization and editing](EVENT_EDITING.md) for immutable event operations, relative-second timing, C3D serialization and the supported versioned institute H5 event schema.
+
+11. Legacy C3D type-2/3 channels may retain V acquisition labels after force calibration. JE Motion warns and retains the C3D/ezc3d calibration convention; labels alone cannot verify a malformed file's actual calibration. See [unit policy](UNITS.md). Type-4 moment matrix rows must match the POINT length unit.

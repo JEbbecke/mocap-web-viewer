@@ -47,7 +47,7 @@ Open the local URL printed by Vite, normally http://127.0.0.1:5173. On Windows P
 - Synchronized marker XYZ, force, moment, COP, optional free moment and analog plots, plus institute H5 EMG and rigid-body position signals when present. Scroll up/down over the plot to zoom in/out around the pointer, or drag horizontally to select a zoom range. Click to scrub; double-click or use **Reset zoom** to restore the full time range.
 - Arrow toggles in the plot and sidebar headers collapse or expand each panel; a compact edge control remains available to reopen it.
 - C3D and versioned institute H5 timeline events with add/edit/delete, format-supported text fields, crop-aware export and restoration. File statistics, source metadata and import warnings remain visible.
-- Explicit SI units: positions/COP in m, force in N, moments in Nm. Display arrow scale defaults to 1 mm/N; threshold defaults to 10 N and changes display only.
+- Explicit scientific units: positions/residuals/COP in mm, force in N, moments in Nm. See the [unit policy](docs/UNITS.md) for import/export boundaries and rendering scale. Display arrow scale defaults to 1 mm/N; threshold defaults to 10 N and changes display only.
 
 Keyboard: **Space** play/pause, **← / →** step, **Home / End** first/last frame, when focus is outside a form control. The timeline shows ordinal frames starting at 1; the marker inspector also shows the source's zero-based frame number.
 
@@ -155,6 +155,6 @@ Keep private recordings out of Git and `public/`. The existing ignore rules excl
 
 JE Motion is under active pre-1.0 development. Support is limited to the documented formats and validated conventions; arbitrary vendor variants and general HDF5 files are not claimed. Outstanding format questions are tracked in [OPEN_QUESTIONS.md](docs/OPEN_QUESTIONS.md).
 
-The authoritative application version is in [package.json](package.json), injected at build time and shown subtly in the footer. See [CHANGELOG.md](CHANGELOG.md) for development history and upcoming changes, and [the manual release workflow](docs/RELEASING.md) for Semantic Versioning, release PRs, tags and GitHub Releases. The Pages application follows `main` and can be ahead of the latest formal release.
+The authoritative application version is in [package.json](package.json), injected at build time and shown subtly in the footer. See [CHANGELOG.md](CHANGELOG.md) for formal releases and unreleased changes, and [the manual release workflow](docs/RELEASING.md) for Semantic Versioning, release PRs, tags and GitHub Releases. The package/footer retain the latest formal release version while subsequent changes accumulate under `[Unreleased]`; they advance when the next release is intentionally prepared. The Pages application follows `main` and can be ahead of the latest formal release. The historical package-version mismatch in the first GitHub release is documented in the changelog.
 
 See [event visualization and editing](docs/EVENT_EDITING.md) for immutable event operations, relative-second timing, C3D serialization and the supported versioned institute H5 event schema. See [authoritative H5 validation](docs/H5_VALIDATION.md) for round-trip results and remaining limits.

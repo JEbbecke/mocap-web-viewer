@@ -4,24 +4,6 @@ export function positiveRate(value: number, label: string): number {
     throw new Error(`${label}: sampling rate must be positive.`);
   return value;
 }
-export function metres(unit: string): number {
-  const scale = ({ mm: 0.001, cm: 0.01, m: 1 } as Record<string, number>)[
-    unit.trim().toLowerCase()
-  ];
-  if (!scale) throw new Error(`Unsupported position unit “${unit}”. Expected mm, cm or m.`);
-  return scale;
-}
-export function forceScale(unit: string): number {
-  if (unit.toLowerCase() === 'n') return 1;
-  if (unit.toLowerCase() === 'kn') return 1000;
-  throw new Error(`Unsupported force unit “${unit}”.`);
-}
-export function momentScale(unit: string): number {
-  const normalized = unit.toLowerCase().replace(/[ *·]/g, '');
-  const s = ({ nm: 1, nmm: 0.001, ncm: 0.01, knm: 1000 } as Record<string, number>)[normalized];
-  if (!s) throw new Error(`Unsupported moment unit “${unit}”.`);
-  return s;
-}
 export const cross = (a: Vec3, b: Vec3): Vec3 => [
   a[1] * b[2] - a[2] * b[1],
   a[2] * b[0] - a[0] * b[2],

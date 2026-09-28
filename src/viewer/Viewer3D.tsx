@@ -4,6 +4,7 @@ import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import type { MotionData } from '../motion/types';
+import { sceneLength, SCENE_UNITS_PER_MM } from './scale';
 import { sample, sample3 } from '../motion/math';
 import { resolveConnections } from '../motion/connections';
 import { setCamera, useSession, type CameraPreset } from '../state/session';
@@ -13,13 +14,14 @@ function bounds(data: MotionData) {
     v = new THREE.Vector3();
   const p = data.markers.positions;
   for (let i = 0; i < data.markers.valid.length; i++)
-    if (data.markers.valid[i]) box.expandByPoint(v.fromArray(p, i * 3));
+    if (data.markers.valid[i])
+      box.expandByPoint(v.fromArray(p, i * 3).multiplyScalar(SCENE_UNITS_PER_MM));
   // Moving plates can travel outside the marker envelope. Fit their full recorded path.
   for (const plate of data.forcePlatforms) {
     const values = plate.corners?.values;
     if (values)
       for (let i = 0; i < values.length; i += 3) {
-        v.fromArray(values, i);
+        v.fromArray(values, i).multiplyScalar(SCENE_UNITS_PER_MM);
         if ([v.x, v.y, v.z].every(Number.isFinite)) box.expandByPoint(v);
       }
   }
@@ -92,9 +94,9 @@ function Markers({ data }: { data: MotionData }) {
         r = show ? (i === selected ? 0.014 : 0.009) : 0;
       matrix.makeScale(r, r, r);
       matrix.setPosition(
-        data.markers.positions[index * 3] || 0,
-        data.markers.positions[index * 3 + 1] || 0,
-        data.markers.positions[index * 3 + 2] || 0,
+        sceneLength(data.markers.positions[index * 3]) || 0,
+        sceneLength(data.markers.positions[index * 3 + 1]) || 0,
+        sceneLength(data.markers.positions[index * 3 + 2]) || 0,
       );
       ref.current.setMatrixAt(i, matrix);
       ref.current.setColorAt(
@@ -160,7 +162,8 @@ function Connections({ data }: { data: MotionData }) {
         continue;
       for (const marker of [a, b]) {
         const i = (frame * n + marker) * 3;
-        values.set(data.markers.positions.subarray(i, i + 3), drawn * 3);
+        for (let axis = 0; axis < 3; axis++)
+          values[drawn * 3 + axis] = sceneLength(data.markers.positions[i + axis]);
         drawn++;
       }
     }
@@ -208,7 +211,10 @@ function MarkerLabels({ data }: { data: MotionData }) {
     group.children.forEach((sprite, i) => {
       const index = frame * n + i;
       sprite.visible = display.markers && !hidden.has(i) && !!data.markers.valid[index];
-      sprite.position.fromArray(data.markers.positions, index * 3).addScalar(0.014);
+      sprite.position
+        .fromArray(data.markers.positions, index * 3)
+        .multiplyScalar(SCENE_UNITS_PER_MM)
+        .addScalar(0.014);
     });
   });
   return <primitive object={group} />;
@@ -323,7 +329,8 @@ function Plates({ data }: { data: MotionData }) {
       o.number.visible = false;
       if (plate.corners) {
         const positions = o.mesh.geometry.attributes.position.array as Float32Array;
-        for (let j = 0; j < 12; j++) positions[j] = sample(plate.corners, time, j, true);
+        for (let j = 0; j < 12; j++)
+          positions[j] = sceneLength(sample(plate.corners, time, j, true));
         const finite = positions.every(Number.isFinite);
         o.mesh.visible = o.outline.visible = o.mesh.visible && finite;
         if (finite) {
@@ -390,7 +397,7 @@ function Plates({ data }: { data: MotionData }) {
             );
             if (plate.position && plate.poseFrame === 'global') {
               o.posePosition.set(
-                ...([0, 1, 2].map((j) => sample(plate.position!, time, j, true)) as [
+                ...([0, 1, 2].map((j) => sceneLength(sample(plate.position!, time, j, true))) as [
                   number,
                   number,
                   number,
@@ -418,11 +425,11 @@ function Plates({ data }: { data: MotionData }) {
       o.arrow.visible = global && finite && state.display.forces && magnitude > 0;
       o.point.visible = global && finite && state.display.cop;
       if (finite) {
-        o.point.position.set(...cop);
-        o.arrow.position.set(...cop);
+        o.point.position.set(...cop).multiplyScalar(SCENE_UNITS_PER_MM);
+        o.arrow.position.copy(o.point.position);
         if (magnitude > 0) {
           o.arrow.setDirection(new THREE.Vector3(...force).divideScalar(magnitude));
-          const length = magnitude * state.forceScale;
+          const length = sceneLength(magnitude * state.forceScale);
           o.arrow.setLength(length, Math.min(0.07, length * 0.25), Math.min(0.03, length * 0.12));
         }
       }
@@ -482,7 +489,7 @@ export function Viewer3D({ data }: { data: MotionData | null }) {
         )}
       </Canvas>
       <div className="viewport-title">
-        <span className="live-dot" /> LAB SPACE <span className="muted">XYZ · metres · Z up</span>
+        <span className="live-dot" /> LAB SPACE <span className="muted">XYZ · mm · Z up</span>
       </div>
       <div className="camera-tools">
         {(['perspective', 'front', 'side', 'top'] as CameraPreset[]).map((p) => (

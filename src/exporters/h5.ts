@@ -42,7 +42,9 @@ export function createH5Output(h5: Library, input: H5.File, path: string): H5.Fi
   return new h5.File(path, 'a');
 }
 
-/** Copy the institute hierarchy, slicing raw datasets before any unit normalization. */
+/** Copy the institute hierarchy, slicing raw datasets before any unit normalization.
+ * Preserve source unit attributes with their values (including Nmm moments);
+ * MotionData's mm/N/Nm arrays are not the serialization input. */
 export function writeCroppedH5(
   h5: Library,
   input: H5.File,

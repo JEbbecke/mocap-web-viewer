@@ -4,7 +4,9 @@ import { cropInterval, eventInInterval } from '../motion/crop';
 import type { MotionEvent } from '../motion/types';
 import { writeC3DEvents } from './c3dEvents';
 
-/** Source-preserving crop serializer. Never requantizes scientific samples. */
+/** Source-preserving crop serializer. Never requantizes scientific samples.
+ * Raw values and POINT/ANALOG units stay together, even for m/cm sources that
+ * normalize to mm inside MotionData. No scene or normalized arrays are written. */
 export function exportC3D(
   source: ArrayBuffer,
   start: number,

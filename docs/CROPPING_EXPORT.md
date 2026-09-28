@@ -61,3 +61,7 @@ Current authoritative-file results, independent h5py comparisons, browser worker
 Format references: [C3D frame counts](https://www.c3d.org/HTML/Documents/readingtheframecount.htm), [TRIAL fields](https://www.c3d.org/HTML/Documents/thetrialgroup.htm), [force baseline semantics](https://www.c3d.org/HTML/Documents/forceplatformzero.htm), [institute H5 schema](H5_FORMAT.md).
 
 See [event visualization and editing](EVENT_EDITING.md) for immutable event operations, relative-second timing, C3D serialization and the supported versioned institute H5 event schema.
+
+## Unit preservation
+
+Cropping slices scientific values in mm (positions, residuals, geometry and COP), N (force) and Nm (moments). Analog units, rotations and event seconds are unchanged. Export copies original scientific records and their unit metadata together: mm sources stay mm; supported cm/m sources retain their source units on disk and normalize to mm on re-import. No GPU coordinates are exported. See [unit policy](UNITS.md) and `tests/units.test.ts` for known-value round trips.
