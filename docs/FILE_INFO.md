@@ -3,12 +3,13 @@
 File Info is a curated inspector with File & Recording, Acquisition and Data
 sections. Subject & Trial, Project & Provenance and Location appear only when
 meaningful embedded values exist. It shows event counts; the timeline remains
-the event navigation/editing interface. Raw source trees are retained internally
-and source-preserving export is unchanged.
+the event editing interface, while Data also supports event navigation. Raw source
+trees are retained internally and source-preserving export is unchanged.
 
 The Display tab contains visibility and force-display controls; individual
 platform cards and their signal shortcuts have been removed. Choose force,
-moment and COP signals directly in the signal inspector.
+moment and COP signals directly in the signal inspector. The [Data tab](DATA_BROWSER.md)
+also provides force-signal shortcuts and individual collection entries.
 
 Importers populate optional `MotionData.source.info`. Formatting and current
 recording counts live in `components/fileInfoSections.ts`; React renders those
@@ -32,8 +33,9 @@ platforms still produce their existing import warnings.
   source strings remain intact.
 - Body names come from normalized rigid bodies. EMG count comes only from the
   dedicated EMG group, not analog labels. IK/ID presence and variable counts come
-  from `Data` dataset shapes; no model samples are loaded or plotted. No sample
-  count is shown because those independent clocks can crop differently.
+  from `Data` dataset shapes and aligned Labels, excluding labelled time rows;
+  no model samples are loaded or plotted. No sample count is shown because those
+  independent clocks can crop differently.
 
 Metadata values retain their source units: numeric height/mass/age do not acquire
 assumed cm/kg/years. If a matching `FieldUnit` or `FieldUnits` attribute exists,

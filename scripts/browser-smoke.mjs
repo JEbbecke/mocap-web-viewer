@@ -178,8 +178,8 @@ try {
   assert.equal(await infoValue('Date').innerText(), '2026-01-02 03:04:05.123456');
   assert.equal(await infoValue('Analog / force rate').innerText(), '8 Hz');
   assert.equal(await infoValue('EMG channels').innerText(), '1');
-  assert.equal(await infoValue('IK results').innerText(), '2 variables');
-  assert.equal(await infoValue('ID results').innerText(), '2 variables');
+  assert.equal(await infoValue('IK results').innerText(), '1 variable');
+  assert.equal(await infoValue('ID results').innerText(), '1 variable');
   assert.equal(await infoValue('Subject ID').innerText(), 'SYNTHETIC-INFO');
   assert.equal(await infoValue('Body height').innerText(), '175 cm');
   assert.equal(await infoValue('Latitude').innerText(), '0');
@@ -205,7 +205,74 @@ try {
     'metadata stays within the narrow sidebar',
   );
   await page.screenshot({ path: '.local/file-info-provenance.png' });
-  await page.getByRole('tab', { name: 'Markers', exact: true }).click();
+  await page.getByRole('tab', { name: 'Data', exact: true }).click();
+  assert.equal(await page.getByRole('tab', { name: 'Markers', exact: true }).count(), 0);
+  const dataBrowser = page.getByRole('tabpanel', { name: 'Data', exact: true });
+  const dataGroup = (name) =>
+    dataBrowser.locator('.data-section').filter({
+      has: page.locator('summary > span:first-child').filter({ hasText: new RegExp(`^${name}$`) }),
+    });
+  assert.equal(await dataBrowser.locator('.data-section').count(), 8);
+  for (const [name, count] of [
+    ['Markers', 2],
+    ['Analog channels', 1],
+    ['Force platforms', 1],
+    ['Events', 3],
+    ['Rigid bodies', 1],
+    ['EMG channels', 1],
+    ['IK results', 1],
+    ['ID results', 1],
+  ]) {
+    assert.equal(await dataGroup(name).locator('.data-count').innerText(), String(count));
+  }
+  // Identical Analog/EMG labels remain separate source collections with distinct plot targets.
+  await page.getByLabel('Search data').fill('cHaNnEl');
+  assert.equal(await dataBrowser.locator('.data-section').count(), 2);
+  await dataGroup('Analog channels')
+    .getByRole('button', { name: 'Plot Channel', exact: true })
+    .click();
+  assert.equal(await page.getByLabel('Signal to plot', { exact: true }).inputValue(), 'analog:0');
+  await dataGroup('EMG channels')
+    .getByRole('button', { name: 'Plot Channel', exact: true })
+    .click();
+  assert.equal(await page.getByLabel('Signal to plot', { exact: true }).inputValue(), 'signal:0');
+  await page.getByLabel('Search data').fill('quantity');
+  assert.equal(await dataBrowser.locator('.data-section').count(), 2);
+  for (const name of ['IK results', 'ID results']) {
+    assert.equal(await dataGroup(name).locator('.data-entry').innerText(), 'quantity');
+    assert.equal(await dataGroup(name).getByRole('checkbox').count(), 0);
+    assert.equal(await dataGroup(name).getByRole('button').count(), 0);
+  }
+  await page.getByLabel('Search data').fill('Plate');
+  await dataGroup('Force platforms')
+    .getByRole('button', { name: 'Plot Plate', exact: true })
+    .click();
+  assert.equal(
+    await page.getByLabel('Signal to plot', { exact: true }).inputValue(),
+    'plate:0:force',
+  );
+  await page.getByLabel('Search data').fill('Body');
+  await dataGroup('Rigid bodies').getByRole('button', { name: 'Plot Body', exact: true }).click();
+  assert.equal(await page.getByLabel('Signal to plot', { exact: true }).inputValue(), 'signal:1');
+  await page.getByLabel('Search data').fill('Early');
+  await dataGroup('Events').getByRole('button', { name: 'Seek to Early', exact: true }).click();
+  assert.equal(
+    await page.getByRole('slider', { name: 'Frame', exact: true }).getAttribute('aria-valuenow'),
+    '1',
+  );
+  await page.getByLabel('Search data').fill('no matching synthetic entry');
+  assert.equal(await dataBrowser.locator('.data-section').count(), 0);
+  assert.equal(await dataBrowser.getByRole('status').innerText(), 'No matching data.');
+  await page.getByLabel('Search data').fill('');
+  assert.equal(await dataBrowser.locator('.data-section').count(), 8);
+  await dataGroup('Analog channels').locator('summary').click();
+  // Native details summaries also toggle from the keyboard.
+  const analogSummary = dataGroup('Analog channels').locator('summary');
+  const openBeforeKey = await dataGroup('Analog channels').getAttribute('open');
+  await analogSummary.press('Enter');
+  assert.notEqual(await dataGroup('Analog channels').getAttribute('open'), openBeforeKey);
+  assert(await dataBrowser.evaluate((el) => el.scrollWidth <= el.clientWidth + 1));
+  await page.screenshot({ path: '.local/data-browser.png' });
   assert.match(await page.locator('.viewport-title').innerText(), /XYZ.*mm/);
   assert.match(await page.locator('.selected-marker').innerText(), /Position in mm/);
   const primarySignal = page.getByLabel('Signal to plot', { exact: true });
@@ -242,12 +309,20 @@ try {
     'playback advances',
   );
   await page.getByRole('button', { name: 'Next frame', exact: true }).click();
-  await page.getByLabel('Search markers').fill('B');
+  await page.getByLabel('Search data').fill('B');
   await page.getByRole('button', { name: 'B', exact: true }).click();
   assert.equal(await page.locator('.selected-marker h3').textContent(), 'B');
   await page.getByLabel('Show B', { exact: true }).uncheck();
+  assert.equal(await page.getByLabel('Show B', { exact: true }).isChecked(), false);
+  await page.getByLabel('Search data').fill('A');
   await page.getByRole('button', { name: 'Show all', exact: true }).click();
-  await page.getByLabel('Search markers').fill('');
+  await page.getByLabel('Search data').fill('B');
+  assert.equal(
+    await page.getByLabel('Show B', { exact: true }).isChecked(),
+    true,
+    'Show all restores markers outside the search results',
+  );
+  await page.getByLabel('Search data').fill('');
   const plotBox = await page.locator('.u-over').boundingBox();
   await page.mouse.click(plotBox.x + plotBox.width * 0.6, plotBox.y + plotBox.height * 0.5);
   assert(
@@ -415,7 +490,11 @@ try {
   );
   assert.equal(await infoValue('Events').innerText(), '1');
   assert.equal(await fileInfo.locator('.event-row, pre').count(), 0);
-  await page.getByRole('tab', { name: 'Markers', exact: true }).click();
+  await page.getByRole('tab', { name: 'Data', exact: true }).click();
+  assert.equal(await dataBrowser.locator('.data-section').count(), 3);
+  assert.equal(await dataGroup('Force platforms').count(), 0);
+  for (const name of ['EMG channels', 'Rigid bodies', 'IK results', 'ID results'])
+    assert.equal(await dataGroup(name).count(), 0);
   await page.getByRole('button', { name: 'Add Event', exact: true }).click();
   await page.getByLabel('Event label', { exact: true }).fill('Synthetic added event');
   await page.getByLabel('Time (s)', { exact: true }).fill('0.015');

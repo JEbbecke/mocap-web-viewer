@@ -3,6 +3,11 @@ export interface MetadataValue {
   values: string[];
   unit?: string;
 }
+/** Model variable catalog only: samples and independent clocks remain in the source file. */
+export interface ModelResultInfo {
+  variables?: number;
+  entries?: { name: string; unit?: string; rate?: number }[];
+}
 export interface RecordingInfo {
   created?: string;
   coordinateSystem?: string;
@@ -26,7 +31,7 @@ export interface RecordingInfo {
     >
   >;
   location?: Partial<Record<'latitude' | 'longitude', MetadataValue>>;
-  modelResults?: Partial<Record<'ik' | 'id', { variables?: number }>>;
+  modelResults?: Partial<Record<'ik' | 'id', ModelResultInfo>>;
 }
 
 /** Only scalar metadata is interpreted. Never stringify arbitrary objects or trees. */

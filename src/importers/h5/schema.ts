@@ -427,7 +427,7 @@ export function parseH5Tree(root: H5Node, name: string): MotionData {
   if (node(root, 'MetaData')) metadata.sourceTree = metadataTree(node(root, 'MetaData')!);
   metadata.hierarchy = metadataTree(root);
   const signals: NonNullable<MotionData['signals']> = [];
-  // IKResults/IDResults expose only presence/count metadata, not plotted signals.
+  // IKResults/IDResults expose only variable catalogs/counts, not plotted signals.
   // Their original datasets remain available to the raw-tree exporter.
   for (const groupName of ['EMG']) {
     const group = node(root, groupName);

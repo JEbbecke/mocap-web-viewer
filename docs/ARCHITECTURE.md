@@ -33,3 +33,8 @@ See [event visualization and editing](EVENT_EDITING.md) for immutable event oper
 The signal inspector offers one or two side-by-side plot panes. Each pane reuses the same chart component, with independent signal selection and zoom and a shared session playback cursor. Layout and the second selection remain local UI state. Removing or collapsing a pane destroys its chart, resize observer and playback subscription; only visible plots materialize signal arrays.
 
 The curated File Info view uses optional importer-normalized `source.info`; raw source metadata remains intact. Rates and counts follow current MotionData, including crops. See [File Info mappings and conventions](FILE_INFO.md).
+
+The [Data browser](DATA_BROWSER.md) builds memoized entry catalogs from current
+MotionData and reuses session marker visibility, plot selection and timeline
+seeking. H5 model-variable names, explicit units/rates and counts are normalized
+into `source.info.modelResults`; model samples and clocks are not loaded for browsing.

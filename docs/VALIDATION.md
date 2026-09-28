@@ -15,6 +15,15 @@ inspected; see [verification scope](ANALYTICS.md#verification).
 
 ## Automated checks
 
+The Data sidebar pre-merge check on 28 September 2026 passed all 84 tests across
+ten suites and the production build. Chrome smoke checks passed for this same
+application build, including the `v0.4.0` footer, all available data categories,
+cross-category search, marker visibility/selection and Show all, existing plot
+selection, event seeking and keyboard section toggles. The six new unit tests
+use synthetic data and also cover empty collections, model metadata without
+loading samples, time-row exclusion and crop-aware event counts. See
+[Data browser behavior and limits](DATA_BROWSER.md).
+
 The File Info pre-merge check on 28 September 2026 passed all 78 tests across
 nine suites, the production build (including TypeScript) and the Chrome smoke
 check. The rendered footer matched package/lockfile version `0.4.0`; the earlier

@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import type { MotionData } from '../motion/types';
 import { connectionSets, resolveConnections } from '../motion/connections';
-import { toggleMarker, useSession, type DisplayKey } from '../state/session';
+import { useSession, type DisplayKey } from '../state/session';
 import { PanelToggle } from './PanelToggle';
 import { FileInfo } from './FileInfo';
+import { DataBrowser } from './DataBrowser';
 function SelectedMarker({ data }: { data: MotionData }) {
   const selected = useSession((s) => s.selected),
     frame = useSession((s) => s.frame),
@@ -42,18 +43,12 @@ export function Inspector({
   collapsed: boolean;
   onToggle: () => void;
 }) {
-  const [tab, setTab] = useState('Markers'),
-    selected = useSession((s) => s.selected),
-    hidden = useSession((s) => s.hidden),
-    search = useSession((s) => s.search);
+  const [tab, setTab] = useState('Data');
   const display = useSession((s) => s.display),
     connectionSet = useSession((s) => s.connectionSet),
     threshold = useSession((s) => s.threshold),
     scale = useSession((s) => s.forceScale),
     assumeGlobal = useSession((s) => s.assumeGlobal);
-  const items = data.markers.labels
-    .map((name, index) => ({ name, index }))
-    .filter((m) => m.name.toLowerCase().includes(search.toLowerCase()));
   return (
     <aside id="trial-inspector" className={`inspector ${collapsed ? 'is-collapsed' : ''}`}>
       <div className="sidebar-heading">
@@ -63,50 +58,15 @@ export function Inspector({
       </div>
       <SelectedMarker data={data} />
       <div className="tabs" role="tablist">
-        {['Markers', 'Display', 'File Info'].map((t) => (
+        {['Data', 'Display', 'File Info'].map((t) => (
           <button role="tab" aria-selected={tab === t} key={t} onClick={() => setTab(t)}>
             {t}
           </button>
         ))}
       </div>
       <div className="sidebar-body">
-        {tab === 'Markers' ? (
-          <>
-            <input
-              className="search"
-              aria-label="Search markers"
-              placeholder="Search markers…"
-              value={search}
-              onChange={(e) => useSession.setState({ search: e.target.value })}
-            />
-            <div className="list-heading">
-              <span>{items.length} TRAJECTORIES</span>
-              <button
-                className="text-button"
-                onClick={() => useSession.setState({ hidden: new Set() })}
-              >
-                Show all
-              </button>
-            </div>
-            <div className="marker-list">
-              {items.map(({ name, index }) => (
-                <div key={index} className={`marker-row ${selected === index ? 'selected' : ''}`}>
-                  <label title={`Show ${name}`}>
-                    <input
-                      aria-label={`Show ${name}`}
-                      type="checkbox"
-                      checked={!hidden.has(index)}
-                      onChange={() => toggleMarker(index)}
-                    />
-                  </label>
-                  <button onClick={() => useSession.setState({ selected: index, plot: 'marker' })}>
-                    <span className={name.startsWith('L') ? 'marker-dot left' : 'marker-dot'} />
-                    {name}
-                  </button>
-                </div>
-              ))}
-            </div>
-          </>
+        {tab === 'Data' ? (
+          <DataBrowser data={data} />
         ) : tab === 'Display' ? (
           <>
             <h4>Scene layers</h4>
