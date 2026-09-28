@@ -879,6 +879,12 @@ footer .privacy-dot {
   margin-left: 18px;
   color: #5d788c;
 }
+
+.footer-gh-repo {
+  margin-left: 18px;
+  color: #5d788c;
+}
+
 .error-banner {
   padding: 12px 22px;
   color: #ffc1b4;

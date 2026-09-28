@@ -2,26 +2,34 @@
 
 **MoCap Viewer & Editor**
 
-A browser-based C3D and institute H5 motion-capture viewer and editor for biomechanics. Built with TypeScript, React, Vite, Three.js / React Three Fiber, drei, Zustand, uPlot and h5wasm.
+A browser-based, privacy-first motion capture viewer and editor for biomechanics researchers and technically interested users. Inspect recordings in 3D, compare synchronized signals, edit events, crop trials and download the results in their original format.
+
+[Open JE Motion on GitHub Pages](https://jebbecke.github.io/mocap-web-viewer/). This is the default Pages address derived from the repository remote and deployment workflow; a repository-level base-path override or custom domain may change it.
 
 **Motion-capture files are processed entirely locally in the browser. Files are not uploaded to a server.** No backend, database, telemetry, analytics, remote fonts, or runtime CDN dependencies. Opening a file may fetch bundled application code, but never sends the filename, labels, metadata or measurements.
 
 ![JE Motion | MoCap Viewer & Editor with synthetic demo data](docs/screenshot.png)
 
-The screenshot uses generated demonstration data, not a participant recording.
+The existing screenshot uses generated demonstration data, not a participant recording. It illustrates the viewer layout; newer controls and the footer version may differ.
 
-## Run
+## Basic usage
+
+1. Open the application and choose **Open file**, drop a recording anywhere, or explore the synthetic demo. One recording is loaded at a time; imports can be cancelled, and a failed import leaves the previous trial available.
+2. Orbit, pan and zoom the 3D view. Select a marker to inspect coordinates, or use the inspector to adjust visibility and force display. Review import warnings before interpreting data.
+3. Play, step or scrub the timeline. Select a signal in the signal inspector; use **Split plots** for two independent selections sharing the playback cursor.
+4. Click a timeline event to edit it, or choose **Add Event** at the current playback position. Supported fields depend on the source format.
+5. Drag the timeline's start/end handles, preview the interval and choose **Crop**. Choose **Export** to download a local copy. **Restore original** discards both crops and event edits; the source file remains unchanged.
+
+## Development setup
 
 Use Node.js 22.12+ (Node 24 recommended).
 
 ```sh
-npm install
+npm ci
 npm run dev
 ```
 
-Open the local URL printed by Vite, normally http://127.0.0.1:5173. On Windows PowerShell where `npm.ps1` is disabled, use `npm.cmd install` and `npm.cmd run dev`; no execution-policy change is needed.
-
-Choose **Open file**, drop a recording anywhere, or explore the synthetic demo. Files are loaded one at a time. Loading can be cancelled; a failed import leaves the previous trial available.
+Open the local URL printed by Vite, normally http://127.0.0.1:5173. On Windows PowerShell where `npm.ps1` is disabled, use `npm.cmd ci` and `npm.cmd run dev`; no execution-policy change is needed.
 
 ## Features
 
@@ -31,12 +39,12 @@ Choose **Open file**, drop a recording anywhere, or explore the synthetic demo. 
 - Shared format-independent 3D viewer and playback for both formats.
 - Instanced markers, missing-sample handling, residuals, selection, search and individual visibility.
 - Named marker connection presets for the inspected IBO sets and Plug-in Gait; selectable or disabled. These are display links, not an anatomical model.
-- Force-platform geometry, global GRF arrows originating at COP, and COP points.
+- Static and time-varying force-platform geometry, global ground reaction force (GRF) arrows originating at the centre of pressure (COP), and COP points where coordinate conventions are established.
 - Force types 2, 3 and 4, including 6×6 calibration and type-3 COP polynomial correction.
 - Orbit, pan, zoom, reset, front, side and top camera presets; Z-up lab axes and ground grid.
 - True-rate playback, scrubbing, stepping, beginning/end, speed and loop controls.
 - Non-destructive timeline cropping, range preview, restoration and local **Export** in the source C3D/H5 format. See [crop conventions and export limits](docs/CROPPING_EXPORT.md).
-- Synchronized marker XYZ, force, moment, COP and analog plots. Scroll up/down over the plot to zoom in/out around the pointer, or drag horizontally to select a zoom range. Click to scrub; double-click or use **Reset zoom** to restore the full time range.
+- Synchronized marker XYZ, force, moment, COP, optional free moment and analog plots, plus institute H5 EMG and rigid-body position signals when present. Scroll up/down over the plot to zoom in/out around the pointer, or drag horizontally to select a zoom range. Click to scrub; double-click or use **Reset zoom** to restore the full time range.
 - Arrow toggles in the plot and sidebar headers collapse or expand each panel; a compact edge control remains available to reopen it.
 - C3D and versioned institute H5 timeline events with add/edit/delete, format-supported text fields, crop-aware export and restoration. File statistics, source metadata and import warnings remain visible.
 - Explicit SI units: positions/COP in m, force in N, moments in Nm. Display arrow scale defaults to 1 mm/N; threshold defaults to 10 N and changes display only.
@@ -56,7 +64,13 @@ H5 coordinate conventions contain contradictions in the reference exporter. Reco
 
 No general trajectory editing, scientific filtering, format conversion, inferred joint centres, gait-event detection, video, or persistent file storage is included. Marker timelines must be present. Mobile is secondary; current Chromium browsers are the runtime validation target. Large file limits depend on browser memory. There is no service worker yet: a cached tab can keep working, but reliable offline reload/PWA installation is not claimed.
 
+Use a modern desktop browser with WebGL, WebAssembly and module worker support. Chrome is the default browser smoke-test target, with an Edge option; Firefox and Safari compatibility has not been established by the included checks. Hardware acceleration is recommended for 3D rendering.
+
+Exports preserve source values rather than writing normalized display coordinates. Unchanged exports return the original bytes. Modified exports have format-specific limits: C3D event editing supports up to 255 events, force-baseline intervals must survive cropping, and unknown H5 time-dependent datasets or unsupported storage types may block modified export. H5 marker clocks must be regular; other supported signal clocks may be irregular. Rigid-body rotations are retained as structured data, not rendered as an anatomical skeleton. See [cropping/export limits](docs/CROPPING_EXPORT.md), [event editing](docs/EVENT_EDITING.md) and [H5 validation](docs/H5_VALIDATION.md), including the legacy institute reader incompatibility.
+
 ## Architecture
+
+The application is a static TypeScript/React site built with Vite. Three.js / React Three Fiber and drei provide 3D rendering, Zustand holds session state, uPlot renders signals, and h5wasm reads/writes HDF5 locally.
 
 ```text
 local File → Worker → C3DImporter / H5Importer → MotionData
@@ -67,6 +81,14 @@ local File → Worker → C3DImporter / H5Importer → MotionData
 ```
 
 `MotionData` contains contiguous typed arrays with validity, original-rate signals, explicit units, independent geometry timing and provenance. Rendering components never branch on C3D/H5. Workers transfer buffers back and terminate to release parser/WASM memory. The small timeline and coordinate inspector subscribe to frame changes; 3D buffers and plot cursor update imperatively.
+
+| Location                                           | Responsibility                                                     |
+| -------------------------------------------------- | ------------------------------------------------------------------ |
+| `src/importers/`, `src/exporters/`, `src/workers/` | Format parsing, source-preserving export and background processing |
+| `src/motion/`                                      | Shared data model, timing, crop and event operations               |
+| `src/state/`, `src/playback/`                      | In-memory session and playback clock                               |
+| `src/viewer/`, `src/plots/`, `src/components/`     | 3D scene, signal inspector, timeline and editing controls          |
+| `tests/`, `scripts/`, `docs/`                      | Synthetic fixtures, validation tools and technical documentation   |
 
 See [architecture](docs/ARCHITECTURE.md), [Python audit](docs/PYTHON_REFERENCE.md), [migration map](docs/MIGRATION.md), [parser decisions](docs/PARSERS.md), and [validation](docs/VALIDATION.md).
 
@@ -102,19 +124,27 @@ This Python script is a development oracle, never a backend or application depen
 
 ## GitHub Pages
 
-Push this project to a GitHub repository with a `main` branch. In **Settings → Pages**, choose **GitHub Actions** as the deployment source. The included [workflow](.github/workflows/deploy.yml) runs `npm ci`, tests, the typechecked production build, and deploys only `dist/`. Pull requests run checks without deploying. No custom secrets are needed.
+The included [workflow](.github/workflows/deploy.yml) runs `npm ci`, tests and the typechecked production build. Pushes to `main` deploy only `dist/`; pull requests run checks without deploying. Manual workflow runs deploy only when run on `main`. In **Settings → Pages**, choose **GitHub Actions** as the deployment source. No custom secrets are needed.
 
 The workflow defaults to `/<repository-name>/`. Set the repository Actions variable `VITE_BASE_PATH` to `/` for a custom domain or user/organization root site, or to another explicit path. For a local build:
 
 ```powershell
-$env:VITE_BASE_PATH = '/ibo-mocap-visualizer-webapp/'
+$env:VITE_BASE_PATH = '/mocap-web-viewer/'
 npm.cmd run build
 ```
 
 Outside CI, the default base is relative (`./`). Source measurements, local comparison output, and node_modules are ignored; do not add private files to `public/`, because that directory is copied to the deployed site.
 
-## Roadmap
+## Privacy
 
-Extend independently validated H5 coordinate variants; extend C3D variants using validation fixtures; configurable marker-set import; gap inspection; local export; app-only PWA caching; then consider filtering, editing and additional formats behind the existing importer boundary.
+Motion capture files remain on your computer and are processed locally in browser workers. No MoCap data is uploaded to a server. Imports and edits live in memory; exports are local downloads. There is no backend, telemetry, analytics or persistent recording storage. Hosting serves application assets and can receive normal page/asset requests; those requests do not contain recording data. The production Content Security Policy blocks application network connections with `connect-src 'none'`.
+
+Keep private recordings out of Git and `public/`. The existing ignore rules exclude H5/C3D recordings and local validation output; `public/` is copied into every deployed build.
+
+## Development status and releases
+
+JE Motion is under active pre-1.0 development. Support is limited to the documented formats and validated conventions; arbitrary vendor variants and general HDF5 files are not claimed. Outstanding format questions are tracked in [OPEN_QUESTIONS.md](docs/OPEN_QUESTIONS.md).
+
+The authoritative application version is in [package.json](package.json), injected at build time and shown subtly in the footer. See [CHANGELOG.md](CHANGELOG.md) for development history and upcoming changes, and [the manual release workflow](docs/RELEASING.md) for Semantic Versioning, release PRs, tags and GitHub Releases. The Pages application follows `main` and can be ahead of the latest formal release.
 
 See [event visualization and editing](docs/EVENT_EDITING.md) for immutable event operations, relative-second timing, C3D serialization and the supported versioned institute H5 event schema. See [authoritative H5 validation](docs/H5_VALIDATION.md) for round-trip results and remaining limits.
