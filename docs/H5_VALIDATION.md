@@ -22,8 +22,10 @@ browser logs and Python reports stay in ignored `.local/`.
 - `npm run test:browser`: Chromium runs actual local import/export workers on
   synthetic and authoritative H5 files. Checks unchanged export, event edit,
   add, delete, downloads, re-import, one-frame cropping and available plots.
-  It checks runtime errors, GET-only bundled-asset traffic and empty browser
-  storage. No file contents or metadata are transmitted.
+  The original audit checked GET-only bundled-asset traffic and empty browser
+  storage. Current checks also validate locally intercepted analytics POSTs and
+  the session visit flag; see [analytics verification](ANALYTICS.md#verification).
+  No file contents or metadata are transmitted.
 - Run `scripts/validate-authoritative-h5.py` with a local Python containing
   h5py/numpy after the tests. It independently compares the full hierarchy using
   exact values (NaNs equal), all shapes, dtypes, enum/string metadata and
@@ -47,7 +49,7 @@ dependency; import/export is entirely local browser JavaScript/WASM.
 | Static content                                   | Origin offsets, marker flags, membership and metadata unchanged                                                                         |
 | IK/ID                                            | Original independent timestamps preserved; no overlap with this recording, so cropping yields zero model samples                        |
 | Independent h5py oracle                          | Zero unexpected hierarchy/value/dtype/attribute differences                                                                             |
-| Source immutability/privacy                      | Byte checks pass; original remains ignored/untracked; no network transfer or persistence                                                |
+| Source immutability/privacy                      | Byte checks pass; original remains ignored/untracked; no network transfer or browser persistence of recording data                      |
 
 Event times are relative to the current recording only inside MotionData/UI;
 the H5 keeps absolute source times and frames. Untouched event timestamps and
@@ -98,8 +100,8 @@ that produced the reference is needed for an end-to-end institute application ch
 ## Manual checks before a PR
 
 1. Inspect marker gaps, plate outlines, COP and force signs in your normal lab view.
-2. Inspect EMG/free-moment/body and IK/ID plots; confirm the model clock mismatch
-   reflects the intended source data and determine missing model units externally.
+2. Inspect EMG/free-moment/body plots. IK/ID are currently ignored by the viewer;
+   inspect their clocks and missing model units externally when needed.
 3. Edit/add/delete events, crop around event boundaries, export/reopen, and restore
    the original recording. Check crowded events and keyboard controls.
 4. Open downloads with the current institute reader that supports Corners/Origin,

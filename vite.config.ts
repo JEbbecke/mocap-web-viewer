@@ -8,11 +8,17 @@ export default defineConfig(({ command }) => ({
   plugins: [
     react(),
     {
-      name: 'local-only-csp',
+      name: 'application-csp',
       transformIndexHtml(html) {
+        const analyticsOrigin = 'https://je-motion-analytics.jonasebbecke97.workers.dev';
+
         const connections =
-          command === 'serve' ? "'self' ws://127.0.0.1:* ws://localhost:*" : "'none'";
+          command === 'serve'
+            ? `'self' ${analyticsOrigin} ws://127.0.0.1:* ws://localhost:*`
+            : `'self' ${analyticsOrigin}`;
+
         const developmentPreamble = command === 'serve' ? " 'unsafe-inline'" : '';
+
         return html.replace(
           '<!-- CSP -->',
           `<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'${developmentPreamble}; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src ${connections}; object-src 'none'; base-uri 'self'; form-action 'none'; frame-src 'none'">`,

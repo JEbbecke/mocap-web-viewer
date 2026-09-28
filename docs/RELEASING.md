@@ -5,22 +5,28 @@ development, increment the minor version for meaningful functionality and the
 patch version for fixes or small improvements. Reserve `1.0.0` for an intentionally
 stable release; pre-1.0 compatibility and supported scientific formats can evolve.
 
-The existing package version is retained as the recommended first formal release:
-it has been present since the initial commit, and the inspected local history has
-no release tags. Substantial functionality alone does not justify inventing earlier
-numbered releases. Check remote tags and GitHub Releases before the first release.
+The initial package version may be retained for the first formal release if it
+has not already been published. Substantial functionality alone does not justify
+inventing earlier numbered releases. Check remote tags and GitHub Releases before
+choosing a release version; the development baseline is not evidence of a release.
 
 ## One version source
 
-`package.json` is authoritative. npm maintains the matching root entries in
-`package-lock.json`. Vite imports the package version and injects `__APP_VERSION__`
-as a string at build time; `src/vite-env.d.ts` declares its type and the existing
-footer renders it. No runtime request or independent source-code version is needed.
+[`package.json`](../package.json) is authoritative. npm maintains the matching root
+entries in [`package-lock.json`](../package-lock.json). [Vite](../vite.config.ts)
+imports the package version and injects `__APP_VERSION__` as a string at build time;
+[`src/vite-env.d.ts`](../src/vite-env.d.ts) declares its type and the
+[application footer](../src/App.tsx) renders `v` followed by that version. No runtime
+request or independent source-code version is needed.
 Restart the dev server or rebuild after changing the package version. The browser
 smoke check compares the rendered footer against the package version.
 
-README describes capabilities without a duplicated current-version label.
-CHANGELOG records historical versions only when formally released.
+[README](../README.md) describes capabilities without a duplicated current-version
+label. [CHANGELOG](../CHANGELOG.md) records numbered release entries only when
+formally released. PR #4 (versioning/release infrastructure) belongs in the dated
+development baseline; current analytics work belongs under `[Unreleased]` until
+released. Unreleased changes do not automatically bump the package or footer
+version, so the footer alone does not identify a particular development commit.
 
 ## Prepare through a pull request
 
@@ -68,6 +74,10 @@ gh pr create --base main --title "Prepare release" --body "Update the changelog 
 Use `npm.cmd` on Windows if PowerShell blocks `npm.ps1`. Review and merge the
 release PR using the normal repository process. Keep participant recordings,
 `reference-data/`, private outputs and `.local/` out of commits and release assets.
+`npm run build` includes typechecking. The browser check verifies the footer
+version and intercepts analytics locally; it does not validate the separately
+managed Worker/D1 deployment. Review [analytics verification limits](ANALYTICS.md)
+when releasing changes to the analytics contract.
 
 ## Tag the reviewed commit and publish
 
@@ -102,4 +112,6 @@ GitHub Pages continues to deploy from `main` through
 [deploy.yml](../.github/workflows/deploy.yml). Pull requests run checks without
 deployment. Pushing a tag or creating a GitHub Release does not trigger a Pages
 deployment. Pages can therefore show newer development than the latest release.
-There is no automated release or package publication workflow.
+Manual workflow runs deploy only from main. CI runs `npm ci`, `npm test` and
+`npm run build`; browser checks remain a local release step. There is no automated
+release, package publication or Cloudflare Worker/D1 deployment workflow.

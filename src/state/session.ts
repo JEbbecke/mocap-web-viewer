@@ -3,6 +3,7 @@ import type { MotionData } from '../motion/types';
 import { cropMotionData } from '../motion/crop';
 import { croppedFilename } from '../exporters';
 import { addEvent, updateEvent, deleteEvent, type EventFields } from '../motion/events';
+import { trackEvent } from '../analytics';
 export type DisplayKey =
   | 'markers'
   | 'connections'
@@ -135,8 +136,17 @@ export function openFile(file: File) {
     if (active !== worker) return;
     worker.terminate();
     active = undefined;
-    if (event.data.error) useSession.setState({ busy: false, error: event.data.error });
-    else setData(event.data.data, file);
+    if (event.data.error) {
+      useSession.setState({ busy: false, error: event.data.error });
+    } else {
+      setData(event.data.data, file);
+
+      if (/\.c3d$/i.test(file.name)) {
+        void trackEvent('c3d_loaded');
+      } else if (/\.(h5|hdf5)$/i.test(file.name)) {
+        void trackEvent('h5_loaded');
+      }
+    }
   };
   worker.onerror = (event) => {
     if (active !== worker) return;

@@ -4,9 +4,9 @@ import { Inspector } from './components/Inspector';
 import { Timeline } from './components/Timeline';
 import { SignalPlot } from './plots/SignalPlot';
 import { startClock } from './playback/clock';
-import { cancelImport, openFile, setData, setFrame, togglePlay, useSession } from './state/session';
-import { makeDemo } from './motion/demo';
+import { cancelImport, openFile, setFrame, togglePlay, useSession } from './state/session';
 import { PanelToggle } from './components/PanelToggle';
+import { getAnalyticsStats, trackEvent, type AnalyticsStats } from './analytics';
 class ViewerBoundary extends Component<{ children: ReactNode }, { error: string | null }> {
   state = { error: null as string | null };
   static getDerivedStateFromError(error: Error) {
@@ -31,7 +31,18 @@ export function App() {
     [showPlot, setShowPlot] = useState(true),
     [showSidebar, setShowSidebar] = useState(true),
     [dragging, setDragging] = useState(false);
+  const [analyticsStats, setAnalyticsStats] = useState<AnalyticsStats | null>(null);
+
   useEffect(startClock, []);
+  useEffect(() => {
+    if (!sessionStorage.getItem('je-motion-visit-counted')) {
+      sessionStorage.setItem('je-motion-visit-counted', 'true');
+      void trackEvent('visit');
+    }
+  }, []);
+  useEffect(() => {
+    void getAnalyticsStats().then(setAnalyticsStats);
+  }, []);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.defaultPrevented || e.isComposing || e.ctrlKey || e.metaKey || e.altKey) return;
@@ -175,20 +186,23 @@ export function App() {
                   Open a recording
                 </button>
                 <span className="muted">or drop a file anywhere</span>
-                <button
-                  className="text-button demo-button"
-                  onClick={() => {
-                    cancelImport();
-                    setData(makeDemo());
-                  }}
-                >
-                  Explore the synthetic demo →
-                </button>
                 <div className="format-tags">
                   <span>C3D</span>
                   <span>H5 / HDF5</span>
                   <span>LOCAL ONLY</span>
                 </div>
+                {analyticsStats && (
+                  <p className="welcome-stats">
+                    <strong>
+                      {analyticsStats.visits.toLocaleString('en-US')}{' '}
+                      {analyticsStats.visits === 1 ? 'visit' : 'visits'} ·{' '}
+                      {analyticsStats.countries.length.toLocaleString('en-US')}{' '}
+                      {analyticsStats.countries.length === 1 ? 'Country' : 'Countries'} ·{' '}
+                      {analyticsStats.files_loaded.toLocaleString('en-US')} MoCap{' '}
+                      {analyticsStats.files_loaded === 1 ? 'file' : 'files'} visualized
+                    </strong>
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -252,7 +266,11 @@ export function App() {
             v{__APP_VERSION__}
           </span>
           <span className="footer-gh-repo">
-            <a href="https://github.com/JEbbecke/mocap-web-viewer" target="_blank" rel="noopener noreferrer">
+            <a
+              href="https://github.com/JEbbecke/mocap-web-viewer"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               Open Source on Github
             </a>
           </span>
