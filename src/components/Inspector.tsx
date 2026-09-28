@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import type { MotionData } from '../motion/types';
 import { connectionSets, resolveConnections } from '../motion/connections';
-import { setFrame, toggleMarker, useSession, type DisplayKey } from '../state/session';
+import { toggleMarker, useSession, type DisplayKey } from '../state/session';
 import { PanelToggle } from './PanelToggle';
+import { FileInfo } from './FileInfo';
 function SelectedMarker({ data }: { data: MotionData }) {
   const selected = useSession((s) => s.selected),
     frame = useSession((s) => s.frame),
@@ -62,7 +63,7 @@ export function Inspector({
       </div>
       <SelectedMarker data={data} />
       <div className="tabs" role="tablist">
-        {['Markers', 'Display', 'Info'].map((t) => (
+        {['Markers', 'Display', 'File Info'].map((t) => (
           <button role="tab" aria-selected={tab === t} key={t} onClick={() => setTab(t)}>
             {t}
           </button>
@@ -195,77 +196,9 @@ export function Inspector({
                 I confirm unresolved force/COP samples are already in global lab coordinates.
               </label>
             )}
-            <h4>Force platforms</h4>
-            {data.forcePlatforms.length ? (
-              data.forcePlatforms.map((p, i) => (
-                <div className="plate-card" key={i}>
-                  <strong>
-                    {i + 1} · {p.name}
-                  </strong>
-                  <span>
-                    {p.force.rate} Hz · {p.coordinateFrame}
-                  </span>
-                  <button
-                    className="text-button"
-                    onClick={() => useSession.setState({ plot: `plate:${i}:force` })}
-                  >
-                    Inspect force signal ↗
-                  </button>
-                </div>
-              ))
-            ) : (
-              <p className="muted">No supported force platforms.</p>
-            )}
           </>
         ) : (
-          <>
-            <h4>File information</h4>
-            <dl>
-              {Object.entries({
-                File: data.name,
-                Format: data.source.format,
-                Frames: data.timeline.frameCount,
-                'Point rate': `${data.timeline.rate} Hz`,
-                Duration: `${data.timeline.duration.toFixed(3)} s`,
-                'Source first frame': data.timeline.firstFrame,
-                'Source position unit': data.source.originalPositionUnit,
-                Markers: data.markers.labels.length,
-                'Analog channels': data.analogs.length,
-                'Force platforms': data.forcePlatforms.length,
-                Events: data.events.length,
-              }).map(([k, v]) => (
-                <div key={k}>
-                  <dt>{k}</dt>
-                  <dd>{v}</dd>
-                </div>
-              ))}
-            </dl>
-            <h4>Events</h4>
-            {data.events.length ? (
-              data.events.map((e, i) => (
-                <button
-                  className="event-row"
-                  key={i}
-                  onClick={() => setFrame(e.time * data.timeline.rate)}
-                >
-                  {e.label} {e.context}
-                  <span>{e.time.toFixed(3)} s</span>
-                </button>
-              ))
-            ) : (
-              <p className="muted small">No supported events in this file.</p>
-            )}
-            <details>
-              <summary>Source metadata</summary>
-              <pre>
-                {JSON.stringify(
-                  data.source.metadata,
-                  (_, v) => (typeof v === 'bigint' ? v.toString() : v),
-                  2,
-                )}
-              </pre>
-            </details>
-          </>
+          <FileInfo data={data} />
         )}
       </div>
     </aside>

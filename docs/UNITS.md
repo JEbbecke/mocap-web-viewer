@@ -39,8 +39,9 @@ applies its calibration matrix to scaled analog inputs. Explicit N/kN and
 Nm/Nmm/Ncm channel units are honored for type 2/3 before wrench transport.
 Analog arrays themselves are unchanged. Missing physical channel units use the
 C3D convention: force (N by default, or `FORCE_PLATFORM:UNITS`) and force × point
-length for moments. A legacy V label on type 2/3 produces a warning and retains
-the existing C3D/ezc3d assumption that ANALOG:SCALE includes calibration. Such a
+length for moments. Validated QTM-style V labels on type 2/3 retain the
+C3D/ezc3d convention that ANALOG:SCALE includes calibration, without a warning
+based solely on the acquisition label. Such a
 label cannot establish whether a malformed file really contains uncalibrated
 voltages; acquisition calibration must be verified in that case. Other unsupported
 physical units omit the affected platform with a warning, retaining analog data.

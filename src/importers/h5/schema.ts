@@ -2,6 +2,7 @@ import type { MotionData, Series, ForcePlatform, MotionEvent } from '../../motio
 import { positiveRate, uniqueLabels } from '../../motion/math';
 import { forceScale, millimetres, momentScale, MOTION_UNITS } from '../../motion/units';
 import { validateMotion } from '../../motion/validation';
+import { h5RecordingInfo } from './metadata';
 
 /** Structural subset of h5wasm, also usable with an in-memory test tree. */
 export interface H5Node {
@@ -426,7 +427,7 @@ export function parseH5Tree(root: H5Node, name: string): MotionData {
   if (node(root, 'MetaData')) metadata.sourceTree = metadataTree(node(root, 'MetaData')!);
   metadata.hierarchy = metadataTree(root);
   const signals: NonNullable<MotionData['signals']> = [];
-  // IKResults/IDResults are intentionally ignored by the viewer for now.
+  // IKResults/IDResults expose only presence/count metadata, not plotted signals.
   // Their original datasets remain available to the raw-tree exporter.
   for (const groupName of ['EMG']) {
     const group = node(root, groupName);
@@ -531,6 +532,7 @@ export function parseH5Tree(root: H5Node, name: string): MotionData {
       format: 'H5',
       originalPositionUnit: unit,
       metadata,
+      info: h5RecordingInfo(root),
       ...(hasTrialClock ? { timeOrigin } : {}),
       ...(eventSchema ? { eventSchema } : {}),
     },

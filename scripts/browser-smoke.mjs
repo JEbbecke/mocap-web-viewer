@@ -4,6 +4,7 @@ import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import assert from 'node:assert/strict';
+import * as h5 from 'h5wasm/node';
 
 const root = process.cwd();
 const { version } = JSON.parse(await readFile('package.json', 'utf8'));
@@ -26,6 +27,39 @@ const h5Fixture = JSON.parse(await readFile('tests/fixtures/h5.json', 'utf8'));
 await writeFile('.local/synthetic.h5', Buffer.from(h5Fixture.base64, 'base64'));
 const populatedH5 = JSON.parse(await readFile('tests/fixtures/institute-h5.json', 'utf8'));
 await writeFile('.local/populated.h5', Buffer.from(populatedH5.base64, 'base64'));
+// Synthetic metadata exercises all curated sections without participant data.
+await h5.ready;
+const syntheticInfoPath = 'C:\\synthetic\\' + 'long-folder-name-'.repeat(12) + '\\recording.c3d';
+const populatedFile = new h5.File(resolve('.local/populated.h5'), 'a');
+try {
+  const metadata = populatedFile.get('MetaData');
+  for (const [key, value] of Object.entries({
+    SubjectID: 'SYNTHETIC-INFO',
+    Age: 29,
+    Sex: 'N/A',
+    BodyHeight: 175,
+    BodyHeightUnit: 'cm',
+    BodyMass: '70 kg',
+    Condition: 'Baseline',
+    Project: 'Synthetic project',
+    ProjectPI: 'Example researcher',
+    OriginalFiles: ['first.c3d', 'second.h5', 'third.c3d', 'fourth.h5'],
+    PathFile: syntheticInfoPath,
+    FileCreationLocal: '2026-01-02T03:04:05.123456',
+    FileCreationUTC: '2026-01-02T02:04:05.123456Z',
+    LastUpdate: '2026-01-03T04:05:06Z',
+  })) {
+    if (key in metadata.attrs) metadata.delete_attribute(key);
+    metadata.create_attribute(key, value);
+  }
+  const location = metadata.get('Location') ?? metadata.create_group('Location');
+  for (const [key, value] of Object.entries({ Lat: 0, Lon: 6.1234 })) {
+    if (key in location.attrs) location.delete_attribute(key);
+    location.create_attribute(key, value);
+  }
+} finally {
+  populatedFile.close();
+}
 const development = process.env.SMOKE_MODE === 'development';
 const base =
   process.env.VITE_BASE_PATH && process.env.VITE_BASE_PATH !== './'
@@ -133,6 +167,45 @@ try {
   await page.getByLabel('Open motion file').setInputFiles(resolve('.local/populated.h5'));
   await controlsLoad;
   await page.getByRole('slider', { name: 'Frame', exact: true }).waitFor();
+  await page.getByRole('tab', { name: 'File Info', exact: true }).click();
+  const fileInfo = page.getByRole('tabpanel', { name: 'File Info', exact: true });
+  const infoValue = (label) =>
+    fileInfo
+      .locator('dl > div')
+      .filter({ has: page.locator('dt').filter({ hasText: new RegExp(`^${label}$`) }) })
+      .locator('dd');
+  assert.equal(await fileInfo.locator('section').count(), 6);
+  assert.equal(await infoValue('Date').innerText(), '2026-01-02 03:04:05.123456');
+  assert.equal(await infoValue('Analog / force rate').innerText(), '8 Hz');
+  assert.equal(await infoValue('EMG channels').innerText(), '1');
+  assert.equal(await infoValue('IK results').innerText(), '2 variables');
+  assert.equal(await infoValue('ID results').innerText(), '2 variables');
+  assert.equal(await infoValue('Subject ID').innerText(), 'SYNTHETIC-INFO');
+  assert.equal(await infoValue('Body height').innerText(), '175 cm');
+  assert.equal(await infoValue('Latitude').innerText(), '0');
+  assert.equal(await fileInfo.locator('pre, .event-row').count(), 0);
+  assert(!/sourceTree|hierarchy|Source metadata/.test(await fileInfo.innerText()));
+  await page.screenshot({ path: '.local/file-info-top.png' });
+  await infoValue('Original files').locator('summary').click();
+  assert.deepEqual(
+    await infoValue('Original files').locator('.file-info-value').allTextContents(),
+    ['first.c3d', 'second.h5', 'third.c3d', 'fourth.h5'],
+  );
+  await infoValue('Source path').scrollIntoViewIfNeeded();
+  assert.equal(
+    await infoValue('Source path').locator('span').getAttribute('title'),
+    syntheticInfoPath,
+  );
+  assert(
+    await fileInfo.evaluate(
+      (el) =>
+        el.scrollWidth <= el.clientWidth + 1 &&
+        [...el.querySelectorAll('dd')].every((v) => v.scrollWidth <= v.clientWidth + 1),
+    ),
+    'metadata stays within the narrow sidebar',
+  );
+  await page.screenshot({ path: '.local/file-info-provenance.png' });
+  await page.getByRole('tab', { name: 'Markers', exact: true }).click();
   assert.match(await page.locator('.viewport-title').innerText(), /XYZ.*mm/);
   assert.match(await page.locator('.selected-marker').innerText(), /Position in mm/);
   const primarySignal = page.getByLabel('Signal to plot', { exact: true });
@@ -333,6 +406,16 @@ try {
     () => document.querySelector('.coordinate-values strong')?.textContent === '100.0000',
   );
   assert.match(await page.locator('.selected-marker').innerText(), /residual 1.00 mm/);
+  await page.getByRole('tab', { name: 'File Info', exact: true }).click();
+  assert.equal(await fileInfo.locator('section').count(), 3, 'minimal C3D omits optional sections');
+  assert.equal(
+    await infoValue('Date').count(),
+    0,
+    'C3D filesystem timestamp is not a creation date',
+  );
+  assert.equal(await infoValue('Events').innerText(), '1');
+  assert.equal(await fileInfo.locator('.event-row, pre').count(), 0);
+  await page.getByRole('tab', { name: 'Markers', exact: true }).click();
   await page.getByRole('button', { name: 'Add Event', exact: true }).click();
   await page.getByLabel('Event label', { exact: true }).fill('Synthetic added event');
   await page.getByLabel('Time (s)', { exact: true }).fill('0.015');

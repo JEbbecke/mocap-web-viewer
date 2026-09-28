@@ -8,8 +8,10 @@ stable release; pre-1.0 compatibility and supported scientific formats can evolv
 The first formal GitHub release is [v0.4.0](https://github.com/JEbbecke/mocap-web-viewer/releases/tag/v0.4.0),
 published on 28 September 2026 at commit `efc2189d0d2260781c09cefa6f6b4f8fb9c6a17c`
 and containing the initial application and PRs #1–#4. Its tag was created at
-06:30:11 UTC and the release published at 06:32:12 UTC. PR #5 merged afterward
-at `dede4fd6997c4da8caa2ea0b64db1197432394a1` and remains unreleased.
+06:30:11 UTC and the release published at 06:32:12 UTC. PR #5 (analytics,
+`dede4fd6997c4da8caa2ea0b64db1197432394a1`) and PR #6 (mm units and version
+reconciliation, `e73dbe89cb1edb1dccf241f00f98fa870c042f9d`) merged afterward
+and remain under `[Unreleased]`.
 
 The tagged package files incorrectly retained `0.1.0`. Current development
 corrects them to `0.4.0` without moving the published tag or inventing another
@@ -29,8 +31,8 @@ smoke check compares the rendered footer against the package version.
 
 [README](../README.md) describes capabilities without a duplicated current-version
 label. [CHANGELOG](../CHANGELOG.md) records numbered release entries only when
-formally released. PR #4 belongs under `[0.4.0]`; PR #5 analytics and subsequent
-changes, including the mm-unit fix, belong under `[Unreleased]` until released.
+formally released. PR #4 belongs under `[0.4.0]`; PRs #5 and #6 and subsequent
+changes, including File Info, belong under `[Unreleased]` until released.
 Keep the latest formal version in the package and footer while unreleased work
 accumulates. A version bump happens when intentionally preparing the next release,
 so the footer alone does not identify a particular development commit.
@@ -48,7 +50,7 @@ gh release list
 gh release view <latest-release-tag>
 git show <latest-release-tag>:package.json
 git log <latest-release-tag>..HEAD --oneline
-gh pr list --state merged --limit 20
+gh pr list --state merged --limit 50
 git switch main
 git pull --ff-only origin main
 git switch -c release/prepare

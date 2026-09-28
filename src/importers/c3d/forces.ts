@@ -101,7 +101,6 @@ export function extractPlatforms(
         freeMoment = new Float64Array(samples * 3);
       const fs = forceScale(strings(p, 'FORCE_PLATFORM:UNITS')[0] || 'N');
       const sourceLengthInMetres = lengthScale * METRES_PER_MILLIMETRE;
-      let acquisitionUnits = false;
       // Type 2/3 channels are already analog-scaled physical quantities. Respect
       // explicit channel units; absent units follow the C3D force × POINT convention.
       // Type 4 channels are matrix inputs (usually volts), not force/moment channels.
@@ -112,15 +111,10 @@ export function extractPlatforms(
         // Legacy acquisition systems retain V labels although ANALOG:SCALE
         // already performs type 2/3 calibration (the C3D/ezc3d convention).
         if (unit.toLowerCase() === 'v') {
-          acquisitionUnits = true;
           return fs;
         }
         return type === 2 && j >= 3 ? momentScale(unit) / sourceLengthInMetres : forceScale(unit);
       });
-      if (acquisitionUnits)
-        warnings.push(
-          `Force platform ${plate + 1}: type ${type} channels labelled V; using the C3D convention that ANALOG:SCALE calibrates force and force × POINT-unit moment values. Verify acquisition calibration if these are actually voltages.`,
-        );
       for (let i = 0; i < samples; i++) {
         const w = localWrench(
           type,

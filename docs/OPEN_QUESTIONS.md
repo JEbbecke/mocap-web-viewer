@@ -13,4 +13,4 @@
 
 See [event visualization and editing](EVENT_EDITING.md) for immutable event operations, relative-second timing, C3D serialization and the supported versioned institute H5 event schema.
 
-11. Legacy C3D type-2/3 channels may retain V acquisition labels after force calibration. JE Motion warns and retains the C3D/ezc3d calibration convention; labels alone cannot verify a malformed file's actual calibration. See [unit policy](UNITS.md). Type-4 moment matrix rows must match the POINT length unit.
+11. Legacy C3D type-2/3 channels may retain V acquisition labels after force calibration. JE Motion retains the validated QTM/C3D/ezc3d calibration convention without warning solely about V labels; labels alone cannot verify a malformed file's actual calibration. See [unit policy](UNITS.md). Type-4 moment matrix rows must match the POINT length unit.

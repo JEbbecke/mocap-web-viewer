@@ -100,8 +100,9 @@ that produced the reference is needed for an end-to-end institute application ch
 ## Manual checks before a PR
 
 1. Inspect marker gaps, plate outlines, COP and force signs in your normal lab view.
-2. Inspect EMG/free-moment/body plots. IK/ID are currently ignored by the viewer;
-   inspect their clocks and missing model units externally when needed.
+2. Inspect EMG/free-moment/body plots and the File Info metadata summaries.
+   IK/ID presence and variable counts appear in File Info; their signals are not
+   plotted. Inspect their clocks and missing model units externally when needed.
 3. Edit/add/delete events, crop around event boundaries, export/reopen, and restore
    the original recording. Check crowded events and keyboard controls.
 4. Open downloads with the current institute reader that supports Corners/Origin,

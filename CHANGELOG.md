@@ -14,23 +14,26 @@ version; changes since the latest formal release remain under `[Unreleased]`.
 
 ### Changed
 
+- Redesigned File Info as a curated recording/acquisition and metadata inspector for C3D and institute H5, with honest sampling-rate summaries, data counts, optional subject/provenance/location sections and compact lists. Raw metadata remains internal; event navigation and editing stay on the timeline.
 - Updated the production Content Security Policy to allow connections to the JE Motion analytics origin and the application's own origin. Development also permits local Vite WebSockets. ([#5])
 - Updated documentation and browser privacy checks for analytics payloads, session storage and network behavior, including infrastructure privacy limits. Browser checks intercept analytics locally without updating live statistics. ([#5])
 
 ### Fixed
 
-- Spatial MoCap data now consistently uses millimetres for marker positions, residuals, force-plate geometry and COP, with matching inspector/plot labels and unchanged 3D scene scale. H5/C3D import respects declared units; source-preserving exports retain matching numerical values and unit metadata. Force remains N and moments remain Nm with independent conversion and round-trip regression coverage.
-- Corrected the package, lockfile and application footer version from `0.1.0` to `0.4.0` to match the existing formal release. Reconciled this changelog and release documentation with Git/GitHub history; no new release or tag was created.
+- Removed the misleading V-channel warning for validated QTM-style C3D Type 2/3 force platforms while retaining calibrated force/moment/COP calculations and other validation warnings.
+- Spatial MoCap data now consistently uses millimetres for marker positions, residuals, force-plate geometry and COP, with matching inspector/plot labels and unchanged 3D scene scale. H5/C3D import respects declared units; source-preserving exports retain matching numerical values and unit metadata. Force remains N and moments remain Nm with independent conversion and round-trip regression coverage. ([#6])
+- Corrected the package, lockfile and application footer version from `0.1.0` to `0.4.0` to match the existing formal release. Reconciled this changelog and release documentation with Git/GitHub history; no new release or tag was created. ([#6])
 
 ### Removed
 
+- Per-platform cards and their force-signal shortcuts from the Display tab. Force signals remain selectable in the signal inspector; File Info summarizes platform counts, types and rates.
 - Built-in synthetic demo, its landing-page button and generated motion data. Viewer controls are tested with local file fixtures; the existing README screenshot is retained. ([#5])
 
 ## [0.4.0] - 2026-09-28
 
 First formal GitHub release, published at 06:32:12 UTC. Tag `v0.4.0` points to
 commit `efc2189d0d2260781c09cefa6f6b4f8fb9c6a17c`, containing the initial application
-and PRs #1–#4. PR #5 merged later that day and is not part of this release.
+and PRs #1–#4. PRs #5 and #6 merged later that day and are not part of this release.
 
 ### Added
 
@@ -55,3 +58,4 @@ The published tag retained `0.1.0` in its package files despite being released a
 [#3]: https://github.com/JEbbecke/mocap-web-viewer/pull/3
 [#4]: https://github.com/JEbbecke/mocap-web-viewer/pull/4
 [#5]: https://github.com/JEbbecke/mocap-web-viewer/pull/5
+[#6]: https://github.com/JEbbecke/mocap-web-viewer/pull/6
