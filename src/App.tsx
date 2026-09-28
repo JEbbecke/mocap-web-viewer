@@ -247,9 +247,14 @@ export function App() {
         <span>
           {data
             ? `${data.timeline.rate} Hz · ${data.markers.labels.length} markers · ${data.forcePlatforms.length} plates`
-            : 'C3D + institute H5'}
+            : 'C3D + H5'}
           <span className="footer-version" aria-label={`JE Motion version ${__APP_VERSION__}`}>
             v{__APP_VERSION__}
+          </span>
+          <span className="footer-gh-repo">
+            <a href="https://github.com/JEbbecke/mocap-web-viewer" target="_blank" rel="noopener noreferrer">
+              Open Source on Github
+            </a>
           </span>
         </span>
       </footer>
