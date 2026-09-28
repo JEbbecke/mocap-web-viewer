@@ -5,10 +5,16 @@ development, increment the minor version for meaningful functionality and the
 patch version for fixes or small improvements. Reserve `1.0.0` for an intentionally
 stable release; pre-1.0 compatibility and supported scientific formats can evolve.
 
-The initial package version may be retained for the first formal release if it
-has not already been published. Substantial functionality alone does not justify
-inventing earlier numbered releases. Check remote tags and GitHub Releases before
-choosing a release version; the development baseline is not evidence of a release.
+The first formal GitHub release is [v0.4.0](https://github.com/JEbbecke/mocap-web-viewer/releases/tag/v0.4.0),
+published on 28 September 2026 at commit `efc2189d0d2260781c09cefa6f6b4f8fb9c6a17c`
+and containing the initial application and PRs #1–#4. Its tag was created at
+06:30:11 UTC and the release published at 06:32:12 UTC. PR #5 merged afterward
+at `dede4fd6997c4da8caa2ea0b64db1197432394a1` and remains unreleased.
+
+The tagged package files incorrectly retained `0.1.0`. Current development
+corrects them to `0.4.0` without moving the published tag or inventing another
+release. Always inspect GitHub releases, tag targets and commit ancestry before
+choosing a version; local package files alone do not establish release history.
 
 ## One version source
 
@@ -23,10 +29,11 @@ smoke check compares the rendered footer against the package version.
 
 [README](../README.md) describes capabilities without a duplicated current-version
 label. [CHANGELOG](../CHANGELOG.md) records numbered release entries only when
-formally released. PR #4 (versioning/release infrastructure) belongs in the dated
-development baseline; current analytics work belongs under `[Unreleased]` until
-released. Unreleased changes do not automatically bump the package or footer
-version, so the footer alone does not identify a particular development commit.
+formally released. PR #4 belongs under `[0.4.0]`; PR #5 analytics and subsequent
+changes, including the mm-unit fix, belong under `[Unreleased]` until released.
+Keep the latest formal version in the package and footer while unreleased work
+accumulates. A version bump happens when intentionally preparing the next release,
+so the footer alone does not identify a particular development commit.
 
 ## Prepare through a pull request
 
@@ -38,23 +45,30 @@ Removed as appropriate. Before release, check existing tags/releases:
 git fetch origin --tags
 git tag --list 'v*' --sort=-version:refname
 gh release list
+gh release view <latest-release-tag>
+git show <latest-release-tag>:package.json
+git log <latest-release-tag>..HEAD --oneline
+gh pr list --state merged --limit 20
 git switch main
 git pull --ff-only origin main
 git switch -c release/prepare
 ```
 
+Replace `<latest-release-tag>` with the verified tag (currently `v0.4.0`). Check
+the tag's commit, not only the release's target branch name: `main` can advance
+after publication. Use the actual publication date and tagged contents in the
+changelog; later merges and unmerged working changes remain `[Unreleased]`.
+
 Choose the version before running commands. For a later functionality release use
 `npm version minor --no-git-tag-version`; for a patch use
-`npm version patch --no-git-tag-version`. For the first formal release, retaining
-the current package version requires no bump. An explicit chosen version can be
+`npm version patch --no-git-tag-version`. An explicit chosen version can be
 set with `npm version X.Y.Z --no-git-tag-version` (replace `X.Y.Z`). Never edit
 lockfile versions independently.
 
 Move the Unreleased notes into `## [X.Y.Z] - YYYY-MM-DD`, using the actual release
-date, and leave an empty `[Unreleased]` section above it. For the first release,
-summarize the shipped baseline capabilities in that release entry and retain the
-dated development baseline as provenance. Do not describe commit dates as past
-release dates.
+date, and leave an empty `[Unreleased]` section above it. Update the comparison
+links to the new release tag. Do not duplicate previously released changes or
+describe commit dates as release dates.
 
 ```sh
 npm ci

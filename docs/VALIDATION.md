@@ -29,7 +29,7 @@ inspected; see [verification scope](ANALYTICS.md#verification).
 | additional C3D       | 68 markers × 423 frames, 200 Hz | 56 × 4230, 2000 Hz | 4 type-3 + 1 type-4     |
 | older H5 variant     | 69 markers × 423 frames, 200 Hz | 56 × 4230, 2000 Hz | 5 stored vector streams |
 
-All marker, analog and force samples in both C3D files are compared to ezc3d (not just selected frames). Enforced absolute tolerances: positions 1e-6 m, analogs 1e-8 source units, forces 1e-7 N, moments/free moments 1e-7 Nm, COP 1e-5 m. Invalid reference samples are excluded from coordinate-value comparisons, with validity and residuals checked separately against raw records and the C3D specification. Very-low-load COP is numerically sensitive; the display threshold does not alter oracle comparison data.
+All marker, analog and force samples in both C3D files are compared to ezc3d (not just selected frames). Enforced absolute tolerances: positions 1e-3 mm, analogs 1e-8 source units, forces 1e-7 N, moments/free moments 1e-7 Nm, COP 1e-2 mm. Invalid reference samples are excluded from coordinate-value comparisons, with validity and residuals checked separately against raw records and the C3D specification. Very-low-load COP is numerically sensitive; the display threshold does not alter oracle comparison data.
 
 The matching pair has identical normalized marker arrays and validity, rates/frame counts/source origins and analog samples. Its stored forces/moments/COP match the C3D extraction within those tolerances. H5 has lost analog unit labels and events were empty in both: equivalence is not claimed for metadata that the converter discarded. The older H5 has a virtual marker and changed frame origin, so it is validated as a variant, not asserted to be identical to the second C3D.
 
@@ -51,4 +51,6 @@ This covers Chromium and the inspected datasets, not every vendor encoding, arbi
 
 ## Authoritative populated H5
 
-The 25 September schema/lifecycle audit supersedes earlier empty-event H5 assumptions. See [H5_VALIDATION.md](H5_VALIDATION.md) for complete recursive comparisons, actual worker downloads, enum preservation, Python reader compatibility and known limits. H5 marker display arrays now retain float64; comparison to C3D float32 display arrays uses a 1e-6 metre tolerance. H5 raw export comparisons remain exact.
+The 25 September schema/lifecycle audit supersedes earlier empty-event H5 assumptions. See [H5_VALIDATION.md](H5_VALIDATION.md) for complete recursive comparisons, actual worker downloads, enum preservation, Python reader compatibility and known limits. H5 marker display arrays now retain float64; comparison to C3D float32 display arrays uses a 1e-3 millimetre tolerance. H5 raw export comparisons remain exact.
+
+Current unit regression checks are documented in [UNITS.md](UNITS.md). The private reference H5 is now read-only in automated tests; its reconstruction/export/crop and browser checks use synthetic H5 files. The existing private ezc3d JSON oracle remains in SI and comparisons convert mm to m explicitly.

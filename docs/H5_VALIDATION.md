@@ -54,7 +54,7 @@ dependency; import/export is entirely local browser JavaScript/WASM.
 Event times are relative to the current recording only inside MotionData/UI;
 the H5 keeps absolute source times and frames. Untouched event timestamps and
 frames are copied exactly, avoiding an unnecessary floating-point round trip.
-Marker rendering uses metre-valued float64 arrays, while raw float64 source
+Marker rendering uses millimetre-valued float64 arrays, while raw float64 source
 coordinates back export. Display conversion is not applied to exported values.
 
 ## Expected differences and limits
@@ -118,3 +118,5 @@ interpolation, static pose layouts and crop/export/re-import synchronization.
 After `npm test`, the browser smoke check loads that fixture and compares canvas
 images with plates hidden/visible and across three geometry frames, including
 movement outside the marker envelope. Images remain in ignored `.local/`.
+
+The unit-policy update uses mm scientific arrays and rendering-only scene scaling; see [UNITS.md](UNITS.md). Historical private export results above are not rerun by the current suite: the authoritative reference is checked read-only and its export/browser lifecycle checks now use synthetic files.

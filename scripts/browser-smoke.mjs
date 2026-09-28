@@ -133,6 +133,22 @@ try {
   await page.getByLabel('Open motion file').setInputFiles(resolve('.local/populated.h5'));
   await controlsLoad;
   await page.getByRole('slider', { name: 'Frame', exact: true }).waitFor();
+  assert.match(await page.locator('.viewport-title').innerText(), /XYZ.*mm/);
+  assert.match(await page.locator('.selected-marker').innerText(), /Position in mm/);
+  const primarySignal = page.getByLabel('Signal to plot', { exact: true });
+  for (const [selection, unit] of [
+    ['marker', 'mm'],
+    ['plate:0:cop', 'mm'],
+    ['plate:0:force', 'N'],
+    ['plate:0:moment', 'Nm'],
+  ]) {
+    await primarySignal.selectOption(selection);
+    await page.waitForFunction(
+      (unit) => document.querySelector('.u-legend')?.textContent.includes(`X (${unit})`),
+      unit,
+    );
+  }
+  await primarySignal.selectOption('marker');
   const controlsLastFrame = Number(
     await page.getByRole('slider', { name: 'Frame', exact: true }).getAttribute('aria-valuemax'),
   );
@@ -231,6 +247,7 @@ try {
     'wheel zooms out to full range',
   );
   await page.getByRole('tab', { name: 'Display', exact: true }).click();
+  assert.equal(await page.getByLabel('Force vector scale', { exact: true }).inputValue(), '1');
   const sidebarFrame = Number(await plotFrame.getAttribute('aria-valuenow'));
   await page.keyboard.press('ArrowLeft');
   assert.equal(
@@ -312,6 +329,10 @@ try {
     'viewer controls emit no additional file-load events',
   );
   await page.getByLabel('Open motion file').setInputFiles(resolve('.local/synthetic.c3d'));
+  await page.waitForFunction(
+    () => document.querySelector('.coordinate-values strong')?.textContent === '100.0000',
+  );
+  assert.match(await page.locator('.selected-marker').innerText(), /residual 1.00 mm/);
   await page.getByRole('button', { name: 'Add Event', exact: true }).click();
   await page.getByLabel('Event label', { exact: true }).fill('Synthetic added event');
   await page.getByLabel('Time (s)', { exact: true }).fill('0.015');
@@ -392,10 +413,9 @@ try {
     await page.getByRole('button', { name: 'Jump to beginning', exact: true }).click();
   }
   // Populated schema, actual import/export workers, events and no-op byte identity.
-  for (const [label, path] of [
-    ['populated', resolve('.local/populated.h5')],
-    ['authoritative', resolve('reference-data/authoritative_reference.h5')],
-  ].filter(([, p]) => existsSync(p))) {
+  for (const [label, path] of [['populated', resolve('.local/populated.h5')]].filter(([, p]) =>
+    existsSync(p),
+  )) {
     const open = async (file) => {
       await page.getByLabel('Open motion file').setInputFiles(file);
       await page.waitForFunction(

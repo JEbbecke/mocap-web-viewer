@@ -5,7 +5,7 @@
 | startup/app/main_window open_path | Launch and open/drop                  | React local File picker/drop, cancellable Worker; complete                                  |
 | C3DHandler + ezc3d                | binary points/analog/force extraction | isolated TypeScript importer; validated with ezc3d; Intel/MIPS, force types 2/3/4           |
 | H5Handler                         | institute schema                      | h5wasm Worker importer; both observed generations supported                                 |
-| visualization_data DTO            | backend-neutral UI data               | MotionData typed arrays, SI units and original rates; complete                              |
+| visualization_data DTO            | backend-neutral UI data               | MotionData typed arrays, mm/N/Nm units and original rates; complete                              |
 | _align_to_marker_frames           | time-based display sampling           | shared interpolation without extrapolation; complete                                        |
 | GLScatterPlotItem                 | markers                               | InstancedMesh; complete                                                                     |
 | GLLinePlotItem/GLMeshItem         | COP force vectors and plates          | Three buffers/arrows; complete                                                              |

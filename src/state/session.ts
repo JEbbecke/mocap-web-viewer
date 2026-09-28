@@ -32,7 +32,7 @@ interface Session {
   hidden: Set<number>;
   search: string;
   display: Record<DisplayKey, boolean>;
-  forceScale: number;
+  forceScale: number; // display mm per N, never a scientific force conversion
   threshold: number;
   assumeGlobal: boolean;
   camera: { preset: CameraPreset; revision: number };
@@ -66,7 +66,7 @@ export const useSession = create<Session>(() => ({
     grid: true,
     axes: true,
   },
-  forceScale: 0.001,
+  forceScale: 1,
   threshold: 10,
   assumeGlobal: false,
   camera: { preset: 'perspective', revision: 0 },

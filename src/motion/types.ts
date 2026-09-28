@@ -1,5 +1,8 @@
+import type { MOTION_UNITS } from './units';
+
 export type Vec3 = [number, number, number];
-/** All spatial arrays use lab XYZ, metres, Newtons, Newton-metres. No axis swap. */
+/** MotionData uses lab XYZ: positions/distances in mm, forces in N, moments in Nm.
+ * Series units follow their field; analog and named signals retain explicit source units. */
 export interface Series {
   values: Float64Array;
   rate: number;
@@ -15,9 +18,9 @@ export interface ForcePlatform {
   cop: Series;
   freeMoment?: Series;
   corners?: Series; // sample-major [corner, xyz], 12 components; one sample = static
-  position?: Series; // plate origin in global XYZ, metres
+  position?: Series; // plate origin in global XYZ, mm
   rotation?: Series; // row-major local-to-global 3x3 matrices, independent geometry clock
-  origin?: Float64Array; // sensor offset below the surface; not a translation of global corners
+  origin?: Float64Array; // sensor offset in mm below the surface; not a translation of global corners
   poseFrame?: 'global'; // declared global pose; legacy Position/Rotation may be placeholders
   coordinateFrame: 'global' | 'unresolved';
   provenance: string;
@@ -32,6 +35,7 @@ export interface MotionEvent {
   sourceIndex?: number;
 }
 export interface MotionData {
+  readonly units: typeof MOTION_UNITS;
   name: string;
   source: {
     format: string;
@@ -48,7 +52,7 @@ export interface MotionData {
     labels: string[];
     positions: Float32Array | Float64Array; // [frame, marker, xyz]
     valid: Uint8Array; // [frame, marker]
-    residuals?: Float32Array | Float64Array; // metres, negative = invalid
+    residuals?: Float32Array | Float64Array; // mm, negative = invalid
     quality?: {
       type?: Int8Array;
       cameraMasks?: Uint8Array;

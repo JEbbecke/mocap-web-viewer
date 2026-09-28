@@ -32,8 +32,8 @@ it('reads a real compressed HDF5 fixture with bundled HDF5 WASM', async () => {
       expect(opaque.warnings.some((w) => w.includes('Events is nonempty'))).toBe(true);
       expect(opaque.events).toEqual([]);
       expect(data.timeline).toEqual({ rate: 100, frameCount: 3, firstFrame: 10, duration: 0.02 });
-      expect(data.markers.positions[0]).toBeCloseTo(0.01);
-      expect(data.markers.positions[8]).toBeCloseTo(0.09);
+      expect(data.markers.positions[0]).toBeCloseTo(10);
+      expect(data.markers.positions[8]).toBeCloseTo(90);
       expect(Array.from(data.markers.valid)).toEqual([1, 0, 1]);
       expect(data.analogs[0].signal.values).toEqual(new Float64Array([0, 1, 2, 3, 4, 5]));
       expect(data.forcePlatforms[0].force.values[2]).toBe(100);

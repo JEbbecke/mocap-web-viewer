@@ -1,5 +1,6 @@
 import type { MotionData, Series, ForcePlatform, MotionEvent } from '../../motion/types';
-import { forceScale, metres, momentScale, positiveRate, uniqueLabels } from '../../motion/math';
+import { positiveRate, uniqueLabels } from '../../motion/math';
+import { forceScale, millimetres, momentScale, MOTION_UNITS } from '../../motion/units';
 import { validateMotion } from '../../motion/validation';
 
 /** Structural subset of h5wasm, also usable with an in-memory test tree. */
@@ -147,7 +148,7 @@ export function parseH5Tree(root: H5Node, name: string): MotionData {
     rate = positiveRate(Number(scalar(attr(traj, 'SamplingFrequency'))), 'Marker');
   const warnings: string[] = [],
     unit = str(attr(labeled, 'Unit'), 'mm'),
-    scale = metres(unit);
+    scale = millimetres(unit);
   if (attr(labeled, 'Unit') == null)
     warnings.push('H5 marker unit is absent; mm is assumed, matching the Python reader.');
   const labels = uniqueLabels(rawLabels),
@@ -217,7 +218,7 @@ export function parseH5Tree(root: H5Node, name: string): MotionData {
     try {
       const plateName = str(attr(plate, 'Name'), `Plate ${key}`),
         forceRate = positiveRate(Number(scalar(attr(plate, 'SamplingFrequency'))), plateName);
-      const ps = metres(str(attr(plate, 'unit_position'))),
+      const ps = millimetres(str(attr(plate, 'unit_position'))),
         fs = forceScale(str(attr(plate, 'unit_force'))),
         ms = momentScale(str(attr(plate, 'unit_moment')));
       let force = vector(node(plate, 'Force'), `${path}/Force`, forceRate, fs),
@@ -471,7 +472,7 @@ export function parseH5Tree(root: H5Node, name: string): MotionData {
   for (const key of bodies?.keys?.() ?? []) {
     const body = node(bodies!, key)!,
       path = `RigidBodies/${key}`,
-      ps = metres(str(attr(body, 'Unit'), unit));
+      ps = millimetres(str(attr(body, 'Unit'), unit));
     const position = vector(node(body, 'Position'), `${path}/Position`, rate, ps);
     if (position.values.length !== frameCount * 3)
       throw new Error(`${path}/Position: cannot establish body sampling from marker grid.`);
@@ -491,7 +492,7 @@ export function parseH5Tree(root: H5Node, name: string): MotionData {
     signals.push({
       name: str(attr(body, 'Name'), key),
       group: 'RigidBodies',
-      unit: 'm',
+      unit: MOTION_UNITS.position,
       signal: timed(position, times),
     });
   }
@@ -524,6 +525,7 @@ export function parseH5Tree(root: H5Node, name: string): MotionData {
   const firstFrame = Number(scalar(attr(traj, 'StartFrame')) ?? 0);
   if (!Number.isSafeInteger(firstFrame)) throw new Error('Invalid H5 StartFrame.');
   return validateMotion({
+    units: MOTION_UNITS,
     name,
     source: {
       format: 'H5',

@@ -45,13 +45,17 @@ describe.skipIf(!available)('private local reference comparisons (never deployed
         );
       expect(
         difference(
-          data.markers.residuals!,
+          data.markers.residuals!.map((r) => (r < 0 ? r : r / 1000)),
           ref.residuals.map((r: number | null) => (r != null && r < 0 ? -1 : r)),
         ),
       ).toBeLessThan(1e-7);
-      expect(difference(data.markers.positions, ref.positions, data.markers.valid)).toBeLessThan(
-        1e-6,
-      );
+      expect(
+        difference(
+          data.markers.positions.map((v) => v / 1000),
+          ref.positions,
+          data.markers.valid,
+        ),
+      ).toBeLessThan(1e-6);
       data.analogs.forEach((a, i) =>
         expect(difference(a.signal.values, ref.analogs[i])).toBeLessThan(1e-8),
       );
@@ -59,7 +63,12 @@ describe.skipIf(!available)('private local reference comparisons (never deployed
       data.forcePlatforms.forEach((p, i) => {
         expect(difference(p.force.values, ref.plates[i].force)).toBeLessThan(1e-7);
         expect(difference(p.moment.values, ref.plates[i].moment)).toBeLessThan(1e-7);
-        expect(difference(p.cop.values, ref.plates[i].cop)).toBeLessThan(1e-5);
+        expect(
+          difference(
+            p.cop.values.map((v) => v / 1000),
+            ref.plates[i].cop,
+          ),
+        ).toBeLessThan(1e-5);
         expect(difference(p.freeMoment!.values, ref.plates[i].freeMoment)).toBeLessThan(1e-7);
       });
     }
@@ -77,7 +86,7 @@ describe.skipIf(!available)('private local reference comparisons (never deployed
       // H5 now retains float64 display precision; C3D's display buffer is float32.
       expect(
         difference(data.markers.positions, c3d.markers.positions, c3d.markers.valid),
-      ).toBeLessThan(1e-6);
+      ).toBeLessThan(1e-3);
       expect(data.markers.valid).toEqual(c3d.markers.valid);
       data.analogs.forEach((a, i) =>
         expect(difference(a.signal.values, c3d.analogs[i].signal.values)).toBeLessThan(1e-10),
@@ -86,7 +95,7 @@ describe.skipIf(!available)('private local reference comparisons (never deployed
         expect(p.coordinateFrame).toBe('global');
         expect(difference(p.force.values, c3d.forcePlatforms[i].force.values)).toBeLessThan(1e-7);
         expect(difference(p.moment.values, c3d.forcePlatforms[i].moment.values)).toBeLessThan(1e-7);
-        expect(difference(p.cop.values, c3d.forcePlatforms[i].cop.values)).toBeLessThan(1e-5);
+        expect(difference(p.cop.values, c3d.forcePlatforms[i].cop.values)).toBeLessThan(1e-2);
         expect(p.corners!.values.length).toBe(12);
       });
     } finally {

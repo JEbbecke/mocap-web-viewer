@@ -28,7 +28,7 @@ function plotSeries(
     );
     return {
       values: [times, ...components] as uPlot.AlignedData,
-      unit: 'm',
+      unit: data.units.position,
       labels: ['X', 'Y', 'Z'],
     };
   }
@@ -50,7 +50,12 @@ function plotSeries(
           : field === 'cop'
             ? p.cop
             : p.force;
-    unit = field === 'moment' || field === 'freeMoment' ? 'Nm' : field === 'cop' ? 'm' : 'N';
+    unit =
+      field === 'moment' || field === 'freeMoment'
+        ? data.units.moment
+        : field === 'cop'
+          ? data.units.position
+          : data.units.force;
   }
   const n = signal.values.length / signal.components;
   return {
