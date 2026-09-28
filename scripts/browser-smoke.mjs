@@ -7,6 +7,18 @@ import assert from 'node:assert/strict';
 
 const root = process.cwd();
 const { version } = JSON.parse(await readFile('package.json', 'utf8'));
+const analyticsOrigin = 'https://je-motion-analytics.jonasebbecke97.workers.dev';
+const analyticsURL = `${analyticsOrigin}/event`;
+const statsURL = `${analyticsOrigin}/stats`;
+const statsFixture = {
+  visits: 428,
+  c3d_loaded: 405,
+  h5_loaded: 500,
+  files_loaded: 905,
+  countries: 'DE US GB FR ES IT NL BE AT CH SE NO DK FI PL CZ PT IE CA AU NZ JP KR'
+    .split(' ')
+    .map((country) => ({ country, visits: 1 })),
+};
 await mkdir('.local', { recursive: true });
 const fixtures = JSON.parse(await readFile('tests/fixtures/c3d.json', 'utf8'));
 await writeFile('.local/synthetic.c3d', Buffer.from(fixtures.intelFloat, 'base64'));
@@ -62,18 +74,77 @@ try {
     args: ['--enable-unsafe-swiftshader'],
   });
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  let statsResponse = statsFixture;
+  // Validate client requests without sending test activity or local references to the service.
+  await page.route(`${analyticsOrigin}/**`, (route) =>
+    route.fulfill({
+      status: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+      },
+      contentType: 'application/json',
+      body: JSON.stringify(route.request().url() === statsURL ? statsResponse : {}),
+    }),
+  );
+  const analyticsEvents = () =>
+    requests
+      .filter((request) => request.url === analyticsURL && request.method === 'POST')
+      .map((request) => JSON.parse(request.body).event);
   page.on('pageerror', (e) => errors.push(e.message));
   page.on('console', (msg) => {
     if (msg.type() === 'error' && !msg.text().includes('favicon')) errors.push(msg.text());
   });
   page.on('request', (request) =>
-    requests.push({ url: request.url(), method: request.method(), body: request.postData() }),
+    requests.push({
+      url: request.url(),
+      method: request.method(),
+      body: request.postData(),
+      contentType: request.headers()['content-type'],
+    }),
   );
-  await page.goto(`http://127.0.0.1:4173${base}`);
+  await page.goto(`http://127.0.0.1:4173${base}`, { waitUntil: 'networkidle' });
   assert.equal(await page.locator('.footer-version').textContent(), `v${version}`);
-  await page.getByText('Explore the synthetic demo').click();
+  assert.deepEqual(analyticsEvents(), ['visit'], 'one visit on initial mount');
+  assert.equal(
+    (await page.locator('.welcome-stats').textContent()).replace(/\s+/g, ' ').trim(),
+    '428 visits · 23 Countries · 905 MoCap files visualized',
+  );
+  await page.screenshot({ path: '.local/landing-stats.png' });
+  await page.reload({ waitUntil: 'networkidle' });
+  assert.deepEqual(analyticsEvents(), ['visit'], 'reload does not duplicate a session visit');
+  statsResponse = {};
+  await page.reload({ waitUntil: 'networkidle' });
+  assert.equal(await page.locator('.welcome-stats').count(), 0, 'invalid stats are hidden');
+  assert.equal(
+    await page.getByRole('button', { name: 'Open a recording', exact: true }).count(),
+    1,
+  );
+  statsResponse = statsFixture;
+  await page.reload({ waitUntil: 'networkidle' });
+  assert.equal(await page.locator('.welcome-stats').count(), 1, 'valid stats are shown again');
+  assert.deepEqual(analyticsEvents(), ['visit'], 'the landing page emits no file-load events');
+  const controlsLoad = page.waitForResponse(
+    (response) =>
+      response.url() === analyticsURL &&
+      response.request().postData() === JSON.stringify({ event: 'h5_loaded' }),
+  );
+  await page.getByLabel('Open motion file').setInputFiles(resolve('.local/populated.h5'));
+  await controlsLoad;
+  await page.getByRole('slider', { name: 'Frame', exact: true }).waitFor();
+  const controlsLastFrame = Number(
+    await page.getByRole('slider', { name: 'Frame', exact: true }).getAttribute('aria-valuemax'),
+  );
+  assert.equal(
+    await page.locator('.welcome-stats').count(),
+    0,
+    'stats appear only on the landing page',
+  );
   await page.getByRole('button', { name: 'Play', exact: true }).click();
-  await page.waitForTimeout(180);
+  await page.waitForFunction(
+    () => Number(document.querySelector('[aria-label="Frame"]').getAttribute('aria-valuenow')) > 0,
+  );
   await page.getByRole('button', { name: 'Pause', exact: true }).click();
   assert(
     Number(
@@ -82,10 +153,10 @@ try {
     'playback advances',
   );
   await page.getByRole('button', { name: 'Next frame', exact: true }).click();
-  await page.getByLabel('Search markers').fill('RASI');
-  await page.getByRole('button', { name: 'RASI', exact: true }).click();
-  assert.equal(await page.locator('.selected-marker h3').textContent(), 'RASI');
-  await page.getByLabel('Show RASI', { exact: true }).uncheck();
+  await page.getByLabel('Search markers').fill('B');
+  await page.getByRole('button', { name: 'B', exact: true }).click();
+  assert.equal(await page.locator('.selected-marker h3').textContent(), 'B');
+  await page.getByLabel('Show B', { exact: true }).uncheck();
   await page.getByRole('button', { name: 'Show all', exact: true }).click();
   await page.getByLabel('Search markers').fill('');
   const plotBox = await page.locator('.u-over').boundingBox();
@@ -93,7 +164,7 @@ try {
   assert(
     Number(
       await page.getByRole('slider', { name: 'Frame', exact: true }).getAttribute('aria-valuenow'),
-    ) > 150,
+    ) === Math.round(controlsLastFrame * 0.6),
     'plot scrubbing changes timeline',
   );
   const plotFrame = page.getByRole('slider', { name: 'Frame', exact: true });
@@ -111,11 +182,15 @@ try {
   );
   await page.mouse.click(plotBox.x + plotBox.width * 0.5, plotBox.y + plotBox.height * 0.5);
   const zoomedFrame = Number(await plotFrame.getAttribute('aria-valuenow'));
-  assert(zoomedFrame > 95 && zoomedFrame < 120, 'click uses the zoomed time range');
+  assert.equal(
+    zoomedFrame,
+    Math.round(controlsLastFrame * 0.3),
+    'click uses the zoomed time range',
+  );
   await page.getByRole('button', { name: 'Reset zoom', exact: true }).click();
   await page.mouse.click(plotBox.x + plotBox.width * 0.6, plotBox.y + plotBox.height * 0.5);
   assert(
-    Number(await plotFrame.getAttribute('aria-valuenow')) > 200,
+    Number(await plotFrame.getAttribute('aria-valuenow')) === Math.round(controlsLastFrame * 0.6),
     'reset restores full time range',
   );
   await page.mouse.move(plotBox.x + plotBox.width * 0.2, plotBox.y + plotBox.height * 0.5);
@@ -126,7 +201,11 @@ try {
   await page.mouse.up();
   await page.mouse.dblclick(plotBox.x + plotBox.width * 0.5, plotBox.y + plotBox.height * 0.5);
   await page.mouse.click(plotBox.x + plotBox.width * 0.6, plotBox.y + plotBox.height * 0.5);
-  assert(Number(await plotFrame.getAttribute('aria-valuenow')) > 200, 'double-click resets zoom');
+  assert.equal(
+    Number(await plotFrame.getAttribute('aria-valuenow')),
+    Math.round(controlsLastFrame * 0.6),
+    'double-click resets zoom',
+  );
   const beforeWheel = await plotFrame.getAttribute('aria-valuenow');
   await page.mouse.move(plotBox.x + plotBox.width * 0.5, plotBox.y + plotBox.height * 0.5);
   await page.mouse.wheel(0, -400);
@@ -138,13 +217,17 @@ try {
   );
   await page.mouse.click(plotBox.x + plotBox.width * 0.75, plotBox.y + plotBox.height * 0.5);
   const wheelZoomed = Number(await plotFrame.getAttribute('aria-valuenow'));
-  assert(wheelZoomed > 205 && wheelZoomed < 240, 'wheel zooms in around pointer');
+  assert.equal(
+    wheelZoomed,
+    Math.round(controlsLastFrame * (0.5 + 0.25 * Math.exp(-0.8))),
+    'wheel zooms in around pointer',
+  );
   await page.mouse.move(plotBox.x + plotBox.width * 0.5, plotBox.y + plotBox.height * 0.5);
   await page.mouse.wheel(0, 1000);
   await page.waitForTimeout(100);
   await page.mouse.click(plotBox.x + plotBox.width * 0.75, plotBox.y + plotBox.height * 0.5);
   assert(
-    Number(await plotFrame.getAttribute('aria-valuenow')) > 260,
+    Number(await plotFrame.getAttribute('aria-valuenow')) === Math.round(controlsLastFrame * 0.75),
     'wheel zooms out to full range',
   );
   await page.getByRole('tab', { name: 'Display', exact: true }).click();
@@ -177,7 +260,11 @@ try {
   const splitFrame = Number(
     await page.getByRole('slider', { name: 'Frame', exact: true }).getAttribute('aria-valuenow'),
   );
-  assert(splitFrame > 135 && splitFrame < 150, 'second plot scrubs shared playback');
+  assert.equal(
+    splitFrame,
+    Math.round(controlsLastFrame * 0.4),
+    'second plot scrubs shared playback',
+  );
   const fractions = await page
     .locator('.u-over')
     .evaluateAll((plots) =>
@@ -219,6 +306,11 @@ try {
   );
   await page.getByRole('button', { name: 'Split plots', exact: true }).click();
   await page.screenshot({ path: '.local/screenshot.png' });
+  assert.deepEqual(
+    analyticsEvents(),
+    ['visit', 'h5_loaded'],
+    'viewer controls emit no additional file-load events',
+  );
   await page.getByLabel('Open motion file').setInputFiles(resolve('.local/synthetic.c3d'));
   await page.getByRole('button', { name: 'Add Event', exact: true }).click();
   await page.getByLabel('Event label', { exact: true }).fill('Synthetic added event');
@@ -551,8 +643,22 @@ try {
     assert(!last.equals(empty), 'final plate frame remains in camera bounds');
     assert(!last.equals(middle), 'plate advances to final geometry frame');
   }
-  // Bad file must leave the previous usable trial in place.
+  // Both HDF5 extensions share one load event, with no filename in the payload.
+  const hdf5Load = page.waitForResponse(
+    (response) =>
+      response.url() === analyticsURL &&
+      response.request().postData() === JSON.stringify({ event: 'h5_loaded' }),
+  );
+  await page.getByLabel('Open motion file').setInputFiles({
+    name: 'synthetic.hdf5',
+    mimeType: 'application/octet-stream',
+    buffer: Buffer.from(h5Fixture.base64, 'base64'),
+  });
+  await hdf5Load;
+  await page.waitForFunction(() => !document.body.textContent.includes('Reading your recording'));
+  const eventsBeforeFailure = analyticsEvents();
   assert.deepEqual(errors, [], 'no runtime/CSP errors while opening valid files');
+  // Bad file must leave the previous usable trial in place.
   await page.getByLabel('Open motion file').setInputFiles({
     name: 'broken.c3d',
     mimeType: 'application/octet-stream',
@@ -561,12 +667,37 @@ try {
   await page.getByRole('alert').waitFor();
   await page.getByRole('button', { name: 'Dismiss error' }).click();
   assert.equal(await page.getByRole('slider', { name: 'Frame', exact: true }).count(), 1);
+  assert.deepEqual(analyticsEvents(), eventsBeforeFailure, 'failed imports emit no load event');
+  assert.equal(analyticsEvents().filter((event) => event === 'visit').length, 1);
+  assert(analyticsEvents().includes('c3d_loaded'), 'successful C3D imports are counted');
+  assert(analyticsEvents().includes('h5_loaded'), 'successful H5 imports are counted');
   const unexpectedErrors = errors.filter(
     (message) => !(development && message.startsWith('Error: Invalid C3D header.')),
   );
   assert.deepEqual(unexpectedErrors, [], 'no unexpected runtime/CSP errors');
   for (const request of requests) {
     const url = new URL(request.url);
+    if (url.origin === analyticsOrigin) {
+      if (request.url === statsURL) {
+        assert.equal(request.method, 'GET', 'stats are read without sending an event');
+        assert.equal(request.body, null, 'stats requests contain no recording data');
+        continue;
+      }
+      assert.equal(request.url, analyticsURL, 'analytics uses only the fixed endpoint');
+      if (request.method === 'OPTIONS') {
+        assert.equal(request.body, null, 'CORS preflights have no payload');
+      } else {
+        assert.equal(request.method, 'POST');
+        assert.equal(request.contentType, 'application/json');
+        assert(
+          ['visit', 'c3d_loaded', 'h5_loaded'].some(
+            (event) => request.body === JSON.stringify({ event }),
+          ),
+          'analytics contains exactly one allowed event and no recording data or identifiers',
+        );
+      }
+      continue;
+    }
     assert.equal(url.origin, 'http://127.0.0.1:4173');
     assert.equal(request.method, 'GET');
     assert.equal(request.body, null);
@@ -582,11 +713,17 @@ try {
   }
   const storage = await page.evaluate(async () => ({
     local: localStorage.length,
-    session: sessionStorage.length,
+    session: Object.fromEntries(Object.entries(sessionStorage)),
     caches: await caches.keys(),
     databases: await indexedDB.databases(),
   }));
-  assert.deepEqual(storage, { local: 0, session: 0, caches: [], databases: [] });
+  assert.deepEqual(storage, {
+    local: 0,
+    session: { 'je-motion-visit-counted': 'true' },
+    caches: [],
+    databases: [],
+  });
+  assert.deepEqual(await page.context().cookies(), [], 'no cookies in the test context');
   await writeFile(
     `.local/browser-report${development ? '-dev' : base === '/' ? '' : '-subpath'}.json`,
     JSON.stringify(
@@ -598,6 +735,8 @@ try {
         expectedDeveloperErrors: errors.filter((message) => !unexpectedErrors.includes(message)),
         requests: requests.map((r) => new URL(r.url).pathname),
         storage,
+        analyticsIntercepted: true,
+        analyticsEvents: analyticsEvents(),
         privateFilesChecked: privatePaths.length,
       },
       null,
@@ -605,7 +744,7 @@ try {
     ),
   );
   console.log(
-    'Browser smoke passed: demo controls, local C3D/H5, errors, static-only traffic and no persistence.',
+    'Browser smoke passed: viewer controls, local C3D/H5, footer version, errors, event-only analytics and session flag.',
   );
 } catch (error) {
   const page = browser?.contexts()[0]?.pages()[0];

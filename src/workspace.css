@@ -236,10 +236,15 @@ header {
   margin-left: 15px;
   font-size: 11px;
 }
-.demo-button {
-  display: block;
-  margin-top: 24px;
-  font-size: 12px;
+.welcome .welcome-stats {
+  margin: 22px 0 0;
+  color: #b9cfdd;
+  font-size: 13px;
+  text-wrap: balance;
+  font-variant-numeric: tabular-nums;
+}
+.welcome-stats strong {
+  font-weight: 600;
 }
 .format-tags {
   display: flex;

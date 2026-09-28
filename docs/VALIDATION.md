@@ -1,11 +1,22 @@
 # Validation record
 
-Validated locally on Windows, Node 24, headless Chrome, 24 September 2026. Original Python project and measurements were read-only throughout. The sibling reference files are not copied to application assets or committed fixtures.
+Initial validation was performed locally on Windows, Node 24 and headless Chrome on 24 September 2026. The scientific results below are a historical record, with later H5 coverage linked at the end; they are not the current suite totals. The original Python project and measurements were read-only throughout. The sibling reference files are not copied to application assets or committed fixtures.
+
+## Versioning and analytics documentation review — 28 September 2026
+
+On Windows with Node 24, all 60 tests across seven suites passed, along with
+`npm run build` (including TypeScript checking) and the production Chrome smoke
+check. The smoke check verified the `v0.1.0` footer, one visit across a reload,
+successful C3D/H5/HDF5 loads, no load event for a failed import,
+event-only payloads and the sole session visit flag. Analytics was intercepted
+locally. Internal Markdown links and formatting of changed files also passed.
+The separately managed Worker/D1 deployment and infrastructure logs were not
+inspected; see [verification scope](ANALYTICS.md#verification).
 
 ## Automated checks
 
 - TypeScript strict checking and production Vite build pass.
-- All 27 Vitest tests pass locally: 24 portable scientific/importer tests plus three private reference integration tests. The latter are skipped in CI when the ignored oracle is absent.
+- The initial run passed 27 Vitest tests: 24 portable scientific/importer tests plus three private reference integration tests. The latter are skipped in CI when the ignored oracle is absent.
 - Intel IEEE float, Intel integer and MIPS IEEE float synthetic C3D fixtures cover point scaling, packed residuals, missingness, analog offset × channel scale × general scale, subframe ordering and event timing.
 - Synthetic H5 tests cover schema/rate errors, declared units, legacy unit warnings, residual missingness, optional forces and unresolved frames. A real gzip-compressed HDF5 fixture is read by h5wasm.
 - Independent unit tests cover right-handed basis construction, vector rotation, moment transport, COP, no-load missing COP, type-3 transducer combination and type-4 calibration. Timing tests cover interpolation, no extrapolation, gaps, source-rate independence, looping and fractional rates.
@@ -32,11 +43,11 @@ Residuals are another intentional exception to the installed oracle. ezc3d 1.7.0
 
 `scripts/browser-smoke.mjs` exercises play/pause, stepping, camera presets, labels, synthetic C3D and compressed H5, the available private samples, first/last frames and malformed-file recovery. The production build runs under its restrictive CSP without runtime/CSP errors.
 
-The browser check also covers marker search/selection/visibility and plot scrubbing. It passes for the relative-base production build, a production build hosted under `/ibo-mocap-visualizer-webapp/`, and the Vite development server. HDF5 is included in development dependency optimization to prevent the first worker import from triggering a Vite page reload. Development deliberately logs the scripted corrupt-file error locally; no unexpected errors occur.
+The browser check also covers marker search/selection/visibility and plot scrubbing. The initial checks passed for the relative-base production build, a production build hosted under `/ibo-mocap-visualizer-webapp/`, and the Vite development server. HDF5 is included in development dependency optimization to prevent the first worker import from triggering a Vite page reload. Development deliberately logs the scripted corrupt-file error locally.
 
-Recorded request traffic contains only same-origin GET requests for the document, icon and hashed JS/CSS/worker/HDF5 assets, with no query parameters or request bodies. No filenames, marker labels, participant metadata or sample contents occur in request URLs. Local/session storage, Cache Storage and IndexedDB remain empty. The browser report stays in `.local/browser-report.json` and is not deployed.
+Current network checks allow same-origin asset GETs, bodyless analytics `/stats` GETs and event-only POSTs to the exact configured `/event` endpoint. Analytics is intercepted locally so smoke tests do not increment live counts. The check verifies the landing-page totals and invalid-response fallback, visit suppression on reload, successful C3D/H5 loads, no additional load event for viewer controls or a failed import, and the footer version against `package.json`. Only `je-motion-visit-counted=true` is permitted in session storage; localStorage, Cache Storage, IndexedDB and cookies remain empty in the test context. No filenames, marker labels, participant metadata or measurements may appear in request URLs or bodies. See [analytics verification and infrastructure limits](ANALYTICS.md). The browser report stays in `.local/browser-report.json` and is not deployed.
 
-This covers Chromium and the inspected datasets, not every vendor encoding, arbitrary H5 schema, browser or very large recording. No performance claim has been made for unmeasured dataset sizes. GitHub Pages publication itself requires a repository and Pages settings; the workflow is configured but has not been run on GitHub from this workspace.
+This covers Chromium and the inspected datasets, not every vendor encoding, arbitrary H5 schema, browser or very large recording. No performance claim has been made for unmeasured dataset sizes. Local checks do not establish the state of the live Pages deployment, Cloudflare Worker, D1 contents or infrastructure logs.
 
 ## Authoritative populated H5
 

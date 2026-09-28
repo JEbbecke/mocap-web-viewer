@@ -2,19 +2,19 @@
 
 **MoCap Viewer & Editor**
 
-A browser-based, privacy-first motion capture viewer and editor for biomechanics researchers and technically interested users. Inspect recordings in 3D, compare synchronized signals, edit events, crop trials and download the results in their original format.
+A browser-based, privacy-first motion capture viewer and editor for biomechanics researchers and technically interested users. Inspect recordings in 3D, compare synchronized signals, edit events, crop trials, and download the results in their original format.
 
 [Open JE Motion on GitHub Pages](https://jebbecke.github.io/mocap-web-viewer/). This is the default Pages address derived from the repository remote and deployment workflow; a repository-level base-path override or custom domain may change it.
 
-**Motion-capture files are processed entirely locally in the browser. Files are not uploaded to a server.** No backend, database, telemetry, analytics, remote fonts, or runtime CDN dependencies. Opening a file may fetch bundled application code, but never sends the filename, labels, metadata or measurements.
+**Motion-capture files are processed entirely locally in the browser. Files are not uploaded to a server.** JE Motion sends anonymous usage events for session visits and successful C3D/H5 loads to a Cloudflare Worker for aggregate country statistics in D1. Analytics payloads contain only an event type, never MoCap files, filenames, labels, metadata or measurements. Normal network information is still visible to hosting and Cloudflare; see [Privacy](#privacy) for the scope and backend verification limits. There are no remote fonts or runtime CDN dependencies.
 
-![JE Motion | MoCap Viewer & Editor with synthetic demo data](docs/screenshot.png)
+![JE Motion | MoCap Viewer & Editor with generated example data](docs/screenshot.png)
 
-The existing screenshot uses generated demonstration data, not a participant recording. It illustrates the viewer layout; newer controls and the footer version may differ.
+The retained screenshot uses generated example data, not a participant recording. It illustrates an earlier viewer layout; newer controls and the footer version may differ.
 
 ## Basic usage
 
-1. Open the application and choose **Open file**, drop a recording anywhere, or explore the synthetic demo. One recording is loaded at a time; imports can be cancelled, and a failed import leaves the previous trial available.
+1. Open the application and choose **Open file** or drop a recording anywhere. One recording is loaded at a time; imports can be cancelled, and a failed import leaves the previous trial available.
 2. Orbit, pan and zoom the 3D view. Select a marker to inspect coordinates, or use the inspector to adjust visibility and force display. Review import warnings before interpreting data.
 3. Play, step or scrub the timeline. Select a signal in the signal inspector; use **Split plots** for two independent selections sharing the playback cursor.
 4. Click a timeline event to edit it, or choose **Add Event** at the current playback position. Supported fields depend on the source format.
@@ -35,7 +35,7 @@ Open the local URL printed by Vite, normally http://127.0.0.1:5173. On Windows P
 
 - Use the **Split plots** icon beside the hide toggle in the signal inspector to switch between one and two plots. Split view shows two side-by-side plots with independent marker/force/analog selection and zoom. Both follow the same playback cursor; clicking either plot scrubs the recording. On narrow windows, the split area scrolls horizontally.
 
-- Local `.c3d`, `.h5` and `.hdf5` loading in a cancellable Web Worker.
+- Local `.c3d`, `.h5`, and `.hdf5` loading in a cancellable Web Worker.
 - Shared format-independent 3D viewer and playback for both formats.
 - Instanced markers, missing-sample handling, residuals, selection, search and individual visibility.
 - Named marker connection presets for the inspected IBO sets and Plug-in Gait; selectable or disabled. These are display links, not an anatomical model.
@@ -70,7 +70,7 @@ Exports preserve source values rather than writing normalized display coordinate
 
 ## Architecture
 
-The application is a static TypeScript/React site built with Vite. Three.js / React Three Fiber and drei provide 3D rendering, Zustand holds session state, uPlot renders signals, and h5wasm reads/writes HDF5 locally.
+The application is a static TypeScript/React site built with Vite. Three.js, React Three Fiber, and drei provide 3D rendering; Zustand holds session state; uPlot renders signals; and h5wasm reads and writes HDF5 locally. A separate Cloudflare Worker receives anonymous usage events for aggregation in D1; motion-capture data remain entirely local. The Worker and database are managed outside this repository; see [analytics architecture and verification scope](docs/ANALYTICS.md).
 
 ```text
 local File → Worker → C3DImporter / H5Importer → MotionData
@@ -103,7 +103,7 @@ npm run preview
 
 `dist/` is a completely static application. Use HTTP hosting rather than opening index.html as a `file://` URL, because module workers require an appropriate origin.
 
-Scientific tests cover units, frame/time mapping, gaps, binary C3D variants, real compressed HDF5, force transformations/calibration/COP and malformed input. Synthetic fixtures contain no measurement data. Private local reference comparisons are automatically skipped when their ignored oracle is absent.
+Scientific tests cover units, frame/time mapping, gaps, binary C3D variants, compressed HDF5, force transformations/calibration/COP and malformed input. Synthetic fixtures contain no measurement data. Private local reference comparisons are automatically skipped when their ignored oracle is absent.
 
 With Chrome installed, run the browser and privacy smoke check after building:
 
@@ -111,7 +111,7 @@ With Chrome installed, run the browser and privacy smoke check after building:
 npm run test:browser
 ```
 
-For Microsoft Edge, set `BROWSER_CHANNEL=msedge`. This check exercises demo controls, synthetic C3D/H5, any available sibling reference files, error recovery, request URLs/methods/bodies and browser storage. Reports and screenshots stay under ignored `.local/`.
+For Microsoft Edge, set `BROWSER_CHANNEL=msedge`. This check exercises viewer controls using synthetic C3D/H5 test fixtures, any available local reference files, error recovery, the footer version, request URLs/methods/bodies and browser storage. Analytics requests are intercepted locally to validate event-only payloads without affecting live counts; the check does not validate the deployed Worker or D1. Reports and screenshots stay under ignored `.local/`.
 
 Optional local numerical comparison requires Python with ezc3d/numpy and the original sibling `ibo-biomech` files:
 
@@ -124,7 +124,7 @@ This Python script is a development oracle, never a backend or application depen
 
 ## GitHub Pages
 
-The included [workflow](.github/workflows/deploy.yml) runs `npm ci`, tests and the typechecked production build. Pushes to `main` deploy only `dist/`; pull requests run checks without deploying. Manual workflow runs deploy only when run on `main`. In **Settings → Pages**, choose **GitHub Actions** as the deployment source. No custom secrets are needed.
+The included [workflow](.github/workflows/deploy.yml) runs `npm ci`, tests and the typechecked production build. Pushes to `main` deploy only `dist/`; pull requests run checks without deploying. Manual workflow runs deploy only when run on `main`. In **Settings → Pages**, choose **GitHub Actions** as the deployment source. No custom secrets are needed for Pages. This workflow does not deploy the analytics Worker, configure D1 or run the browser smoke check.
 
 The workflow defaults to `/<repository-name>/`. Set the repository Actions variable `VITE_BASE_PATH` to `/` for a custom domain or user/organization root site, or to another explicit path. For a local build:
 
@@ -137,7 +137,17 @@ Outside CI, the default base is relative (`./`). Source measurements, local comp
 
 ## Privacy
 
-Motion capture files remain on your computer and are processed locally in browser workers. No MoCap data is uploaded to a server. Imports and edits live in memory; exports are local downloads. There is no backend, telemetry, analytics or persistent recording storage. Hosting serves application assets and can receive normal page/asset requests; those requests do not contain recording data. The production Content Security Policy blocks application network connections with `connect-src 'none'`.
+Motion-capture files remain on your computer and are processed locally in browser workers. MoCap files, filenames, labels, source metadata and measurements are never sent to analytics. Imports and edits live in memory, exports are local downloads, and the application does not persist recordings in browser storage.
+
+JE Motion sends a JSON body containing only `{"event":"visit"}`, `{"event":"c3d_loaded"}` or `{"event":"h5_loaded"}` to `https://je-motion-analytics.jonasebbecke97.workers.dev/event`. A `sessionStorage` flag (`je-motion-visit-counted=true`) suppresses repeat visit attempts on reload within the same tab session; it is not a unique identifier and is not sent. Each successful C3D or H5/HDF5 import sends a load event, including repeated loads of the same file. Failed or cancelled imports do not send load events. Counts therefore represent activity, not unique people or unique files. Analytics is also enabled during local development and preview. Failed requests are not retried, so counts may be incomplete.
+
+The documented backend design uses a Cloudflare Worker to derive approximate country from Cloudflare request information and increment D1 counts by date, country and event type. Country is not read from recording metadata or sent in the application payload. The Worker source, D1 schema and logging configuration are not included here, so this repository alone cannot verify deployed aggregation, stored fields or retention. See [analytics details](docs/ANALYTICS.md).
+
+Anonymous here means that the client creates no user/session identifier, tracking cookie or browser fingerprint. The event body includes no file size, device profile or browser information. HTTP requests still expose connection information such as IP addresses and browser-supplied headers (including browser information and the CORS `Origin`) to the receiving infrastructure. The page sets `no-referrer` to suppress the `Referer` header; it does not conceal the IP address or CORS origin. Hosting and Cloudflare may process or log connection information; this is not a guarantee of anonymity at the network level or of log deletion.
+
+The landing page displays aggregate visits, countries and successful MoCap loads from a bodyless GET request to the same Worker's `/stats` endpoint. It appears only while no recording is loaded and is hidden when valid totals are unavailable. Country count is the number of entries in the returned country list; file count uses the combined `files_loaded` total.
+
+The production CSP uses `connect-src 'self' https://je-motion-analytics.jonasebbecke97.workers.dev`. This permits connections to the application origin and the analytics **origin**, including `/event` and `/stats`. Development also allows local Vite WebSocket connections. Bundled scripts, styles and workers load from the application origin; JSON analytics POSTs may require CORS OPTIONS preflight requests. The CSP restricts connection destinations, not request contents; local file handling and the event-only payload keep MoCap data out of analytics.
 
 Keep private recordings out of Git and `public/`. The existing ignore rules exclude H5/C3D recordings and local validation output; `public/` is copied into every deployed build.
 

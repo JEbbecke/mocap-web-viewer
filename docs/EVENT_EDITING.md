@@ -4,7 +4,7 @@ Click a timeline event to edit it, or move playback and choose **Add Event**. Sa
 
 ## Architecture and timing
 
-MotionData.events is authoritative. Immutable operations in motion/events.ts add, update, delete and sort by time, preserving equal-time order. The session retains originalData and marks source.eventsEdited. sourceIndex identifies the original source event row for opaque metadata preservation; it is not editable. React holds only the editor draft. No server or persistence is involved.
+MotionData.events is authoritative. Immutable operations in motion/events.ts add, update, delete and sort by time, preserving equal-time order. The session retains originalData and marks source.eventsEdited. sourceIndex identifies the original source event row for opaque metadata preservation; it is not editable. React holds only the editor draft. Event editing is local and in memory; event labels, times and other recording metadata are never sent to [usage analytics](ANALYTICS.md).
 
 MotionEvent.time is unrounded relative seconds from the current recording's first sample. No independent frame value is stored. The editor derives C3D source frame as firstFrame + time * rate + 1, matching one-based header numbering. Fractional frames represent subframe timing. Playback uses zero-based array indices; new events default to frame / rate. Valid editing times are in [0, frameCount / rate), including the last sample interval. The event track shares the crop/playback boundary axis.
 
@@ -28,6 +28,6 @@ See [H5 schema](H5_FORMAT.md) and [lifecycle validation](H5_VALIDATION.md) for r
 
 ## Validation and manual checks
 
-Tests cover immutable CRUD, chronological/equal-time ordering, timeline mapping, source frames, validation, dirty state/restoration, repeated crops, boundary exclusion, parameter growth, and edited C3D round trips across synthetic encodings. Existing crop tests cover H5 preservation and nonempty Events rejection. Browser smoke exercises add/edit/export/reopen/delete via the real worker alongside playback, crop and H5 checks.
+Tests cover immutable CRUD, chronological/equal-time ordering, timeline mapping, source frames, validation, dirty state/restoration, repeated crops, boundary exclusion, parameter growth, and edited C3D round trips across synthetic encodings. Existing crop tests cover H5 preservation and rejection of populated unknown event schemas. Browser smoke exercises add/edit/export/reopen/delete via the real worker alongside playback, crop and H5 checks.
 
 Before a PR, check crowded/equal-time labels, keyboard editing, crop before/after edits, and restoration. Reopen edited downloads in the institute viewer and an independent C3D reader; compare labels, timing, contexts, descriptions, subjects and scientific signals. Check H5 event descriptions, absolute-time preservation, and cropping before/after an edit. Synthetic event fixtures contain no participant measurements. Private references/downloads stay in ignored local locations.
