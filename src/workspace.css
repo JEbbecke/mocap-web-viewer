@@ -488,6 +488,44 @@ dd {
   overflow-wrap: anywhere;
   text-align: right;
 }
+.file-info-section + .file-info-section {
+  margin-top: 24px;
+}
+.file-info-section h4 {
+  margin: 0 0 6px;
+}
+.file-info dl {
+  margin: 0;
+}
+.file-info dl > div {
+  display: grid;
+  grid-template-columns: minmax(0, 44%) minmax(0, 1fr);
+  gap: 12px;
+  align-items: baseline;
+}
+.file-info dt,
+.file-info dd {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.file-info dd {
+  text-align: left;
+  user-select: text;
+}
+.file-info-value {
+  display: block;
+  white-space: pre-wrap;
+}
+.file-info-value + .file-info-value {
+  margin-top: 5px;
+}
+.file-info summary {
+  cursor: pointer;
+  color: #70bcff;
+}
+.file-info details[open] summary {
+  margin-bottom: 6px;
+}
 .event-row {
   display: flex;
   width: 100%;

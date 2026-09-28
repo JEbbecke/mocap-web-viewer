@@ -4,6 +4,7 @@ import { millimetres, MOTION_UNITS } from '../../motion/units';
 import { validateMotion } from '../../motion/validation';
 import { readParameters, number, nums, strings, labels } from './parameters';
 import { extractPlatforms } from './forces';
+import { c3dRecordingInfo } from './metadata';
 
 export function parseC3D(buffer: ArrayBuffer, name: string): MotionData {
   const view = new DataView(buffer),
@@ -142,6 +143,7 @@ export function parseC3D(buffer: ArrayBuffer, name: string): MotionData {
     source: {
       format: 'C3D',
       originalPositionUnit: unit,
+      info: c3dRecordingInfo(p),
       metadata: {
         processor: little ? 'Intel' : 'MIPS',
         screenX: strings(p, 'POINT:X_SCREEN')[0],

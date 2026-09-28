@@ -1,4 +1,5 @@
 import type { MOTION_UNITS } from './units';
+import type { RecordingInfo } from './metadata';
 
 export type Vec3 = [number, number, number];
 /** MotionData uses lab XYZ: positions/distances in mm, forces in N, moments in Nm.
@@ -41,6 +42,8 @@ export interface MotionData {
     format: string;
     originalPositionUnit: string;
     metadata: Record<string, unknown>;
+    /** Curated embedded metadata; raw metadata and original File remain intact. */
+    info?: RecordingInfo;
     /** Cumulative point boundaries in the immutable original file. */
     crop?: { start: number; end: number };
     eventsEdited?: boolean;

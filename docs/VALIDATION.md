@@ -15,6 +15,16 @@ inspected; see [verification scope](ANALYTICS.md#verification).
 
 ## Automated checks
 
+The File Info pre-merge check on 28 September 2026 passed all 78 tests across
+nine suites, the production build (including TypeScript) and the Chrome smoke
+check. The rendered footer matched package/lockfile version `0.4.0`; the earlier
+`0.1.0` result above records the historical state before PR #6 corrected it.
+Synthetic File Info checks cover H5/C3D metadata, conditional sections, mixed
+sampling rates, valid zero values, model-result counts without reading samples,
+long-path layout, expandable source-file lists and removal of raw JSON/event
+listings. Timeline/event and source-preserving export checks still pass. See
+[File Info mappings](FILE_INFO.md) for supported fields and limits.
+
 - TypeScript strict checking and production Vite build pass.
 - The initial run passed 27 Vitest tests: 24 portable scientific/importer tests plus three private reference integration tests. The latter are skipped in CI when the ignored oracle is absent.
 - Intel IEEE float, Intel integer and MIPS IEEE float synthetic C3D fixtures cover point scaling, packed residuals, missingness, analog offset × channel scale × general scale, subframe ordering and event timing.

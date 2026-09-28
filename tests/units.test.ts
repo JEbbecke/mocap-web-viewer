@@ -155,7 +155,7 @@ it.each([3, 4])(
     expect(plate.cop.values[0]).toBe(type === 3 ? 0 : -60);
     expect(plate.cop.values[1]).toBe(type === 3 ? 0 : -80);
     expect(plate.freeMoment!.values[2]).toBe(type === 3 ? 0 : 3);
-    expect(warnings.length).toBe(type === 3 ? 1 : 0);
+    expect(warnings).toEqual([]);
     expect(analogs.map((a) => a.signal.values[0])).toEqual(raw);
   },
 );

@@ -31,3 +31,5 @@ Vite emits static dist assets with a configurable base path and injects the `pac
 See [event visualization and editing](EVENT_EDITING.md) for immutable event operations, relative-second timing, C3D serialization and the supported versioned institute H5 event schema. Explicit Series clocks, structured quality/body data and additional named signals keep H5 details at the importer/exporter boundary. The original File backs preservation of unknown data.
 
 The signal inspector offers one or two side-by-side plot panes. Each pane reuses the same chart component, with independent signal selection and zoom and a shared session playback cursor. Layout and the second selection remain local UI state. Removing or collapsing a pane destroys its chart, resize observer and playback subscription; only visible plots materialize signal arrays.
+
+The curated File Info view uses optional importer-normalized `source.info`; raw source metadata remains intact. Rates and counts follow current MotionData, including crops. See [File Info mappings and conventions](FILE_INFO.md).
