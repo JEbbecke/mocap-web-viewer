@@ -1,7 +1,7 @@
 import type { ForcePlatform, MotionData, Vec3 } from '../../motion/types';
 import { add, cross, mul, plateBasis, rotate } from '../../motion/math';
 import { forceScale, momentScale, METRES_PER_MILLIMETRE } from '../../motion/units';
-import { nums, number, strings, type Parameters } from './parameters';
+import { nums, number, strings, labels, type Parameters } from './parameters';
 
 /** Surface moment/COP conventions: forces in N, lengths in source POINT units,
  * moments in N × source length. Calibration (type 4) precedes wrench transport. */
@@ -53,6 +53,7 @@ export function extractPlatforms(
 ): ForcePlatform[] {
   const result: ForcePlatform[] = [],
     used = number(p, 'FORCE_PLATFORM:USED', 0);
+  const names = labels(p, 'FORCE_PLATFORM:LABELS');
   if (!Number.isSafeInteger(used) || used < 0 || used > 1024)
     throw new Error('Invalid force-platform count.');
   const types = nums(p, 'FORCE_PLATFORM:TYPE'),
@@ -135,7 +136,8 @@ export function extractPlatforms(
         startTime: 0,
       });
       result.push({
-        name: `Plate ${plate + 1}`,
+        name: names[plate] || `Plate ${plate + 1}`,
+        sourceIndex: plate,
         force: series(force),
         moment: series(moment),
         cop: series(cop),

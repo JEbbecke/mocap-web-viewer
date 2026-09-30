@@ -2,6 +2,29 @@
 
 Initial validation was performed locally on Windows, Node 24 and headless Chrome on 24 September 2026. The scientific results below are a historical record, with later H5 coverage linked at the end; they are not the current suite totals. The original Python project and measurements were read-only throughout. The sibling reference files are not copied to application assets or committed fixtures.
 
+## Data editing and release metadata review — 30 September 2026
+
+The latest published GitHub release and matching Git tag remain `v0.4.0`.
+Merged PRs #5–#8 and the current branch's data-label editing, shared undo/redo
+and Data-tab event editor changes belong under `[Unreleased]`. Package and
+lockfile versions remain `0.4.0`; the production browser check confirmed the
+matching footer. See [the release workflow](RELEASING.md).
+
+The full `npm test` run reported 109 passing tests and two failures across
+13 test files. Both failures were in `tests/reference.test.ts`: the ignored
+local reference manifest points to missing private source data, and the paired
+comparison depends on that import. The separate portable run,
+`npm test -- --exclude tests/reference.test.ts --reporter=dot`, passed all
+108 tests across 12 files. This does not constitute a passing full-suite run;
+the local reference setup must be repaired to validate those private inputs.
+
+The production build, including TypeScript checking, and Chrome smoke check
+passed. Browser coverage includes renaming all non-event Data-tab collections
+through the pencil and double-click interactions, undo/redo, and opening the
+shared event editor while seeking from the Data tab. Synthetic export checks
+cover label round trips and preservation of numerical samples and source
+identity. No private measurements were added to committed fixtures.
+
 ## Versioning and analytics documentation review — 28 September 2026
 
 On Windows with Node 24, all 60 tests across seven suites passed, along with

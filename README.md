@@ -2,7 +2,7 @@
 
 **MoCap Viewer & Editor**
 
-A browser-based, privacy-first motion capture viewer and editor for biomechanics researchers and technically interested users. Inspect recordings in 3D, compare synchronized signals, edit events, crop trials, and download the results in their original format.
+A browser-based, privacy-first motion capture viewer and editor for biomechanics researchers and technically interested users. Inspect recordings in 3D, compare synchronized signals, rename data labels, edit events, crop trials, and download the results in their original format.
 
 [Open JE Motion on GitHub Pages](https://jebbecke.github.io/mocap-web-viewer/). This is the default Pages address derived from the repository remote and deployment workflow; a repository-level base-path override or custom domain may change it.
 
@@ -18,7 +18,8 @@ The retained screenshot uses generated example data, not a participant recording
 2. Orbit, pan and zoom the 3D view. Select a marker to inspect coordinates, or use the inspector to adjust visibility and force display. Review import warnings before interpreting data.
 3. Play, step or scrub the timeline. Select a signal in the signal inspector; use **Split plots** for two independent selections sharing the playback cursor.
 4. Click a timeline event to edit it, or choose **Add Event** at the current playback position. Supported fields depend on the source format.
-5. Drag the timeline's start/end handles, preview the interval and choose **Crop**. Choose **Export** to download a local copy. **Restore original** discards both crops and event edits; the source file remains unchanged.
+5. In **Data**, double-click any marker, analog, force-platform, rigid-body, EMG, IK or ID label (or use its pencil) to rename it. Clicking an event seeks to its frame and opens the timeline event editor. Header **Undo / Redo** covers all label renames and committed event edits; text inputs keep native undo.
+6. Drag the timeline's start/end handles, preview the interval and choose **Crop**. Choose **Export** to download a local copy. **Restore original** discards crops, label renames and event edits; the source file remains unchanged. Cropping clears undo/redo history.
 
 ## Development setup
 
@@ -33,11 +34,12 @@ Open the local URL printed by Vite, normally http://127.0.0.1:5173. On Windows P
 
 ## Features
 
+- Inline relabeling for all non-event Data-tab collections, including generated trajectory names, with validation and C3D/H5 round trips. Events use their existing editor. Undo/redo retains up to 100 label/event actions: **Ctrl/Cmd+Z**, **Ctrl/Cmd+Shift+Z**, or **Ctrl+Y** to redo on Windows. See [data labels and history](docs/MARKER_EDITING.md) for identity, connections, format limits and lifecycle rules.
 - Use the **Split plots** icon beside the hide toggle in the signal inspector to switch between one and two plots. Split view shows two side-by-side plots with independent marker/force/analog selection and zoom. Both follow the same playback cursor; clicking either plot scrubs the recording. On narrow windows, the split area scrolls horizontally.
 
 - Local `.c3d`, `.h5`, and `.hdf5` loading in a cancellable Web Worker.
 - Shared format-independent 3D viewer and playback for both formats.
-- Instanced markers, missing-sample handling, residuals, selection and individual visibility. The [Data sidebar](docs/DATA_BROWSER.md) browses available MoCap collections with counted sections, cross-category search, existing plot selection and event seeking.
+- Instanced markers, missing-sample handling, residuals, selection and individual visibility. The [Data sidebar](docs/DATA_BROWSER.md) browses available MoCap collections with counted sections, cross-category search, plot selection and event seeking/editing.
 - Named marker connection presets for the inspected IBO sets and Plug-in Gait; selectable or disabled. These are display links, not an anatomical model.
 - Static and time-varying force-platform geometry, global ground reaction force (GRF) arrows originating at the centre of pressure (COP), and COP points where coordinate conventions are established.
 - Force types 2, 3 and 4, including 6×6 calibration and type-3 COP polynomial correction.
@@ -68,6 +70,8 @@ Use a modern desktop browser with WebGL, WebAssembly and module worker support. 
 
 Exports preserve source values rather than writing normalized display coordinates. Unchanged exports return the original bytes. Modified exports have format-specific limits: C3D event editing supports up to 255 events, force-baseline intervals must survive cropping, and unknown H5 time-dependent datasets or unsupported storage types may block modified export. H5 marker clocks must be regular; other supported signal clocks may be irregular. Rigid-body rotations are retained as structured data, not rendered as an anatomical skeleton. See [cropping/export limits](docs/CROPPING_EXPORT.md), [event editing](docs/EVENT_EDITING.md) and [H5 validation](docs/H5_VALIDATION.md), including the legacy institute reader incompatibility.
 
+C3D data labels support up to 255 UTF-8 bytes; H5 labels have no application-imposed length limit. Force-platform names round-trip in JE Motion through an optional C3D `FORCE_PLATFORM:LABELS` parameter; other readers may still display platform numbers. Renaming markers retains existing preset connections within the session; re-import resolves presets against the exported names. Cropping clears undo/redo; exporting preserves history and the Modified indicator because the original loaded file remains the baseline.
+
 ## Architecture
 
 The application is a static TypeScript/React site built with Vite. Three.js, React Three Fiber, and drei provide 3D rendering; Zustand holds session state; uPlot renders signals; and h5wasm reads and writes HDF5 locally. A separate Cloudflare Worker receives anonymous usage events for aggregation in D1; motion-capture data remain entirely local. The Worker and database are managed outside this repository; see [analytics architecture and verification scope](docs/ANALYTICS.md).
@@ -85,7 +89,7 @@ local File → Worker → C3DImporter / H5Importer → MotionData
 | Location                                           | Responsibility                                                     |
 | -------------------------------------------------- | ------------------------------------------------------------------ |
 | `src/importers/`, `src/exporters/`, `src/workers/` | Format parsing, source-preserving export and background processing |
-| `src/motion/`                                      | Shared data model, timing, crop and event operations               |
+| `src/motion/`                                      | Shared data model, timing, crop, label/event edits and undo/redo   |
 | `src/state/`, `src/playback/`                      | In-memory session and playback clock                               |
 | `src/viewer/`, `src/plots/`, `src/components/`     | 3D scene, signal inspector, timeline and editing controls          |
 | `tests/`, `scripts/`, `docs/`                      | Synthetic fixtures, validation tools and technical documentation   |
@@ -103,7 +107,9 @@ npm run preview
 
 `dist/` is a completely static application. Use HTTP hosting rather than opening index.html as a `file://` URL, because module workers require an appropriate origin.
 
-Scientific tests cover units, frame/time mapping, gaps, binary C3D variants, compressed HDF5, force transformations/calibration/COP and malformed input. Synthetic fixtures contain no measurement data. Private local reference comparisons are automatically skipped when their ignored oracle is absent.
+Scientific tests cover units, frame/time mapping, gaps, binary C3D variants, compressed HDF5, force transformations/calibration/COP and malformed input. Editing regressions cover all label collections, unchanged scientific arrays, undo/redo, dirty-state transitions, source identity and C3D/H5 round trips. Synthetic fixtures contain no participant data.
+
+Private local reference comparisons skip when `.local/reference.json` is absent. If that manifest exists but points to missing original files, `npm test` reports failures. Regenerate the oracle on a machine with the originals; do not commit it or the recordings. For a separately reported run of the portable suite, use `npm test -- --exclude tests/reference.test.ts`; this does not validate private references or turn a failed full run into a pass.
 
 With Chrome installed, run the browser and privacy smoke check after building:
 
@@ -155,6 +161,6 @@ Keep private recordings out of Git and `public/`. The existing ignore rules excl
 
 JE Motion is under active pre-1.0 development. Support is limited to the documented formats and validated conventions; arbitrary vendor variants and general HDF5 files are not claimed. Outstanding format questions are tracked in [OPEN_QUESTIONS.md](docs/OPEN_QUESTIONS.md).
 
-The authoritative application version is in [package.json](package.json), injected at build time and shown subtly in the footer. See [CHANGELOG.md](CHANGELOG.md) for formal releases and unreleased changes, and [the manual release workflow](docs/RELEASING.md) for Semantic Versioning, release PRs, tags and GitHub Releases. The package/footer retain the latest formal release version while subsequent changes accumulate under `[Unreleased]`; they advance when the next release is intentionally prepared. The Pages application follows `main` and can be ahead of the latest formal release. The historical package-version mismatch in the first GitHub release is documented in the changelog.
+Published GitHub releases and their tags establish release history. [package.json](package.json) supplies the application version, injected at build time and shown in the footer; the lockfile matches it. See [CHANGELOG.md](CHANGELOG.md) for formal releases and unreleased changes, and [the manual release workflow](docs/RELEASING.md) for Semantic Versioning, release PRs, tags and GitHub Releases. An ordinary feature merge does not require a version bump: the package/footer retain the latest formal release version while changes accumulate under `[Unreleased]`. They advance when the next release is intentionally prepared. The Pages application follows `main` and can be ahead of the latest formal release. The historical package-version mismatch in the first GitHub release is documented in the changelog.
 
 See [event visualization and editing](docs/EVENT_EDITING.md) for immutable event operations, relative-second timing, C3D serialization and the supported versioned institute H5 event schema. See [authoritative H5 validation](docs/H5_VALIDATION.md) for round-trip results and remaining limits.

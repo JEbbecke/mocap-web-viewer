@@ -4,6 +4,7 @@ import { cropInterval, sampleBoundary, timeBoundary, eventInInterval } from '../
 import type { MotionData, MotionEvent } from '../motion/types';
 import { validateEvent } from '../motion/events';
 import booleanSeeds from './h5-boolean-seeds.json';
+import { h5LabelUpdates } from './h5Labels';
 
 type Library = typeof H5;
 type Writable = Parameters<H5.Group['create_dataset']>[0]['data'];
@@ -53,8 +54,28 @@ export function writeCroppedH5(
   end: number,
   events?: MotionEvent[],
   sourceMotion?: MotionData,
+  labels?: string[],
+  analogLabels?: string[],
+  dataLabels?: Record<string, string>,
 ) {
   const motion = sourceMotion ?? parseH5Tree(input, 'source.h5');
+  const labelUpdates = h5LabelUpdates(input, motion, dataLabels);
+  if (
+    analogLabels &&
+    (analogLabels.length !== motion.analogs.length ||
+      analogLabels.some((label) => !label.trim() || label.includes('\0')))
+  )
+    throw new Error(
+      'H5 analog labels must match source columns and contain nonempty text without null characters.',
+    );
+  if (
+    labels &&
+    (labels.length !== motion.markers.labels.length ||
+      labels.some((label) => !label.trim() || label.includes('\0')))
+  )
+    throw new Error(
+      'H5 marker labels must match source columns and contain nonempty text without null characters.',
+    );
   const time = cropInterval(motion, start, end);
   const frames = motion.timeline.frameCount;
   const cropping = start !== 0 || end !== frames;
@@ -130,7 +151,24 @@ export function writeCroppedH5(
   };
   const copyAttrs = (source: H5.Group | H5.Dataset, target: H5.Group | H5.Dataset) => {
     const changes = updates.get(source.path) ?? {};
+    const labelChanges = labelUpdates.get(source.path) ?? {};
     for (const [name, attr] of Object.entries(source.attrs)) {
+      if (name in labelChanges) {
+        const value = labelChanges[name];
+        target.create_attribute(name, value, Array.isArray(value) ? [value.length] : undefined);
+        continue;
+      }
+      const editedLabels =
+        source.path === '/Trajectories/Labeled'
+          ? labels
+          : source.path === '/Analog'
+            ? analogLabels
+            : undefined;
+      if (editedLabels && name === 'Labels') {
+        // Variable-length UTF-8 avoids truncating labels stored in fixed-width source attributes.
+        target.create_attribute(name, editedLabels, attr.shape);
+        continue;
+      }
       const dtype = primitive(attr.dtype, `${source.path}@${name}`);
       const value = changes[name] ?? attr.value;
       if (value === null)
@@ -138,6 +176,8 @@ export function writeCroppedH5(
       target.create_attribute(name, value as Writable, attr.shape, dtype);
     }
     for (const [name, value] of Object.entries(changes))
+      if (!(name in source.attrs)) target.create_attribute(name, value);
+    for (const [name, value] of Object.entries(labelChanges))
       if (!(name in source.attrs)) target.create_attribute(name, value);
   };
   const classify = (ds: H5.Dataset) => {
@@ -398,6 +438,9 @@ export async function exportH5(
   start: number,
   end: number,
   events?: MotionEvent[],
+  labels?: string[],
+  analogLabels?: string[],
+  dataLabels?: Record<string, string>,
 ): Promise<ArrayBuffer> {
   const h5 = await import('h5wasm');
   const { FS } = await h5.ready;
@@ -408,10 +451,17 @@ export async function exportH5(
     input = new h5.File('/source/input.h5', 'r');
     const motion = parseH5Tree(input, file.name);
     cropInterval(motion, start, end);
-    if (start === 0 && end === motion.timeline.frameCount && events === undefined)
+    if (
+      start === 0 &&
+      end === motion.timeline.frameCount &&
+      events === undefined &&
+      labels === undefined &&
+      analogLabels === undefined &&
+      !Object.keys(dataLabels ?? {}).length
+    )
       return await file.arrayBuffer();
     output = createH5Output(h5, input, '/output.h5');
-    writeCroppedH5(h5, input, output, start, end, events, motion);
+    writeCroppedH5(h5, input, output, start, end, events, motion, labels, analogLabels, dataLabels);
     output.close();
     output = undefined;
     return (FS.readFile('/output.h5') as Uint8Array).slice().buffer;

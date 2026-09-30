@@ -61,10 +61,12 @@ and [origin units](https://www.c3d.org/HTML/Documents/forceplatformorigin.htm).
 
 Cropping slices normalized arrays at each signal's clock; it does not rescale
 samples, static geometry, forces, moments or analog data. Event edits change only
-event fields and retain the existing seconds/frame mapping.
+event fields and retain the existing seconds/frame mapping. Label edits change
+names only; trajectory/analog samples, residuals, quality, units, clocks and force
+calibration remain unchanged through undo/redo and source-format export.
 
 Exports are source-preserving, not serializers of rendered coordinates. They
-receive the immutable original File plus the crop interval and edited events.
+receive the immutable original File plus the crop interval, edited labels and events.
 H5 copies raw datasets with their unit attributes; C3D copies raw point/analog
 records with their original unit, scale and calibration parameters. A normal
 mm source therefore follows source mm → internal mm → exported mm. A metre

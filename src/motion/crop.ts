@@ -79,6 +79,7 @@ export function cropMotionData(data: MotionData, startFrame: number, endFrame: n
       duration: (frameCount - 1) / data.timeline.rate,
     },
     markers: {
+      connectionLabels: data.markers.connectionLabels,
       labels: [...data.markers.labels],
       positions: data.markers.positions.slice(startFrame * count * 3, endFrame * count * 3),
       valid: data.markers.valid.slice(startFrame * count, endFrame * count),

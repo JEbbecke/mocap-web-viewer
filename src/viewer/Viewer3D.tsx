@@ -127,7 +127,10 @@ function Markers({ data }: { data: MotionData }) {
 }
 function Connections({ data }: { data: MotionData }) {
   const id = useSession((s) => s.connectionSet),
-    pairs = useMemo(() => resolveConnections(data.markers.labels, id), [data, id]);
+    pairs = useMemo(
+      () => resolveConnections(data.markers.connectionLabels ?? data.markers.labels, id),
+      [data, id],
+    );
   const object = useMemo(() => {
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute(

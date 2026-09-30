@@ -32,11 +32,13 @@ export function h5RecordingInfo(root: H5Node): RecordingInfo {
     const storedRate = Number(metadataText(attrs?.SamplingFrequency?.value));
     const rate = Number.isFinite(storedRate) && storedRate > 0 ? storedRate : undefined;
     const entries = Array.from({ length: shape[0] }, (_, i) => {
-      const name = namesMatch ? metadataText(labels[i]) : undefined;
+      const rawName = namesMatch ? labels[i] : undefined;
+      const name =
+        typeof rawName === 'string' ? rawName.trim() || undefined : metadataText(rawName);
       // The institute schema can include its independent time row in Data.
       if (name?.toLowerCase() === 'time') return [];
       const unit = units.length === shape[0] ? metadataText(units[i]) : undefined;
-      return [{ name: name ?? `Variable ${i + 1} (unlabelled)`, unit, rate }];
+      return [{ name: name ?? `Variable ${i + 1} (unlabelled)`, unit, rate, sourceIndex: i }];
     }).flat();
     return { variables: entries.length, entries };
   };

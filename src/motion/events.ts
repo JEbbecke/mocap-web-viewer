@@ -1,4 +1,42 @@
 import type { MotionData, MotionEvent } from './types';
+import type { EditCommand } from './history';
+
+/** A committed event edit retains only the affected row and its old/new positions. */
+export function eventCommand(
+  data: MotionData,
+  action: 'add' | 'update' | 'delete',
+  index: number,
+  fields?: EventFields,
+): EditCommand<MotionData> {
+  const next =
+    action === 'add'
+      ? addEvent(data, fields!)
+      : action === 'update'
+        ? updateEvent(data, index, fields!)
+        : deleteEvent(data, index);
+  const before = action === 'add' ? undefined : data.events[index];
+  const afterIndex =
+    action === 'delete' ? -1 : next.events.findIndex((e) => !data.events.includes(e));
+  const after = next.events[afterIndex];
+  const editedBefore = data.source.eventsEdited;
+  const splice = (
+    current: MotionData,
+    remove: number,
+    insert: number,
+    row: MotionEvent | undefined,
+    edited: boolean | undefined,
+  ) => {
+    const events = [...current.events];
+    if (remove >= 0) events.splice(remove, 1);
+    if (row) events.splice(insert, 0, row);
+    return { ...current, events, source: { ...current.source, eventsEdited: edited } };
+  };
+  return {
+    description: `${action === 'add' ? 'Add' : action === 'update' ? 'Edit' : 'Delete'} event`,
+    apply: (current) => splice(current, action === 'add' ? -1 : index, afterIndex, after, true),
+    revert: (current) => splice(current, afterIndex, index, before, editedBefore),
+  };
+}
 
 export type EventFields = Pick<
   MotionEvent,

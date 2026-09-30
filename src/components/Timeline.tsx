@@ -14,6 +14,7 @@ export function Timeline({ data }: { data: MotionData }) {
     selection = useSession((s) => s.cropSelection),
     file = useSession((s) => s.sourceFile),
     saved = useSession((s) => s.saved),
+    dirty = useSession((s) => s.dirty),
     speed = useSession((s) => s.speed),
     loop = useSession((s) => s.loop);
   return (
@@ -115,9 +116,7 @@ export function Timeline({ data }: { data: MotionData }) {
               <button className="primary" onClick={saveAs} disabled={!file || Boolean(selection)}>
                 Export
               </button>
-              {(data.source.crop || data.source.eventsEdited) && (
-                <button onClick={restoreOriginal}>Restore original</button>
-              )}
+              {dirty && <button onClick={restoreOriginal}>Restore original</button>}
               {saved && <span role="status">Download prepared</span>}
             </>
           )}
