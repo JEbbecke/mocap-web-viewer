@@ -4,7 +4,16 @@ import { Inspector } from './components/Inspector';
 import { Timeline } from './components/Timeline';
 import { SignalPlot } from './plots/SignalPlot';
 import { startClock } from './playback/clock';
-import { cancelImport, openFile, setFrame, togglePlay, useSession } from './state/session';
+import {
+  cancelImport,
+  openFile,
+  setFrame,
+  togglePlay,
+  undoEdit,
+  redoEdit,
+  useSession,
+} from './state/session';
+import { handleHistoryShortcut } from './state/shortcuts';
 import { PanelToggle } from './components/PanelToggle';
 import { getAnalyticsStats, trackEvent, type AnalyticsStats } from './analytics';
 class ViewerBoundary extends Component<{ children: ReactNode }, { error: string | null }> {
@@ -24,6 +33,8 @@ class ViewerBoundary extends Component<{ children: ReactNode }, { error: string 
 }
 export function App() {
   const data = useSession((s) => s.data),
+    history = useSession((s) => s.history),
+    dirty = useSession((s) => s.dirty),
     busy = useSession((s) => s.busy),
     operation = useSession((s) => s.operation),
     error = useSession((s) => s.error),
@@ -45,6 +56,7 @@ export function App() {
   }, []);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (handleHistoryShortcut(e)) return;
       if (e.defaultPrevented || e.isComposing || e.ctrlKey || e.metaKey || e.altKey) return;
       if (
         (e.target as HTMLElement).closest('input,select,textarea,button,[contenteditable="true"]')
@@ -118,14 +130,32 @@ export function App() {
               <span className="file-badge">{data.source.format}</span>
               <span>
                 {data.name}
-                {data.source.crop ? ' · Cropped (modified)' : ''}
-                {data.source.eventsEdited ? ' · Events modified' : ''}
+                {data.source.crop ? ' · Cropped' : ''}
+                {dirty ? ' · Modified' : ''}
               </span>
             </>
           ) : (
             <span className="muted">No trial loaded</span>
           )}
         </div>
+        {data && (
+          <div className="history-controls">
+            <button
+              onClick={undoEdit}
+              disabled={busy || !history.past.length}
+              title={`Undo${history.past.length ? ': ' + history.past.at(-1)!.command.description : ''} (Ctrl/Cmd+Z)`}
+            >
+              Undo
+            </button>
+            <button
+              onClick={redoEdit}
+              disabled={busy || !history.future.length}
+              title={`Redo${history.future.length ? ': ' + history.future.at(-1)!.command.description : ''} (Ctrl/Cmd+Shift+Z, Ctrl+Y)`}
+            >
+              Redo
+            </button>
+          </div>
+        )}
         <button className="primary" onClick={open}>
           ＋ Open file
         </button>

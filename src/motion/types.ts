@@ -14,6 +14,8 @@ export interface Series {
 }
 export interface ForcePlatform {
   name: string;
+  sourceIndex?: number;
+  sourcePath?: string;
   force: Series;
   moment: Series;
   cop: Series;
@@ -47,12 +49,18 @@ export interface MotionData {
     /** Cumulative point boundaries in the immutable original file. */
     crop?: { start: number; end: number };
     eventsEdited?: boolean;
+    labelsEdited?: boolean;
+    analogLabelsEdited?: boolean;
+    /** Small label overrides keyed by collection and stable in-memory index. */
+    dataLabels?: Record<string, string>;
     timeOrigin?: number;
     eventSchema?: 'institute-v1';
   };
   timeline: { rate: number; frameCount: number; firstFrame: number; duration: number };
   markers: {
     labels: string[];
+    /** Imported labels anchor built-in preset links to stable source-column indices. */
+    connectionLabels?: string[];
     positions: Float32Array | Float64Array; // [frame, marker, xyz]
     valid: Uint8Array; // [frame, marker]
     residuals?: Float32Array | Float64Array; // mm, negative = invalid
@@ -65,8 +73,21 @@ export interface MotionData {
     };
   };
   analogs: { name: string; unit: string; signal: Series }[];
-  signals?: { name: string; group: string; unit: string; signal: Series }[];
-  rigidBodies?: { name: string; markers: string[]; position: Series; rotation?: Series }[];
+  signals?: {
+    name: string;
+    group: string;
+    unit: string;
+    signal: Series;
+    sourceIndex?: number;
+    sourcePath?: string;
+  }[];
+  rigidBodies?: {
+    name: string;
+    markers: string[];
+    position: Series;
+    rotation?: Series;
+    sourcePath?: string;
+  }[];
   forcePlatforms: ForcePlatform[];
   events: MotionEvent[];
   warnings: string[];

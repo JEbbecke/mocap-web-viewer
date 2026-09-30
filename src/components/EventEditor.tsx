@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useLayoutEffect, useState } from 'react';
 import { TimelineSlider } from './TimelineSlider';
 import type { MotionData } from '../motion/types';
 import {
@@ -7,10 +7,12 @@ import {
   eventSourceFrame,
   timelineEvents,
 } from '../motion/events';
-import { editSessionEvent, setFrame, useSession } from '../state/session';
+import { editSessionEvent, openSessionEvent, useSession } from '../state/session';
 
 export function EventEditor({ data }: { data: MotionData }) {
-  const [selected, select] = useState<number | 'new' | null>(null);
+  const request = useSession((s) => s.eventEditor);
+  const selected = request?.index ?? null;
+  const select = (_: null) => useSession.setState({ eventEditor: null });
   const [label, setLabel] = useState(''),
     [context, setContext] = useState('');
   const [description, setDescription] = useState(''),
@@ -18,17 +20,17 @@ export function EventEditor({ data }: { data: MotionData }) {
   const [time, setTime] = useState('0'),
     [error, setError] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
-  useEffect(() => {
-    select(null);
-  }, [data]);
   const busy = useSession((s) => s.busy);
   const available = eventEditingAvailable(data);
-  const open = (index: number | 'new') => {
+  const open = openSessionEvent;
+  // Populate the shared request before the editor paints or receives typing.
+  useLayoutEffect(() => {
+    if (!request) return;
+    const index = request.index;
     const event =
       index === 'new'
         ? { label: '', context: '', time: useSession.getState().frame / data.timeline.rate }
         : data.events[index];
-    select(index);
     setLabel(event.label);
     setContext(event.context);
     setTime(String(event.time));
@@ -36,9 +38,7 @@ export function EventEditor({ data }: { data: MotionData }) {
     setSubject('subject' in event ? (event.subject ?? '') : '');
     setError('');
     setConfirmDelete(false);
-    useSession.setState({ playing: false });
-    if (index !== 'new') setFrame(event.time * data.timeline.rate);
-  };
+  }, [request, data]);
   const entries = timelineEvents(data);
   // Greedy lanes keep close markers separate; the track scrolls vertically for dense trials.
   const lanes: number[] = [];

@@ -1,11 +1,15 @@
 import type { MotionData } from '../motion/types';
 import { metadataText } from '../motion/metadata';
+import type { DataLabelTarget } from '../motion/dataLabels';
 
 export interface DataEntry {
   id: string;
   name: string;
   detail?: string;
   marker?: number;
+  analog?: number;
+  rename?: DataLabelTarget;
+  event?: number;
   plot?: string;
   time?: number;
 }
@@ -32,6 +36,7 @@ export function dataSections(data: MotionData): DataSection[] {
               name: s.name,
               detail: detail(s.unit, s.signal.rate),
               plot: `signal:${i}`,
+              rename: { kind: 'signal', index: i },
             },
           ]
         : [],
@@ -45,6 +50,7 @@ export function dataSections(data: MotionData): DataSection[] {
             id: `${key}:${i}`,
             name: s.name,
             detail: detail(s.unit, s.rate),
+            rename: { kind: key, index: i },
           })),
           note: 'Variable metadata only; model signals are not plotted.',
         };
@@ -62,6 +68,7 @@ export function dataSections(data: MotionData): DataSection[] {
       name: 'Analog channels',
       entries: data.analogs.map((s, i) => ({
         id: `analog:${i}`,
+        analog: i,
         name: s.name,
         detail: detail(s.unit, s.signal.rate),
         plot: `analog:${i}`,
@@ -74,6 +81,7 @@ export function dataSections(data: MotionData): DataSection[] {
         name: s.name || `Plate ${i + 1}`,
         detail: detail(undefined, s.force.rate),
         plot: `plate:${i}:force`,
+        rename: { kind: 'plate' as const, index: i },
       })),
     },
     {
@@ -83,6 +91,7 @@ export function dataSections(data: MotionData): DataSection[] {
         name: s.label,
         detail: [`${s.time.toFixed(3)} s`, s.context].filter(Boolean).join(' · '),
         time: s.time,
+        event: i,
       })),
     },
     {
@@ -93,6 +102,7 @@ export function dataSections(data: MotionData): DataSection[] {
         return {
           id: `body:${i}`,
           name: s.name,
+          rename: { kind: 'body' as const, index: i },
           detail: detail(data.units.position, s.position.rate),
           ...(signalIndex !== undefined ? { plot: `signal:${signalIndex}` } : {}),
         };

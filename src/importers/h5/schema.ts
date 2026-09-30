@@ -341,6 +341,7 @@ export function parseH5Tree(root: H5Node, name: string): MotionData {
               : undefined,
         );
       forcePlatforms.push({
+        sourcePath: path,
         name: plateName,
         force,
         moment,
@@ -454,6 +455,8 @@ export function parseH5Tree(root: H5Node, name: string): MotionData {
     labels.forEach((name, c) =>
       signals.push({
         name,
+        sourceIndex: c,
+        sourcePath: groupName,
         group: groupName,
         unit: units[c] || 'unknown',
         signal: timed(
@@ -485,12 +488,14 @@ export function parseH5Tree(root: H5Node, name: string): MotionData {
     if (rotation && rotation.values.length !== frameCount * 9)
       throw new Error(`${path}/Rotation: inconsistent body frame count.`);
     rigidBodies.push({
+      sourcePath: path,
       name: str(attr(body, 'Name'), key),
       markers: stringArray(node(body, 'Markers')?.value),
       position: timed(position, times),
       rotation,
     });
     signals.push({
+      sourcePath: path,
       name: str(attr(body, 'Name'), key),
       group: 'RigidBodies',
       unit: MOTION_UNITS.position,

@@ -212,6 +212,71 @@ try {
     dataBrowser.locator('.data-section').filter({
       has: page.locator('summary > span:first-child').filter({ hasText: new RegExp(`^${name}$`) }),
     });
+  // Committed marker edits share history; native text-field undo keeps its own draft.
+  const firstMarker = dataBrowser.locator('.marker-row').first();
+  const oldMarkerName = await firstMarker.locator('button').first().getAttribute('title');
+  const otherMarkerName = await dataBrowser
+    .locator('.marker-row')
+    .nth(1)
+    .locator('button')
+    .first()
+    .getAttribute('title');
+  const undoButton = page.getByRole('button', { name: 'Undo', exact: true });
+  const redoButton = page.getByRole('button', { name: 'Redo', exact: true });
+  assert(await undoButton.isDisabled());
+  assert(await redoButton.isDisabled());
+  await firstMarker.locator('button').first().click();
+  await firstMarker.getByRole('checkbox').uncheck();
+  await firstMarker.locator('button').first().dblclick();
+  const renameInput = page.getByRole('textbox', {
+    name: `New label for ${oldMarkerName}`,
+    exact: true,
+  });
+  await renameInput.fill('');
+  await firstMarker.getByRole('button', { name: 'Save', exact: true }).click();
+  assert.match(await firstMarker.getByRole('alert').innerText(), /Enter a marker label/);
+  await renameInput.fill(otherMarkerName);
+  await firstMarker.getByRole('button', { name: 'Save', exact: true }).click();
+  assert.match(await firstMarker.getByRole('alert').innerText(), /already has this label/);
+  await renameInput.fill('  R_Thigh_Renamed  ');
+  await firstMarker.getByRole('button', { name: 'Save', exact: true }).click();
+  assert.match(await page.locator('.selected-marker').innerText(), /R_Thigh_Renamed/);
+  assert.equal(await firstMarker.getByRole('checkbox').isChecked(), false);
+  assert.match(
+    await page.getByLabel('Signal to plot', { exact: true }).innerText(),
+    /R_Thigh_Renamed/,
+  );
+  await page.getByLabel('Search data').fill(oldMarkerName);
+  assert.equal(
+    await dataBrowser.getByRole('button', { name: oldMarkerName, exact: true }).count(),
+    0,
+  );
+  await page.getByLabel('Search data').fill('r_thigh_renamed');
+  assert.equal(await dataBrowser.locator('.marker-row').count(), 1);
+  await page.getByLabel('Search data').fill('');
+  await firstMarker.getByRole('button', { name: 'Rename R_Thigh_Renamed', exact: true }).click();
+  const draftInput = page.getByRole('textbox', {
+    name: 'New label for R_Thigh_Renamed',
+    exact: true,
+  });
+  await draftInput.press('End');
+  await draftInput.pressSequentially('_draft');
+  await draftInput.press('Control+z');
+  assert.notEqual(await draftInput.inputValue(), 'R_Thigh_Renamed_draft');
+  assert.match(await page.locator('.selected-marker').innerText(), /R_Thigh_Renamed/);
+  await draftInput.press('Escape');
+  await undoButton.click();
+  assert(await undoButton.isDisabled());
+  assert(!(await redoButton.isDisabled()));
+  await page.keyboard.press('Control+Shift+z');
+  assert.match(await page.locator('.selected-marker').innerText(), /R_Thigh_Renamed/);
+  await page.keyboard.press('Control+z');
+  await page.keyboard.press('Control+y');
+  assert.match(await page.locator('.selected-marker').innerText(), /R_Thigh_Renamed/);
+  await page.screenshot({ path: '.local/marker-rename.png' });
+  await page.getByRole('button', { name: 'Restore original', exact: true }).click();
+  assert(await undoButton.isDisabled());
+  assert(await redoButton.isDisabled());
   assert.equal(await dataBrowser.locator('.data-section').count(), 8);
   for (const [name, count] of [
     ['Markers', 2],
@@ -225,6 +290,86 @@ try {
   ]) {
     assert.equal(await dataGroup(name).locator('.data-count').innerText(), String(count));
   }
+  // Analog renaming has the same editor/history and leaves the separate EMG collection intact.
+  await page.getByLabel('Search data').fill('Channel');
+  const analogSection = dataGroup('Analog channels');
+  await analogSection.getByRole('button', { name: 'Plot Channel', exact: true }).dblclick();
+  const analogInput = page.getByRole('textbox', { name: 'New label for Channel', exact: true });
+  await analogInput.fill('');
+  await analogSection.getByRole('button', { name: 'Save', exact: true }).click();
+  assert.match(await analogSection.getByRole('alert').innerText(), /Enter an analog channel label/);
+  await analogInput.fill('Cancelled analog');
+  await analogInput.press('Escape');
+  assert(await undoButton.isDisabled());
+  await analogSection.getByRole('button', { name: 'Rename analog Channel', exact: true }).click();
+  await analogInput.fill('  Right_EMG  ');
+  await analogInput.press('Enter');
+  assert.equal(await page.getByLabel('Signal to plot', { exact: true }).inputValue(), 'analog:0');
+  assert.match(await page.getByLabel('Signal to plot', { exact: true }).innerText(), /Right_EMG/);
+  assert.equal(
+    await dataGroup('Analog channels').count(),
+    0,
+    'old-name search has no stale analog label',
+  );
+  assert.equal(
+    await dataGroup('EMG channels')
+      .getByRole('button', { name: 'Plot Channel', exact: true })
+      .count(),
+    1,
+  );
+  await page.getByLabel('Search data').fill('right_emg');
+  assert.equal(
+    await analogSection.getByRole('button', { name: 'Plot Right_EMG', exact: true }).count(),
+    1,
+  );
+  await undoButton.click();
+  assert.equal(await dataGroup('Analog channels').count(), 0);
+  await redoButton.click();
+  assert.equal(
+    await analogSection.getByRole('button', { name: 'Plot Right_EMG', exact: true }).count(),
+    1,
+  );
+  await page.getByRole('button', { name: 'Restore original', exact: true }).click();
+  assert(await undoButton.isDisabled());
+  assert(await redoButton.isDisabled());
+  // Remaining collections share double-click/pencil editing and the same history.
+  const renamedCollections = [
+    ['Force platforms', 'Plate', 'Renamed_Force'],
+    ['Rigid bodies', 'Body', 'Renamed_Rigid'],
+    ['EMG channels', 'Channel', 'Renamed_EMG'],
+    ['IK results', 'quantity', 'Renamed_IK'],
+    ['ID results', 'quantity', 'Renamed_ID'],
+  ];
+  for (const [sectionName, oldName, newName] of renamedCollections) {
+    await page.getByLabel('Search data').fill(oldName);
+    const section = dataGroup(sectionName);
+    await section.locator('.data-entry').first().dblclick();
+    const editor = page.getByRole('textbox', { name: `New label for ${oldName}`, exact: true });
+    await editor.fill(newName);
+    await editor.press('Enter');
+    await page.getByLabel('Search data').fill(newName);
+    assert.equal(await section.locator('.data-entry').first().getAttribute('title'), newName);
+    await undoButton.click();
+    assert.equal(await section.count(), 0);
+    await redoButton.click();
+    assert.equal(await section.locator('.data-entry').first().getAttribute('title'), newName);
+  }
+  const allLabelsDownload = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export', exact: true }).click();
+  const labelsPath = resolve('.local/all-data-renamed.h5');
+  await (await allLabelsDownload).saveAs(labelsPath);
+  const labelsFile = new h5.File(labelsPath, 'r');
+  try {
+    assert.equal(labelsFile.get('ForcePlates/0').attrs.Name.value, 'Renamed_Force');
+    assert.equal(labelsFile.get('RigidBodies/0').attrs.Name.value, 'Renamed_Rigid');
+    assert.equal(labelsFile.get('EMG').attrs.Labels.value[0], 'Renamed_EMG');
+    assert.deepEqual(labelsFile.get('IKResults').attrs.Labels.value, ['time', 'Renamed_IK']);
+    assert.deepEqual(labelsFile.get('IDResults').attrs.Labels.value, ['time', 'Renamed_ID']);
+  } finally {
+    labelsFile.close();
+  }
+  await page.getByRole('button', { name: 'Restore original', exact: true }).click();
+  assert(await undoButton.isDisabled());
   // Identical Analog/EMG labels remain separate source collections with distinct plot targets.
   await page.getByLabel('Search data').fill('cHaNnEl');
   assert.equal(await dataBrowser.locator('.data-section').count(), 2);
@@ -241,7 +386,10 @@ try {
   for (const name of ['IK results', 'ID results']) {
     assert.equal(await dataGroup(name).locator('.data-entry').innerText(), 'quantity');
     assert.equal(await dataGroup(name).getByRole('checkbox').count(), 0);
-    assert.equal(await dataGroup(name).getByRole('button').count(), 0);
+    assert.equal(
+      await dataGroup(name).getByRole('button', { name: 'Rename quantity', exact: true }).count(),
+      1,
+    );
   }
   await page.getByLabel('Search data').fill('Plate');
   await dataGroup('Force platforms')
@@ -255,11 +403,21 @@ try {
   await dataGroup('Rigid bodies').getByRole('button', { name: 'Plot Body', exact: true }).click();
   assert.equal(await page.getByLabel('Signal to plot', { exact: true }).inputValue(), 'signal:1');
   await page.getByLabel('Search data').fill('Early');
-  await dataGroup('Events').getByRole('button', { name: 'Seek to Early', exact: true }).click();
+  await dataGroup('Events').getByRole('button', { name: 'Edit event Early', exact: true }).click();
   assert.equal(
     await page.getByRole('slider', { name: 'Frame', exact: true }).getAttribute('aria-valuenow'),
     '1',
   );
+  assert.equal(await page.getByLabel('Event label', { exact: true }).inputValue(), 'Early');
+  const eventTime = await page.getByLabel('Time (s)', { exact: true }).inputValue();
+  await page.locator('.event-editor').getByRole('button', { name: 'Cancel', exact: true }).click();
+  await page
+    .locator('.event-markers')
+    .getByRole('button', { name: 'Edit event Early', exact: true })
+    .click();
+  assert.equal(await page.getByLabel('Event label', { exact: true }).inputValue(), 'Early');
+  assert.equal(await page.getByLabel('Time (s)', { exact: true }).inputValue(), eventTime);
+  await page.locator('.event-editor').getByRole('button', { name: 'Cancel', exact: true }).click();
   await page.getByLabel('Search data').fill('no matching synthetic entry');
   assert.equal(await dataBrowser.locator('.data-section').count(), 0);
   assert.equal(await dataBrowser.getByRole('status').innerText(), 'No matching data.');
@@ -681,6 +839,33 @@ try {
       .getByLabel('Open motion file')
       .setInputFiles(resolve(`.local/synthetic.${extension}`));
     await page.waitForFunction(() => !document.body.textContent.includes('Reading your recording'));
+    assert(await undoButton.isDisabled(), 'new file clears undo');
+    assert(await redoButton.isDisabled(), 'new file clears redo');
+    await page.getByRole('tab', { name: 'Data', exact: true }).click();
+    await page.getByLabel('Search data').fill('');
+    const exportMarker = dataBrowser.locator('.marker-row').first();
+    const importedLabel = await exportMarker.locator('button').first().getAttribute('title');
+    await exportMarker
+      .getByRole('button', { name: `Rename ${importedLabel}`, exact: true })
+      .click();
+    await page
+      .getByRole('textbox', { name: `New label for ${importedLabel}`, exact: true })
+      .fill('Exported_Thigh');
+    await exportMarker.getByRole('button', { name: 'Save', exact: true }).click();
+    await undoButton.click();
+    await redoButton.click();
+    const analogGroup = dataGroup('Analog channels');
+    if ((await analogGroup.getAttribute('open')) === null)
+      await analogGroup.locator('summary').click();
+    const analogLabel = analogGroup.locator('.data-entry').first();
+    const originalAnalogName = await analogLabel.getAttribute('title');
+    await analogLabel.dblclick();
+    await page
+      .getByRole('textbox', { name: `New label for ${originalAnalogName}`, exact: true })
+      .fill('Exported_Analog');
+    await analogGroup.getByRole('button', { name: 'Save', exact: true }).click();
+    await undoButton.click();
+    await redoButton.click();
     assert.equal(
       await page.locator('.timeline input[type="number"]').count(),
       0,
@@ -761,6 +946,7 @@ try {
     );
     if (extension === 'h5') await page.screenshot({ path: '.local/crop-selection.png' });
     await page.getByRole('button', { name: 'Crop', exact: true }).click();
+    assert(await undoButton.isDisabled(), 'crop clears undo history');
     assert.equal(
       await page.getByRole('slider', { name: 'Frame', exact: true }).getAttribute('aria-valuemax'),
       '1',
@@ -773,12 +959,27 @@ try {
     await download.saveAs(downloaded);
     await page.getByRole('button', { name: 'Restore original', exact: true }).click();
     assert.equal(
+      await dataBrowser.getByRole('button', { name: importedLabel, exact: true }).count(),
+      1,
+    );
+    assert.equal(
       await page.getByRole('slider', { name: 'Frame', exact: true }).getAttribute('aria-valuemax'),
       '2',
     );
     await page.getByLabel('Open motion file').setInputFiles(downloaded);
     await page.waitForFunction(() => !document.body.textContent.includes('Reading your recording'));
     assert.equal(await page.getByRole('alert').count(), 0);
+    assert.equal(
+      await dataBrowser.getByRole('button', { name: 'Exported_Thigh', exact: true }).count(),
+      1,
+    );
+    assert(await undoButton.isDisabled(), 're-import cannot undo edits from prior recording');
+    assert.equal(
+      await dataGroup('Analog channels')
+        .getByRole('button', { name: 'Plot Exported_Analog', exact: true })
+        .count(),
+      1,
+    );
     assert.equal(
       await page.getByRole('slider', { name: 'Frame', exact: true }).getAttribute('aria-valuemax'),
       '1',

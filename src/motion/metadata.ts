@@ -6,7 +6,7 @@ export interface MetadataValue {
 /** Model variable catalog only: samples and independent clocks remain in the source file. */
 export interface ModelResultInfo {
   variables?: number;
-  entries?: { name: string; unit?: string; rate?: number }[];
+  entries?: { name: string; unit?: string; rate?: number; sourceIndex?: number }[];
 }
 export interface RecordingInfo {
   created?: string;

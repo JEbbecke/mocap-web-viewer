@@ -5,20 +5,25 @@ Markers tab with collapsible sections for available collections. Markers start
 expanded; other sections start collapsed. Each header shows its total count.
 Empty collections are omitted.
 
+Double-clicking any non-event label, or using its pencil, opens an inline label editor with Save/Cancel
+and validation. Committed labels update this catalog and its search immediately;
+visibility and selection retain source-column identity. See
+[data labels and undo/redo](MARKER_EDITING.md).
+
 Search data filters names across all collections, case-insensitively. Matching
 sections expand and show matching/total counts. Clearing search restores the
 full collection list. An unmatched query shows a concise empty state. Search
 does not change marker visibility or the selected signal.
 
-| Collection      | Interaction                                                                                                                                |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Markers         | Visibility checkbox; name selects the marker and its XYZ plot. Show all restores every marker, including those outside the search results. |
-| Analog channels | Name selects the existing primary plot. Explicit units and sampling rates appear below names.                                              |
-| Force platforms | Name selects the force plot; rates are shown. Global force/plate visibility stays in Display.                                              |
-| Events          | Label seeks to the nearest timeline frame, clamped to the recording; time and context are shown. Editing remains on the timeline.          |
-| Rigid bodies    | Name selects the existing body-position signal when available. No new body rendering or visibility control is introduced.                  |
-| EMG channels    | Dedicated EMG collection selects existing signals. Analog channels retain their separate source representation even if labels match.       |
-| IK / ID results | Individual variable names and explicit units/rates are browsable; model samples are not loaded or plotted.                                 |
+| Collection      | Interaction                                                                                                                                                                         |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Markers         | Visibility checkbox; name selects the marker and its XYZ plot; double-click or pencil renames it. Show all restores every marker, including those outside the search results.       |
+| Analog channels | Name selects the existing primary plot; double-click or pencil renames it. Explicit units and sampling rates appear below names.                                                    |
+| Force platforms | Name selects the force plot; double-click or pencil renames it. Global force/plate visibility stays in Display.                                                                     |
+| Events          | Single click seeks to the event frame, pauses playback and opens the same editor as clicking its timeline marker. No inline rename action.                                          |
+| Rigid bodies    | Name selects the body-position signal when available; double-click or pencil renames the body and its signal label together.                                                        |
+| EMG channels    | Name selects the signal; double-click or pencil renames it independently of the Analog collection.                                                                                  |
+| IK / ID results | Double-click or pencil renames the variable. Explicit units/rates remain visible; model samples are not loaded or plotted. Time rows stay hidden and retain their source positions. |
 
 The H5 importer normalizes a small IK/ID catalog from `Data` shapes, `Labels`,
 per-variable `Units` and explicit `SamplingFrequency`. A case-insensitive `time`
@@ -34,6 +39,8 @@ copies of numerical arrays. File Info retains recording/subject/provenance
 summaries; Display retains global scene controls.
 
 Synthetic tests cover counts, optional collections, cross-category search,
-model metadata, time-row exclusion and empty states. Browser checks exercise
-marker selection/visibility and Show all under filtering, plot selection, event
-seeking, keyboard section toggles and the existing recording lifecycle.
+model metadata, time-row exclusion, empty states, label validation and stable
+source identities. Rename/history tests verify unchanged samples and C3D/H5
+round trips. Browser checks exercise pencil/double-click editing across all
+non-event collections, shared event-editor navigation, marker visibility,
+plot selection, filtering, keyboard section toggles and the recording lifecycle.

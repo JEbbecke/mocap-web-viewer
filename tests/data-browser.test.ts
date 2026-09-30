@@ -136,8 +136,8 @@ it('reads model names and explicit units without loading samples or shifting mis
   const info = modelInfo(['time', '', 'knee_angle_r']);
   expect(info.modelResults?.ik?.variables).toBe(2);
   expect(info.modelResults?.ik?.entries).toEqual([
-    { name: 'Variable 2 (unlabelled)', unit: 'deg', rate: 120 },
-    { name: 'knee_angle_r', unit: undefined, rate: 120 },
+    { name: 'Variable 2 (unlabelled)', unit: 'deg', rate: 120, sourceIndex: 1 },
+    { name: 'knee_angle_r', unit: undefined, rate: 120, sourceIndex: 2 },
   ]);
   expect(info.modelResults?.id?.entries?.[0].unit).toBeUndefined();
   const mismatch = modelInfo(['time']).modelResults?.ik;

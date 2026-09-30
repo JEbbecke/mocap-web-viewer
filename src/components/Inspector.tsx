@@ -113,8 +113,13 @@ export function Inspector({
               ))}
             </select>
             <p className="small muted">
-              {resolveConnections(data.markers.labels, connectionSet).length} matching links.
-              Display guides between named markers; no inferred joint centres.
+              {
+                resolveConnections(
+                  data.markers.connectionLabels ?? data.markers.labels,
+                  connectionSet,
+                ).length
+              }{' '}
+              matching links. Display guides between named markers; no inferred joint centres.
             </p>
             <h4>Force display</h4>
             <label className="field-label">

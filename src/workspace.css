@@ -1172,3 +1172,49 @@ footer .privacy-dot {
     height: 254px;
   }
 }
+.history-controls {
+  display: flex;
+  gap: 4px;
+}
+.marker-row .rename-marker {
+  flex: 0 0 auto;
+  width: 28px;
+  padding: 4px;
+}
+.label-rename {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
+  padding: 4px;
+}
+.label-rename input {
+  width: 100%;
+  min-width: 0;
+}
+.label-rename button {
+  flex: 0 0 auto;
+  width: auto;
+  padding: 4px 8px;
+}
+.label-rename [role='alert'] {
+  color: #f4a89d;
+  font-size: 12px;
+  width: 100%;
+}
+
+.analog-row {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+.analog-row .data-entry {
+  flex: 1;
+  min-width: 0;
+}
+.analog-row .rename-label {
+  flex: 0 0 auto;
+  width: 28px;
+  padding: 4px;
+}

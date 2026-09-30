@@ -3,6 +3,9 @@ import { readParameters, number, nums, type Parameter } from '../importers/c3d/p
 import { cropInterval, eventInInterval } from '../motion/crop';
 import type { MotionEvent } from '../motion/types';
 import { writeC3DEvents } from './c3dEvents';
+import { writeC3DLabels } from './c3dLabels';
+import { parseDataLabelKey } from '../motion/dataLabels';
+import { labels as parameterLabels } from '../importers/c3d/parameters';
 
 /** Source-preserving crop serializer. Never requantizes scientific samples.
  * Raw values and POINT/ANALOG units stay together, even for m/cm sources that
@@ -12,8 +15,29 @@ export function exportC3D(
   start: number,
   end: number,
   events?: MotionEvent[],
+  labels?: string[],
+  analogLabels?: string[],
+  dataLabels?: Record<string, string>,
 ): ArrayBuffer {
+  if (labels !== undefined) source = writeC3DLabels(source, labels);
+  if (analogLabels !== undefined) source = writeC3DLabels(source, analogLabels, 'ANALOG');
   const original = parseC3D(source, 'source.c3d');
+  if (dataLabels && Object.keys(dataLabels).length) {
+    const { params } = readParameters(new DataView(source));
+    const old = parameterLabels(params, 'FORCE_PLATFORM:LABELS');
+    const names = Array.from(
+      { length: number(params, 'FORCE_PLATFORM:USED', 0) },
+      (_, i) => old[i] || `Plate ${i + 1}`,
+    );
+    for (const [key, label] of Object.entries(dataLabels)) {
+      const { kind, index } = parseDataLabelKey(key);
+      const sourceIndex = original.forcePlatforms[index]?.sourceIndex;
+      if (kind !== 'plate' || sourceIndex === undefined)
+        throw new Error('Unsupported C3D label target.');
+      names[sourceIndex] = label;
+    }
+    return exportC3D(writeC3DLabels(source, names, 'FORCE_PLATFORM'), start, end, events);
+  }
   const interval = cropInterval(original, start, end);
   if (events !== undefined)
     return exportC3D(

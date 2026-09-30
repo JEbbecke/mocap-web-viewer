@@ -2,7 +2,17 @@ import { create } from 'zustand';
 import type { MotionData } from '../motion/types';
 import { cropMotionData } from '../motion/crop';
 import { croppedFilename } from '../exporters';
-import { addEvent, updateEvent, deleteEvent, type EventFields } from '../motion/events';
+import { eventCommand, type EventFields } from '../motion/events';
+import {
+  emptyHistory,
+  executeEdit,
+  travelHistory,
+  type EditCommand,
+  type EditHistory,
+} from '../motion/history';
+import { renameMarkerCommand } from '../motion/markerLabels';
+import { renameAnalogCommand } from '../motion/analogLabels';
+import { renameDataCommand, type DataLabelTarget } from '../motion/dataLabels';
 import { trackEvent } from '../analytics';
 export type DisplayKey =
   | 'markers'
@@ -16,6 +26,9 @@ export type DisplayKey =
   | 'axes';
 export type CameraPreset = 'perspective' | 'front' | 'side' | 'top';
 interface Session {
+  eventEditor: { index: number | 'new' } | null;
+  history: EditHistory<MotionData>;
+  dirty: boolean;
   data: MotionData | null;
   originalData: MotionData | null;
   sourceFile: File | null;
@@ -40,6 +53,9 @@ interface Session {
   plot: string;
 }
 export const useSession = create<Session>(() => ({
+  eventEditor: null,
+  history: emptyHistory(),
+  dirty: false,
   data: null,
   originalData: null,
   sourceFile: null,
@@ -89,7 +105,11 @@ export function setCamera(preset: CameraPreset) {
   useSession.setState((s) => ({ camera: { preset, revision: s.camera.revision + 1 } }));
 }
 export function setData(data: MotionData, sourceFile: File | null = null) {
+  cancelImport();
   useSession.setState({
+    eventEditor: null,
+    history: emptyHistory(),
+    dirty: false,
     data,
     sourceFile,
     originalData: null,
@@ -173,12 +193,15 @@ export function selectCrop(start: number, end: number) {
     useSession.setState({ cropSelection: { start, end }, playing: false });
 }
 export function applyCrop() {
-  const { data, cropSelection, originalData } = useSession.getState();
-  if (!data || !cropSelection) return;
+  const { data, cropSelection, originalData, busy } = useSession.getState();
+  if (!data || !cropSelection || busy) return;
   try {
     const cropped = cropMotionData(data, cropSelection.start, cropSelection.end);
     useSession.setState({
       data: cropped,
+      eventEditor: null,
+      history: emptyHistory(true),
+      dirty: true,
       originalData: originalData ?? data,
       cropSelection: null,
       frame: 0,
@@ -191,7 +214,8 @@ export function applyCrop() {
   }
 }
 export function restoreOriginal() {
-  const { originalData, sourceFile } = useSession.getState();
+  const { originalData, sourceFile, busy } = useSession.getState();
+  if (busy) return;
   if (originalData) setData(originalData, sourceFile);
 }
 export function editSessionEvent(
@@ -199,17 +223,65 @@ export function editSessionEvent(
   index: number,
   fields?: EventFields,
 ) {
-  const { data, originalData, busy } = useSession.getState();
+  const { data, busy } = useSession.getState();
   if (!data || busy) return;
-  const next =
-    action === 'delete'
-      ? deleteEvent(data, index)
-      : action === 'add'
-        ? addEvent(data, fields!)
-        : updateEvent(data, index, fields!);
+  commitEdit(eventCommand(data, action, index, fields));
+}
+export function openSessionEvent(index: number | 'new') {
+  const { data, busy } = useSession.getState();
+  if (!data || busy || (index !== 'new' && !data.events[index])) return;
+  useSession.setState({ eventEditor: { index }, playing: false });
+  if (index !== 'new') setFrame(data.events[index].time * data.timeline.rate);
+}
+export function renameSessionData(target: DataLabelTarget, input: string) {
+  const { data, busy } = useSession.getState();
+  if (!data || busy) return;
+  const command = renameDataCommand(data, target, input);
+  if (command) commitEdit(command);
+}
+export function renameSessionMarker(marker: number, input: string) {
+  const { data, busy } = useSession.getState();
+  if (!data || busy) return;
+  const command = renameMarkerCommand(data, marker, input);
+  if (command) commitEdit(command);
+}
+export function commitEdit(command: EditCommand<MotionData>) {
+  const { data, originalData, busy, history } = useSession.getState();
+  if (!data || busy) return;
+  const next = executeEdit(history, data, command);
   useSession.setState({
-    data: next,
+    data: next.value,
+    eventEditor: null,
+    history: next.history,
+    dirty: next.history.revision !== next.history.cleanRevision,
     originalData: originalData ?? data,
+    saved: false,
+    playing: false,
+    error: null,
+  });
+}
+export function renameSessionAnalog(channel: number, input: string) {
+  const { data, busy } = useSession.getState();
+  if (!data || busy) return;
+  const command = renameAnalogCommand(data, channel, input);
+  if (command) commitEdit(command);
+}
+export function undoEdit() {
+  moveHistory('undo');
+}
+export function redoEdit() {
+  moveHistory('redo');
+}
+function moveHistory(direction: 'undo' | 'redo') {
+  const { data, history, busy } = useSession.getState();
+  if (!data || busy) return;
+  const next = travelHistory(history, data, direction);
+  if (next.history === history) return;
+  useSession.setState({
+    data: next.value,
+    eventEditor: null,
+    history: next.history,
+    dirty: next.history.revision !== next.history.cleanRevision,
     saved: false,
     playing: false,
     error: null,
@@ -246,7 +318,12 @@ export function saveAs() {
       ? croppedFilename(sourceFile.name)
       : sourceFile.name.replace(
           /\.(c3d|h5|hdf5)$/i,
-          data.source.eventsEdited ? '_edited.$1' : '_copy.$1',
+          data.source.eventsEdited ||
+            data.source.labelsEdited ||
+            data.source.analogLabelsEdited ||
+            Object.keys(data.source.dataLabels ?? {}).length
+            ? '_edited.$1'
+            : '_copy.$1',
         );
     document.body.append(link);
     link.click();
@@ -265,5 +342,8 @@ export function saveAs() {
     start: data.source.crop?.start ?? 0,
     end: data.source.crop?.end ?? data.timeline.frameCount,
     events: data.source.eventsEdited ? data.events : undefined,
+    labels: data.source.labelsEdited ? data.markers.labels : undefined,
+    analogLabels: data.source.analogLabelsEdited ? data.analogs.map((a) => a.name) : undefined,
+    dataLabels: data.source.dataLabels,
   });
 }
