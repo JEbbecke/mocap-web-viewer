@@ -23,8 +23,10 @@ platforms still produce their existing import warnings.
 
 ## Institute H5 mappings
 
-- `MetaData`: SubjectID, Age, Sex, BodyHeight, BodyMass, Condition; Project,
-  ProjectPI, OriginalFiles, PathFile, FileCreationLocal, FileCreationUTC, LastUpdate.
+- Current `MetaData/Project`: SubjectID, SubjectGroup, Age, Sex, BodyHeight,
+  BodyMass, Condition, Project and ProjectPI. Current `MetaData/FileInfo`:
+  OriginalFiles, PathFile, FileCreationLocal, FileCreationUTC and LastUpdate.
+  Flat MetaData attributes remain the fallback for older layouts.
 - `MetaData/Location`: Lat and Lon, including valid zero coordinates.
 - `Trajectories@GlobalCoordinateSystem`: displayed only when supplied; the
   renderer's Z-up convention is not treated as an embedded coordinate system.

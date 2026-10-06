@@ -27,6 +27,8 @@ const h5Fixture = JSON.parse(await readFile('tests/fixtures/h5.json', 'utf8'));
 await writeFile('.local/synthetic.h5', Buffer.from(h5Fixture.base64, 'base64'));
 const populatedH5 = JSON.parse(await readFile('tests/fixtures/institute-h5.json', 'utf8'));
 await writeFile('.local/populated.h5', Buffer.from(populatedH5.base64, 'base64'));
+const currentH5 = JSON.parse(await readFile('tests/fixtures/current-h5.json', 'utf8'));
+await writeFile('.local/current-browser.h5', Buffer.from(currentH5.base64, 'base64'));
 // Synthetic metadata exercises all curated sections without participant data.
 await h5.ready;
 const syntheticInfoPath = 'C:\\synthetic\\' + 'long-folder-name-'.repeat(12) + '\\recording.c3d';
@@ -733,9 +735,10 @@ try {
     await page.getByRole('button', { name: 'Jump to beginning', exact: true }).click();
   }
   // Populated schema, actual import/export workers, events and no-op byte identity.
-  for (const [label, path] of [['populated', resolve('.local/populated.h5')]].filter(([, p]) =>
-    existsSync(p),
-  )) {
+  for (const [label, path] of [
+    ['populated', resolve('.local/populated.h5')],
+    ['current', resolve('.local/current-browser.h5')],
+  ].filter(([, p]) => existsSync(p))) {
     const open = async (file) => {
       await page.getByLabel('Open motion file').setInputFiles(file);
       await page.waitForFunction(
@@ -793,9 +796,13 @@ try {
     await page.getByLabel('Time (s)', { exact: true }).fill('0.1');
     assert.equal(
       await page.getByLabel('Context', { exact: true }).count(),
-      0,
-      'unsupported context is not offered',
+      label === 'current' ? 1 : 0,
+      'context follows the imported event schema',
     );
+    if (label === 'current') {
+      await page.getByLabel('Context', { exact: true }).fill('Left');
+      await page.getByLabel('Subject', { exact: true }).fill('Synthetic browser subject');
+    }
     await page.getByRole('button', { name: 'Save event', exact: true }).click();
     const edited = await save('edited');
     await open(edited);

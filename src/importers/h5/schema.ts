@@ -3,6 +3,7 @@ import { positiveRate, uniqueLabels } from '../../motion/math';
 import { forceScale, millimetres, momentScale, MOTION_UNITS } from '../../motion/units';
 import { validateMotion } from '../../motion/validation';
 import { h5RecordingInfo } from './metadata';
+import { h5Layout } from './layout';
 
 /** Structural subset of h5wasm, also usable with an in-memory test tree. */
 export interface H5Node {
@@ -15,7 +16,7 @@ export interface H5Node {
 }
 function node(parent: H5Node, path: string, required = false): H5Node | undefined {
   const item = parent.get?.(path) as H5Node | null;
-  if (required && !item) throw new Error(`Unsupported institute H5 schema: missing ${path}.`);
+  if (required && !item) throw new Error(`Missing ${path} in institute H5 schema.`);
   return item || undefined;
 }
 
@@ -73,6 +74,11 @@ function numeric(
 ): { values: ArrayLike<number>; shape: number[] } {
   if (!n?.shape) throw new Error(`Missing numeric H5 dataset: ${path}.`);
   const values = n.value;
+  if (
+    (n.metadata && ![0, 1, 8].includes(n.metadata.type)) ||
+    (Array.isArray(values) && values.some((v) => typeof v !== 'number' && typeof v !== 'bigint'))
+  )
+    throw new Error(`Invalid numeric dataset type: ${path}.`);
   if (!ArrayBuffer.isView(values) && !Array.isArray(values))
     throw new Error(`Invalid numeric dataset: ${path}.`);
   const shape = n.shape;
@@ -138,9 +144,12 @@ function corners(
 }
 
 export function parseH5Tree(root: H5Node, name: string): MotionData {
+  const layout = h5Layout(root);
   const traj = node(root, 'Trajectories', true)!,
     labeled = node(root, 'Trajectories/Labeled', true)!;
-  const { values, shape } = numeric(node(labeled, 'Data', true), 'Trajectories/Labeled/Data');
+  const markerData = node(labeled, 'Data');
+  if (!markerData) throw new Error('Missing Trajectories/Labeled/Data dataset.');
+  const { values, shape } = numeric(markerData, 'Trajectories/Labeled/Data');
   const rawLabels = stringArray(attr(labeled, 'Labels'));
   if (shape.length !== 3 || shape[1] !== 4 || rawLabels.length !== shape[0])
     throw new Error('Unsupported H5 marker layout: expected [labels,4,frames].');
@@ -150,6 +159,34 @@ export function parseH5Tree(root: H5Node, name: string): MotionData {
   const warnings: string[] = [],
     unit = str(attr(labeled, 'Unit'), 'mm'),
     scale = millimetres(unit);
+  const checkCount = (group: H5Node, key: string, expected: number, path: string) => {
+    const value = attr(group, key);
+    if (value != null && Number(scalar(value)) !== expected) {
+      const message = `${path}@${key}: does not match dataset sample count.`;
+      if (layout === 'institute-current') throw new Error(message);
+      warnings.push(`${message} Legacy dataset dimensions retained.`);
+    }
+  };
+  const checkExtent = (group: H5Node, samples: number, path: string) => {
+    if (attr(group, 'StartFrame') == null) return;
+    const start = Number(scalar(attr(group, 'StartFrame')));
+    const step = Number(scalar(attr(group, 'FrameStep')) ?? 1);
+    if (!Number.isSafeInteger(start) || !Number.isSafeInteger(step) || step < 1) {
+      if (layout === 'institute-current') throw new Error(`${path}: invalid StartFrame/FrameStep.`);
+      return;
+    }
+    if (attr(group, 'EndFrame') != null)
+      checkCount(group, 'EndFrame', start + (samples - 1) * step, path);
+  };
+  checkCount(traj, 'NumFrames', frameCount, 'Trajectories');
+  checkCount(labeled, 'NumLabeled', count, 'Trajectories/Labeled');
+  if (attr(traj, 'EndFrame') != null && attr(traj, 'StartFrame') != null)
+    checkCount(
+      traj,
+      'EndFrame',
+      Number(scalar(attr(traj, 'StartFrame'))) + frameCount - 1,
+      'Trajectories',
+    );
   if (attr(labeled, 'Unit') == null)
     warnings.push('H5 marker unit is absent; mm is assumed, matching the Python reader.');
   const labels = uniqueLabels(rawLabels),
@@ -162,6 +199,7 @@ export function parseH5Tree(root: H5Node, name: string): MotionData {
   const residuals = res ? new Float64Array(frameCount * count) : undefined;
   const pointClock = clock(labeled, 'Trajectories/Labeled', frameCount, 0);
   const hasTrialClock =
+    layout === 'institute-current' ||
     !!pointClock ||
     !!node(root, 'Analog/Time') ||
     Number(scalar(attr(node(root, 'Events'), 'SchemaVersion'))) === 1;
@@ -173,6 +211,10 @@ export function parseH5Tree(root: H5Node, name: string): MotionData {
         throw new Error(
           'Trajectories/Labeled/Time: irregular marker clock is unsupported by frame playback.',
         );
+  const streamStart = (group: H5Node, streamRate: number) =>
+    layout === 'institute-current' && attr(group, 'StartFrame') != null
+      ? Number(scalar(attr(group, 'StartFrame'))) / streamRate - timeOrigin
+      : 0;
   for (let f = 0; f < frameCount; f++)
     for (let m = 0; m < count; m++) {
       const i = f * count + m;
@@ -194,17 +236,27 @@ export function parseH5Tree(root: H5Node, name: string): MotionData {
       const analogRate = positiveRate(Number(scalar(attr(analog, 'SamplingFrequency'))), 'Analog'),
         n = data.shape[1];
       const units = stringArray(attr(analog, 'Units'));
+      if (units.length && units.length !== names.length)
+        throw new Error('Analog/Units: channel count mismatch.');
+      const channels = attr(analog, 'Channels') as ArrayLike<number> | undefined;
+      if (channels && channels.length !== names.length)
+        throw new Error('Analog/Channels: channel count mismatch.');
+      if (channels && Array.from(channels).some((c) => !Number.isSafeInteger(Number(c))))
+        throw new Error('Analog/Channels: expected integer channel identities.');
+      checkCount(analog, 'NumSamples', n, 'Analog');
+      checkExtent(analog, n, 'Analog');
       const times = clock(analog, 'Analog', n, timeOrigin);
       for (let c = 0; c < names.length; c++)
         analogs.push({
           name: names[c],
           unit: units[c] || 'unknown',
+          sourceChannel: channels ? Number(channels[c]) : undefined,
           signal: timed(
             {
               values: Float64Array.from({ length: n }, (_, i) => Number(data.values[c * n + i])),
               rate: analogRate,
               components: 1,
-              startTime: 0,
+              startTime: streamStart(analog, analogRate),
             },
             times,
           ),
@@ -228,10 +280,12 @@ export function parseH5Tree(root: H5Node, name: string): MotionData {
       if (force.values.length !== moment.values.length || force.values.length !== cop.values.length)
         throw new Error('inconsistent vector lengths.');
       const countForce = force.values.length / 3;
+      checkCount(plate, 'NumSamples', countForce, path);
+      checkExtent(plate, countForce, path);
       const times = clock(plate, path, countForce, timeOrigin);
-      force = timed(force, times);
-      moment = timed(moment, times);
-      cop = timed(cop, times);
+      force = timed({ ...force, startTime: streamStart(plate, forceRate) }, times);
+      moment = timed({ ...moment, startTime: force.startTime }, times);
+      cop = timed({ ...cop, startTime: force.startTime }, times);
       let geometry: Series | undefined;
       try {
         geometry = corners(
@@ -279,14 +333,17 @@ export function parseH5Tree(root: H5Node, name: string): MotionData {
       if (tz) {
         const d = numeric(tz, `${path}/Tz`);
         if (d.shape.length === 2 && d.values.length === countForce * 3)
-          freeMoment = timed(vector(tz, `${path}/Tz`, forceRate, ms), times);
+          freeMoment = timed(
+            { ...vector(tz, `${path}/Tz`, forceRate, ms), startTime: force.startTime },
+            times,
+          );
         else if (d.values.length === countForce)
           freeMoment = timed(
             {
               values: Float64Array.from(d.values, (v) => Number(v) * ms),
               rate: forceRate,
               components: 1,
-              startTime: 0,
+              startTime: force.startTime,
             },
             times,
           );
@@ -333,7 +390,11 @@ export function parseH5Tree(root: H5Node, name: string): MotionData {
       const geometryClock = (s: Series | undefined) =>
         s &&
         timed(
-          { ...s, rate: s.values.length / s.components === frameCount ? rate : forceRate },
+          {
+            ...s,
+            rate: s.values.length / s.components === frameCount ? rate : forceRate,
+            startTime: s.values.length / s.components === countForce ? force.startTime : 0,
+          },
           s.values.length / s.components === countForce
             ? times
             : s.values.length / s.components === frameCount
@@ -370,9 +431,11 @@ export function parseH5Tree(root: H5Node, name: string): MotionData {
     Number(scalar(attr(eventGroup, 'SchemaVersion'))) === 1 &&
     str(attr(eventGroup, 'Scope')) === 'Trial clock; zero-based source point frames; seconds'
       ? ('institute-v1' as const)
-      : undefined;
+      : layout === 'institute-current' && attr(eventGroup, 'SchemaVersion') == null
+        ? ('institute-current' as const)
+        : undefined;
   const events: MotionEvent[] = [];
-  if (eventSchema) {
+  if (eventSchema && eventGroup?.keys?.().length) {
     const eventStrings = (key: string) => {
       const n = node(eventGroup!, key, true)!;
       if (
@@ -385,14 +448,30 @@ export function parseH5Tree(root: H5Node, name: string): MotionData {
     };
     const names = eventStrings('Name');
     const descriptions = eventStrings('Description');
+    const contexts = eventSchema === 'institute-current' ? eventStrings('Context') : undefined;
+    const subjects = eventSchema === 'institute-current' ? eventStrings('Subject') : undefined;
+    const flags =
+      eventSchema === 'institute-current'
+        ? numeric(node(eventGroup!, 'GenericFlag', true), 'Events/GenericFlag')
+        : undefined;
+    const icons =
+      eventSchema === 'institute-current'
+        ? numeric(node(eventGroup!, 'IconID', true), 'Events/IconID')
+        : undefined;
     const times = numeric(node(eventGroup!, 'Time', true), 'Events/Time');
     const frames = numeric(node(eventGroup!, 'Frame', true), 'Events/Frame');
     if (
       times.shape.length !== 1 ||
       frames.shape.length !== 1 ||
-      [descriptions.length, times.values.length, frames.values.length].some(
-        (n) => n !== names.length,
-      )
+      (flags && (flags.shape.length !== 1 || icons!.shape.length !== 1)) ||
+      [
+        descriptions.length,
+        times.values.length,
+        frames.values.length,
+        ...(contexts
+          ? [contexts.length, subjects!.length, flags!.values.length, icons!.values.length]
+          : []),
+      ].some((n) => n !== names.length)
     )
       throw new Error(
         'Events: Name, Description, Time and Frame must have matching one-dimensional rows.',
@@ -401,7 +480,29 @@ export function parseH5Tree(root: H5Node, name: string): MotionData {
       const time = Number(times.values[i]) - timeOrigin;
       if (!Number.isFinite(time) || !Number.isSafeInteger(Number(frames.values[i])))
         throw new Error(`Events: invalid time/frame at row ${i}.`);
-      events.push({ label, description: descriptions[i], context: '', time, sourceIndex: i });
+      if (
+        flags &&
+        (flags.shape.length !== 1 ||
+          icons!.shape.length !== 1 ||
+          !Number.isSafeInteger(Number(flags.values[i])) ||
+          !Number.isSafeInteger(Number(icons!.values[i])))
+      )
+        throw new Error(`Events: invalid flag/icon at row ${i}.`);
+      events.push({
+        label,
+        description: descriptions[i],
+        context: contexts?.[i] ?? '',
+        ...(subjects ? { subject: subjects[i] } : {}),
+        time,
+        sourceIndex: i,
+        ...(eventSchema === 'institute-current'
+          ? {
+              sourceFrame: Number(frames.values[i]),
+              genericFlag: Number(flags!.values[i]),
+              iconId: Number(icons!.values[i]),
+            }
+          : {}),
+      });
     });
   } else if (eventGroup?.keys?.().length || Object.keys(eventGroup?.attrs ?? {}).length)
     warnings.push(
@@ -425,8 +526,11 @@ export function parseH5Tree(root: H5Node, name: string): MotionData {
       ),
     };
   };
-  if (node(root, 'MetaData')) metadata.sourceTree = metadataTree(node(root, 'MetaData')!);
   metadata.hierarchy = metadataTree(root);
+  if (node(root, 'MetaData'))
+    metadata.sourceTree = (
+      metadata.hierarchy as { groups: Record<string, unknown> }
+    ).groups.MetaData;
   const signals: NonNullable<MotionData['signals']> = [];
   // IKResults/IDResults expose only variable catalogs/counts, not plotted signals.
   // Their original datasets remain available to the raw-tree exporter.
@@ -448,28 +552,57 @@ export function parseH5Tree(root: H5Node, name: string): MotionData {
         ? (n - 1) / (times![n - 1] - times![0])
         : rate;
     const units = stringArray(attr(group, 'Units'));
+    if (units.length && units.length !== labels.length)
+      throw new Error('EMG/Units: channel count mismatch.');
+    const channels = attr(group, 'Channels') as ArrayLike<number> | undefined;
+    if (channels && channels.length !== labels.length)
+      throw new Error('EMG/Channels: channel count mismatch.');
+    if (channels && Array.from(channels).some((c) => !Number.isSafeInteger(Number(c))))
+      throw new Error('EMG/Channels: expected integer channel identities.');
+    checkCount(group, 'NumSamples', n, groupName);
+    checkExtent(group, n, groupName);
     if (times?.length && (times[0] >= frameCount / rate || times.at(-1)! < 0))
       warnings.push(
         `${groupName}: timestamps do not overlap the marker recording; no alignment offset has been invented.`,
       );
-    labels.forEach((name, c) =>
+    labels.forEach((name, c) => {
+      const sourceChannel = channels ? Number(channels[c]) : undefined;
+      const analogIndex =
+        sourceChannel === undefined
+          ? -1
+          : analogs.findIndex((a) => a.sourceChannel === sourceChannel);
+      const mapped = analogs[analogIndex];
+      const same =
+        mapped &&
+        mapped.unit === (units[c] || 'unknown') &&
+        mapped.signal.rate === signalRate &&
+        mapped.signal.values.length === n &&
+        (times
+          ? mapped.signal.times?.length === n &&
+            times.every((t, i) => t === mapped.signal.times![i])
+          : !mapped.signal.times && mapped.signal.startTime === streamStart(group, signalRate)) &&
+        mapped.signal.values.every((v, i) => Object.is(v, Number(data.values[c * n + i])));
       signals.push({
         name,
         sourceIndex: c,
         sourcePath: groupName,
         group: groupName,
         unit: units[c] || 'unknown',
-        signal: timed(
-          {
-            values: Float64Array.from({ length: n }, (_, i) => Number(data.values[c * n + i])),
-            rate: signalRate,
-            components: 1,
-            startTime: 0,
-          },
-          times,
-        ),
-      }),
-    );
+        sourceChannel,
+        ...(same ? { analogIndex } : {}),
+        signal: same
+          ? mapped.signal
+          : timed(
+              {
+                values: Float64Array.from({ length: n }, (_, i) => Number(data.values[c * n + i])),
+                rate: signalRate,
+                components: 1,
+                startTime: streamStart(group, signalRate),
+              },
+              times,
+            ),
+      });
+    });
   }
   const rigidBodies: NonNullable<MotionData['rigidBodies']> = [],
     bodies = node(root, 'RigidBodies');
@@ -480,6 +613,8 @@ export function parseH5Tree(root: H5Node, name: string): MotionData {
     const position = vector(node(body, 'Position'), `${path}/Position`, rate, ps);
     if (position.values.length !== frameCount * 3)
       throw new Error(`${path}/Position: cannot establish body sampling from marker grid.`);
+    checkCount(body, 'NumSamples', frameCount, path);
+    checkExtent(body, frameCount, path);
     const times = pointClock?.map((t) => t - timeOrigin),
       rotationNode = node(body, 'Rotation');
     const rotation = rotationNode
@@ -487,11 +622,12 @@ export function parseH5Tree(root: H5Node, name: string): MotionData {
       : undefined;
     if (rotation && rotation.values.length !== frameCount * 9)
       throw new Error(`${path}/Rotation: inconsistent body frame count.`);
+    const bodyPosition = timed(position, times);
     rigidBodies.push({
       sourcePath: path,
       name: str(attr(body, 'Name'), key),
       markers: stringArray(node(body, 'Markers')?.value),
-      position: timed(position, times),
+      position: bodyPosition,
       rotation,
     });
     signals.push({
@@ -499,7 +635,7 @@ export function parseH5Tree(root: H5Node, name: string): MotionData {
       name: str(attr(body, 'Name'), key),
       group: 'RigidBodies',
       unit: MOTION_UNITS.position,
-      signal: timed(position, times),
+      signal: bodyPosition,
     });
   }
   const typeNode = node(labeled, 'Type'),
@@ -540,6 +676,7 @@ export function parseH5Tree(root: H5Node, name: string): MotionData {
       info: h5RecordingInfo(root),
       ...(hasTrialClock ? { timeOrigin } : {}),
       ...(eventSchema ? { eventSchema } : {}),
+      h5Layout: layout,
     },
     timeline: { frameCount, rate, firstFrame, duration: (frameCount - 1) / rate },
     markers: { labels, positions, valid, residuals, quality },

@@ -186,7 +186,14 @@ it.each(['marker', 'analog'] as const)(
               for (const key of a.keys())
                 compare(a.get(key) as h5.Group | h5.Dataset, b.get(key) as h5.Group | h5.Dataset);
             } else {
-              expect((b as h5.Dataset).value, a.path).toEqual((a as h5.Dataset).value);
+              const sourceValues = (a as h5.Dataset).value;
+              const expectedValues =
+                kind === 'marker' && /^\/RigidBodies\/[^/]+\/Markers$/.test(a.path)
+                  ? (sourceValues as string[]).map((name) =>
+                      name === original.markers.labels[0] ? data.markers.labels[0] : name,
+                    )
+                  : sourceValues;
+              expect((b as h5.Dataset).value, a.path).toEqual(expectedValues);
               expect((b as h5.Dataset).dtype).toEqual((a as h5.Dataset).dtype);
             }
           };

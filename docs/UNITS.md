@@ -100,6 +100,7 @@ scientific distance convention and isolates rendering scale while retaining Nm.
 moments/Tz, mm/cm/m C3D sources, explicit moment channels, types 3/4, H5 mm/Nmm and
 m/Nm, crop, event edits, raw exported values/metadata and re-imports. Existing
 moving-plate, lifecycle, compressed-H5, binary-encoding and event tests remain.
-The authoritative H5 test reads only; export and browser lifecycle checks use
-synthetic H5 files. Private SI oracle comparisons convert expected comparison
+The default authoritative H5 check reads only; export validation is explicitly
+enabled with `JE_VALIDATE_REFERENCE=1` and independently compared by h5py.
+Browser lifecycle checks use synthetic H5 files. Private SI oracle comparisons convert expected comparison
 units explicitly without rewriting the oracle or loosening physical tolerances.

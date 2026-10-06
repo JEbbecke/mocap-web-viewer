@@ -20,7 +20,6 @@ const folder = resolve('.local/h5-validation');
 mkdirSync(folder, { recursive: true });
 const synthetic = resolve(folder, 'synthetic.h5');
 writeFileSync(synthetic, Buffer.from(fixture.base64, 'base64'));
-const reference = resolve('reference-data/authoritative_reference.h5');
 const ds = (f: h5.Group, path: string) => f.get(path) as h5.Dataset;
 
 function compareTree(a: h5.Group, b: h5.Group, ignore: (path: string) => boolean = () => false) {
@@ -50,10 +49,7 @@ function compareTree(a: h5.Group, b: h5.Group, ignore: (path: string) => boolean
   }
 }
 
-describe.each([
-  ['synthetic', synthetic],
-  ['authoritative', reference],
-])('%s complete H5 lifecycle', (label, path) => {
+describe.each([['synthetic', synthetic]])('%s complete H5 lifecycle', (label, path) => {
   it.skipIf(!existsSync(path))(
     'checks imports read-only; exercises export/edit/crop only for synthetic data',
     async () => {
@@ -68,7 +64,7 @@ describe.each([
           10,
         );
         expect(motion.markers.positions).toBeInstanceOf(Float64Array);
-        expect(motion.markers.quality?.cameraCount).toBeGreaterThan(0);
+        if (label === 'synthetic') expect(motion.markers.quality?.cameraCount).toBeGreaterThan(0);
         expect(motion.forcePlatforms).not.toHaveLength(0);
         expect(motion.forcePlatforms[0].freeMoment?.components).toBe(3);
         expect(motion.forcePlatforms[0].corners).toBeDefined();
@@ -123,12 +119,6 @@ describe.each([
           expect(motion.markers.valid[2]).toBe(1); // unknown residual is not invalid
           expect(motion.markers.valid[5]).toBe(0);
           expect(motion.events[1].description).toBe(' keep spaces ');
-        }
-
-        // Never copy or reproduce participant contents from the private reference.
-        if (label === 'authoritative') {
-          expect(readFileSync(path).equals(before)).toBe(true);
-          return;
         }
 
         const noOp = createH5Output(h5, input, resolve(folder, `${label}-reconstructed.h5`));
@@ -353,7 +343,7 @@ it('supports missing optional groups and preserves opaque content in edited expo
         },
         'invalid.h5',
       ),
-    ).toThrow('missing Data');
+    ).toThrow('Missing Trajectories/Labeled/Data');
   } finally {
     input.close();
   }

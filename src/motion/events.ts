@@ -43,7 +43,7 @@ export type EventFields = Pick<
   'label' | 'context' | 'time' | 'description' | 'subject'
 >;
 export function eventEditingAvailable(data: MotionData) {
-  return data.source.format !== 'H5' || data.source.eventSchema === 'institute-v1';
+  return data.source.format !== 'H5' || data.source.eventSchema !== undefined;
 }
 export function eventContextAvailable(data: MotionData) {
   return data.source.eventSchema !== 'institute-v1';

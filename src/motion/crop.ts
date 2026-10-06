@@ -57,7 +57,15 @@ export function eventInInterval(time: number, start: number, end: number, origin
 
 export function cropMotionData(data: MotionData, startFrame: number, endFrame: number): MotionData {
   const interval = cropInterval(data, startFrame, endFrame);
-  const cut = (s: Series) => cropSeries(s, interval.start, interval.end);
+  const croppedSeries = new Map<Series, Series>();
+  const cut = (s: Series) => {
+    let result = croppedSeries.get(s);
+    if (!result) {
+      result = cropSeries(s, interval.start, interval.end);
+      croppedSeries.set(s, result);
+    }
+    return result;
+  };
   const count = data.markers.labels.length;
   const frameCount = endFrame - startFrame;
   return {

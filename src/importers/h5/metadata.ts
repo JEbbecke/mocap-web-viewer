@@ -6,12 +6,23 @@ import {
   type RecordingInfo,
 } from '../../motion/metadata';
 import type { H5Node } from './schema';
+import { h5Layout } from './layout';
 
 /** Reads attributes and dataset shapes only; no IK/ID samples are loaded or interpreted. */
 export function h5RecordingInfo(root: H5Node): RecordingInfo {
   const group = (path: string) => root.get?.(path) as H5Node | undefined;
   const meta = group('MetaData');
-  const attr = (key: string) => meta?.attrs?.[key]?.value;
+  const project = group('MetaData/Project'),
+    fileInfo = group('MetaData/FileInfo');
+  const fileKeys = new Set([
+    'FileCreationLocal',
+    'FileCreationUTC',
+    'LastUpdate',
+    'OriginalFiles',
+    'PathFile',
+  ]);
+  const attr = (key: string) =>
+    (fileKeys.has(key) ? fileInfo : project)?.attrs?.[key]?.value ?? meta?.attrs?.[key]?.value;
   const field = (key: string) =>
     metadataValue(attr(key), attr(`${key}Unit`) ?? attr(`${key}Units`));
   const createdLocal = field('FileCreationLocal'),
@@ -40,7 +51,23 @@ export function h5RecordingInfo(root: H5Node): RecordingInfo {
       const unit = units.length === shape[0] ? metadataText(units[i]) : undefined;
       return [{ name: name ?? `Variable ${i + 1} (unlabelled)`, unit, rate, sourceIndex: i }];
     }).flat();
-    return { variables: entries.length, entries };
+    return {
+      variables: entries.length,
+      entries,
+      samples: shape[1],
+      timeBasis:
+        h5Layout(root) === 'institute-current' ? ('independent' as const) : ('trial' as const),
+      metadata: typeof attrs?.Metadata?.value === 'string' ? attrs.Metadata.value : undefined,
+      // A literal declaration is metadata, not permission to assign degrees to translations.
+      inDegrees:
+        typeof attrs?.Metadata?.value === 'string'
+          ? /["']inDegrees["']\s*:\s*["']yes["']/i.test(attrs.Metadata.value)
+            ? true
+            : /["']inDegrees["']\s*:\s*["']no["']/i.test(attrs.Metadata.value)
+              ? false
+              : undefined
+          : undefined,
+    };
   };
   const coordinates = metadataValues(group('Trajectories')?.attrs?.GlobalCoordinateSystem?.value);
   const emgShape = group('EMG/Data')?.shape;
@@ -55,6 +82,7 @@ export function h5RecordingInfo(root: H5Node): RecordingInfo {
     emgChannels: emgShape?.length === 2 ? emgShape[0] : undefined,
     subject: {
       id: field('SubjectID'),
+      group: field('SubjectGroup'),
       age: field('Age'),
       sex: field('Sex'),
       height: field('BodyHeight'),

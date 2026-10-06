@@ -1,6 +1,6 @@
 # Event visualization and editing
 
-Click an event in the timeline or Data tab to seek to it and open its editor, or move playback and choose **Add Event**. Save applies the fields supported by the source format: label, time, description, and C3D context/subject. Delete requires **Confirm delete event**. Events appear as compact markers immediately above the time bar; close events occupy narrow lanes with vertical scrolling. Hover shows full labels/times, and the Events selector provides access to every event. Context Left is red, Right (also the spelling Rigth) is green, and other contexts are orange; matching ignores capitalization and surrounding whitespace. Export is available with or without edits or cropping. Restore original discards crops, data-label renames and event edits, and clears history.
+Click an event in the timeline or Data tab to seek to it and open its editor, or move playback and choose **Add Event**. Save applies the fields supported by the source format: label, time, description, and context/subject for C3D and current institute H5. Delete requires **Confirm delete event**. Events appear as compact markers immediately above the time bar; close events occupy narrow lanes with vertical scrolling. Hover shows full labels/times, and the Events selector provides access to every event. Context Left is red, Right (also the spelling Rigth) is green, and other contexts are orange; matching ignores capitalization and surrounding whitespace. Export is available with or without edits or cropping. Restore original discards crops, data-label renames and event edits, and clears history.
 
 ## Architecture and timing
 
@@ -23,9 +23,19 @@ Parameter storage grows when needed, updating header and POINT:DATA_START. Scien
 
 Edited exports clear legacy header event slots and use full-label EVENT parameters, avoiding stale duplicates. Header-only readers cannot display edited events. Crop-only header behavior is unchanged. Limits: 255 events, 255 UTF-8 bytes per text field, signed parameter record-offset capacity, and 255 parameter blocks. Segmented EVENT arrays are rejected on export. Proprietary parameters containing offsets or undocumented timing require vendor validation. C3D's float32 storage precision remains a format limitation; UI editing does not round times.
 
-## H5 schema version 1
+## Current institute H5
 
-The authoritative file establishes `/Events/{Name,Description,Frame,Time}`, with parallel rows, SchemaVersion=1 and a Scope identifying trial-clock seconds and zero-based source frames. H5 events now use the same immutable editor and timeline as C3D. Context and Subject controls are omitted because this format has no such columns; Description is preserved exactly, including Unicode and whitespace.
+The unversioned current reference has parallel Name, Description, Context, Subject,
+Time, Frame, GenericFlag and IconID datasets. Context/Subject controls are available.
+Frame is an absolute zero-based source point frame; Time is absolute trial seconds.
+Flags/icons follow source rows through sorting/deletion; new rows default to zero.
+Absent Events can be created in a known current layout. Explicit future versions
+fail clearly; unknown columns cannot be fabricated. Nested C3D EVENT parameters
+are original provenance and remain unchanged.
+
+## Previous H5 schema version 1
+
+The previous reference established `/Events/{Name,Description,Frame,Time}`, with parallel rows, SchemaVersion=1 and a Scope identifying trial-clock seconds and zero-based source frames. H5 events now use the same immutable editor and timeline as C3D. Context and Subject controls are omitted because this format has no such columns; Description is preserved exactly, including Unicode and whitespace.
 
 Import subtracts the marker clock origin from Time. Export adds the current source origin back, retaining untouched Time/Frame values exactly and recomputing Frame only after a time edit. Crop filters rows by physical time, preserves source frame numbering and adjusts relative UI time. Original row identity carries unknown one-dimensional event columns through sorting and deletion; adding an event with unknown columns fails explicitly because their values cannot be invented. Unknown event schemas remain read-only and block cropping when populated.
 

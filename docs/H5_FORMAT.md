@@ -1,6 +1,126 @@
-# Institute H5: authoritative schema
+# Institute H5: current authoritative schema
 
-Inspected locally, read-only, 25 September 2026. `scripts/inspect-h5.mjs` traverses the entire file, saving a private inventory of every path, shape, dtype, attribute, encoding, compression, dimension label and numerical summary to ignored `.local/h5-inventory.json`. Neither that inventory nor the reference belongs in Git. No network parsing is used.
+The ignored, read-only `reference-data/authoritative_reference.h5` was recursively
+inspected on 6 October 2026. It replaces the previous reference described below.
+No participant values are documented. `scripts/inspect-h5.mjs` produces a
+redacted structural inventory; private values must not enter logs or fixtures.
+
+## Current layout
+
+```text
+/
+  Analog/{Data,Time}
+  EMG/{Data,Time}
+  Events/{Context,Description,Frame,GenericFlag,IconID,Name,Subject,Time}
+  ForcePlates/<index>/{COP,Corners,Force,Moment,Origin,Position,Rotation,Time,Tz}
+  IDResults/{Data,Time}
+  IKResults/{Data,Time}
+  MetaData/{Project,FileInfo,Location,C3DParameters}
+  RigidBodies/<index>/{Markers,Position,Rotation}
+  Trajectories/Labeled/{Data,Residuals,Time,Type,Virtual}
+  CustomFields
+```
+
+There is no root or group SchemaVersion in the current reference. Its identifying
+layout is nested metadata and expanded event columns, with independent stream
+frame extents. `institute-current` is an internal layout identifier, not an
+invented H5 version. Explicit versions take precedence; the previous versioned
+layout and older Location/Offset plate layouts remain supported. Export preserves
+the imported layout without silently reinterpreting old semantics.
+
+Only labelled trajectories, matching labels and a valid point rate are required.
+Other groups are optional. CameraMasks and CameraMasksKnown are absent from the
+current reference and remain optional for older files. No compound datasets,
+root attributes or dimension labels were observed; CustomFields is empty.
+
+M = markers, F = point frames, C = channels, S = a stream's own samples, E = events.
+
+| Path                                      | Dtype / shape         | Units and clock                                              | Application support / crop / export                                                           |
+| ----------------------------------------- | --------------------- | ------------------------------------------------------------ | --------------------------------------------------------------------------------------------- |
+| Trajectories/Labeled/Data                 | float64 [M,4,F]       | XYZ in Unit, currently mm; fourth row opaque                 | Float64 canonical mm, 3D/plots; rename Labels; slice last axis; preserve raw values           |
+| Trajectories/Labeled/Residuals            | float64 [M,F]         | Spatial unit; negative invalid, NaN unavailable              | Quality/validity; finite XYZ remains valid with unknown residual; slice last axis             |
+| Trajectories/Labeled/Type                 | int8 [M,F]            | Codes unknown                                                | Structured quality; slice last axis                                                           |
+| Trajectories/Labeled/Virtual              | bool enum [M]         | FALSE/TRUE with signed int8 base                             | Static quality flag; preserve enum                                                            |
+| Trajectories/Labeled/Time                 | float64 [F]           | Absolute seconds; regular point clock                        | Recording origin; slice without source-time rebasing                                          |
+| {Analog,EMG}/Data                         | float64 [C,S]         | Per-channel Units, independent SamplingFrequency/Time        | Scalar plots; EMG maps Channels to analog identities and shares equal arrays; slice own clock |
+| {Analog,EMG}/Time                         | float64 [S]           | Absolute seconds, own sample frames                          | Synchronization; slice and update sample/frame extents                                        |
+| ForcePlates/<index>/{Force,Moment,COP,Tz} | float64 [3,S]         | Declared N/Nmm/mm/Nmm                                        | Internal N/Nm/mm/Nm; vector plots and existing force/COP rendering; slice own clock           |
+| ForcePlates/<index>/Corners               | float64 [3,4,S]       | Global mm, force or point geometry grid                      | Moving outline; slice own geometry clock; preserve corner order                               |
+| ForcePlates/<index>/Position              | float64 [3,S]         | Global mm                                                    | Structured/rendering pose; slice own geometry clock                                           |
+| ForcePlates/<index>/Rotation              | float64 [3,3,S]       | Dimensionless local-to-global matrices                       | Pose; slice own geometry clock; never rotate global vectors again                             |
+| ForcePlates/<index>/Origin                | float64 [3,1]         | Sensor offset, position unit                                 | Static; never translate already-global corners by this offset                                 |
+| ForcePlates/<index>/Time                  | float64 [S]           | Absolute seconds, independent force grid                     | Synchronization; slice                                                                        |
+| RigidBodies/<index>/Markers               | UTF-8 [members]       | Membership names                                             | Static metadata; update matching renamed marker references                                    |
+| RigidBodies/<index>/Position              | float64 [3,F]         | Unit; marker grid by sample count                            | mm position signals; slice point grid while retaining body's own frame origin                 |
+| RigidBodies/<index>/Rotation              | float64 [3,3,F]       | Parent convention unknown                                    | Structured orientation; slice point grid                                                      |
+| {IKResults,IDResults}/Data                | float64 [variables,S] | Labels, optional time row; per-variable units absent         | Catalog/counts and rename; samples remain in immutable source; crop independent clock         |
+| {IKResults,IDResults}/Time                | float64 [S]           | Independent processing clock; no declared trial relationship | Preserve without forced alignment; no new plots or invented offset                            |
+| Events/{Name,Context,Description,Subject} | UTF-8 [E]             | Parallel metadata                                            | Timeline/editor; preserve text/whitespace; CRUD and time-based row crop                       |
+| Events/Time                               | float64 [E]           | Absolute trial seconds                                       | Relative seconds internally; preserve untouched values exactly                                |
+| Events/Frame                              | int64 [E]             | Absolute zero-based source point frame                       | Preserve on label edit/crop; recompute only after time edit                                   |
+| Events/{GenericFlag,IconID}               | int64 [E]             | Flags/icons                                                  | Follow source row identity; new event defaults zero                                           |
+
+Floating datasets are little-endian float64. Text is variable-length UTF-8.
+Boolean attributes and datasets retain their enum type, not plain integer storage.
+
+### Current attributes and metadata
+
+- Trajectories: NumFrames, StartFrame, EndFrame (inclusive), SamplingFrequency.
+  Labeled: Labels, NumLabeled, Unit, ResidualStatus.
+- Analog/EMG: Channels (int64 vectors), Labels/Units (UTF-8 vectors), NumSamples,
+  StartFrame/EndFrame (int64), SamplingFrequency (float64).
+- Plates: Name, CoordinateSystem, FreeMomentFrame, NumSamples, SamplingFrequency,
+  StartFrame, EndFrame, FrameStep, unit_force, unit_moment, unit_position.
+  FrameStep=1 in this reference; no SchemaVersion.
+- Bodies: Name, NumSamples, Unit, StartFrame, EndFrame; no separate Time/rate.
+  Their source frame origin can differ from Trajectories and survives cropping.
+- IK/ID: Labels, NumSamples, Metadata. Metadata is opaque processing text, never
+  evaluated as Python. IK's inDegrees=yes does not establish units for all
+  variables: translations and rotations differ. ID units remain unknown.
+- MetaData/Project: SubjectID, SubjectGroup, Age, Sex, BodyHeight, BodyMass,
+  Condition, Project, ProjectPI (strings, including numeric-looking values).
+- MetaData/FileInfo: FileCreationLocal, FileCreationUTC, LastUpdate, OriginalFiles,
+  PathFile. These are provenance; retain their original history on crop.
+- MetaData/Location: Lat, Lon; unavailable/Unknown values stay hidden.
+- MetaData/C3DParameters: nested acquisition/provenance for ANALOG, POINT, EVENT,
+  EVENT_CONTEXT, FORCE_PLATFORM, MANUFACTURER, PROCESSING, SEG and TRIAL.
+  Parameter groups have description, is_locked (boolean enum), type (int64) and
+  value (typed scalar/vector/matrix attribute); **METADATA** has DESCRIPTION and
+  IS_LOCKED. Preserve this hierarchy and dtype. These are original C3D records,
+  not a second live Events collection. Matching POINT/ANALOG label aliases are
+  updated when live labels change; unrelated provenance remains unchanged.
+
+Scientific data, descriptive metadata, original provenance and internal layout
+information stay separate. File Info reads nested metadata, with flat legacy
+fallback. Data/File Info never expose raw hierarchy JSON.
+
+### Units, timing and uncertainty
+
+Canonical data remain mm/N/Nm/seconds; source Nmm moments convert independently
+to Nm. Raw H5 export retains source numerical values and matching units; rendering
+scale and lab-to-scene conventions never enter scientific serialization.
+Global plate vectors are not rotated twice. Handedness, compass directions, body
+parent convention and Type codes cannot be established from this file alone.
+
+Point and analog/force clocks have different rates. Half-open crop intervals
+include all high-rate subframes and retain absolute source timestamps and frames.
+Each stream updates its own sample/frame extents, including plate FrameStep.
+IK/ID have independent clocks; no alignment shift or model units are fabricated.
+Their catalogs retain opaque processing metadata and angular declarations.
+
+### Preservation policy
+
+Unchanged export is byte-identical. Modified export retains supported hierarchy,
+primitive and boolean dtypes, labels, encodings, scientific values and provenance.
+Unknown temporal meaning blocks crop explicitly. Arbitrary compound/reference/
+opaque types, link identity, named types and unsupported filter pipelines remain
+limitations of modified export. Irregular marker clocks are unsupported by
+regular-frame playback. See [H5_VALIDATION.md](H5_VALIDATION.md) for current results.
+
+## Previous authoritative layout (retained compatibility)
+
+The following inventory records the previous reference inspected on 25 September 2026. Current inspection prints structure with private values redacted and does
+not create metadata dumps. Neither reference belongs in Git.
 
 ## Observed hierarchy
 
@@ -85,7 +205,7 @@ The sibling older Python reader expects Location/Offset and cannot validate this
 
 ## Boolean type preservation
 
-Modified exports preserve the h5py boolean enum exactly. `createH5Output` selects an empty synthetic template containing only the quality enum datasets present in the source; `writeCroppedH5` then fills those datasets and copies the complete source tree. All seven nonempty optional combinations are tested, with no added absent fields. Templates have extensible dimensions and no trial values. Chunk dimensions / maximum extents are storage differences, explicitly classified in the independent h5py report.
+Modified exports preserve the h5py boolean enum exactly. `createH5Output` now generates a generic template containing only the source's boolean datasets and attributes; `writeCroppedH5` then fills those datasets and copies the complete source tree. All seven nonempty optional combinations are tested, with no added absent fields. Templates contain no trial samples and preserve supported boolean attribute shapes/values and dataset storage parameters. Chunk dimensions / maximum extents are storage differences, explicitly classified in the independent h5py report.
 
 ## Moving force plates (confirmed by the format owner)
 

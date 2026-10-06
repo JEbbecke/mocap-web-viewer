@@ -3,7 +3,7 @@ import { parseH5Tree } from '../importers/h5/schema';
 import { cropInterval, sampleBoundary, timeBoundary, eventInInterval } from '../motion/crop';
 import type { MotionData, MotionEvent } from '../motion/types';
 import { validateEvent } from '../motion/events';
-import booleanSeeds from './h5-boolean-seeds.json';
+import { booleanTemplate } from './h5BooleanTemplate';
 import { h5LabelUpdates } from './h5Labels';
 
 type Library = typeof H5;
@@ -14,32 +14,9 @@ type Writable = Parameters<H5.Group['create_dataset']>[0]['data'];
  * They contain no trial values; the entire source hierarchy is copied below. */
 export function createH5Output(h5: Library, input: H5.File, path: string): H5.File {
   if (path === input.filename) throw new Error('H5 output must differ from the read-only source.');
-  const flags = ['CameraMasks', 'CameraMasksKnown', 'Virtual'];
-  let bits = 0;
-  flags.forEach((key, i) => {
-    const dataset = input.get(`Trajectories/Labeled/${key}`);
-    if (dataset instanceof h5.Dataset && dataset.metadata.type === 8) {
-      const m = dataset.metadata,
-        members = m.enum_type?.members;
-      if (
-        !m.signed ||
-        m.size !== 1 ||
-        !members ||
-        Object.keys(members).length !== 2 ||
-        members.FALSE !== 0 ||
-        members.TRUE !== 1 ||
-        dataset.shape?.length !== (i === 0 ? 3 : 1)
-      )
-        throw new Error(`${dataset.path}: unsupported boolean enum layout.`);
-      bits |= 1 << i;
-    }
-  });
-  if (!bits) return new h5.File(path, 'w');
-  const encoded = booleanSeeds[String(bits) as keyof typeof booleanSeeds];
-  h5.Module.FS.writeFile(
-    path,
-    Uint8Array.from(atob(encoded), (c) => c.charCodeAt(0)),
-  );
+  const template = booleanTemplate(h5, input);
+  if (!template) return new h5.File(path, 'w');
+  h5.Module.FS.writeFile(path, template);
   return new h5.File(path, 'a');
 }
 
@@ -59,7 +36,27 @@ export function writeCroppedH5(
   dataLabels?: Record<string, string>,
 ) {
   const motion = sourceMotion ?? parseH5Tree(input, 'source.h5');
-  const labelUpdates = h5LabelUpdates(input, motion, dataLabels);
+  const storedLabels = (path: string) => {
+    const value = (input.get(path) as H5.Group | null)?.attrs.Labels?.value;
+    return Array.isArray(value) ? (value as string[]) : typeof value === 'string' ? [value] : [];
+  };
+  const originalMarkers = storedLabels('Trajectories/Labeled');
+  // Imported display labels may have been trimmed/disambiguated. Preserve every
+  // untouched source label instead of rewriting unrelated aliases on a rename.
+  const exportedMarkers = labels?.map((label, i) =>
+    label === motion.markers.labels[i] ? originalMarkers[i] : label,
+  );
+  const originalAnalogs = storedLabels('Analog');
+  const exportedAnalogs = analogLabels?.map((label, i) =>
+    label === motion.analogs[i]?.name ? originalAnalogs[i] : label,
+  );
+  const labelUpdates = h5LabelUpdates(input, motion, dataLabels, exportedMarkers, exportedAnalogs);
+  const renamedMember = (name: string) => {
+    const index = originalMarkers.indexOf(name);
+    return exportedMarkers && index >= 0 && originalMarkers.lastIndexOf(name) === index
+      ? exportedMarkers[index]
+      : name;
+  };
   if (
     analogLabels &&
     (analogLabels.length !== motion.analogs.length ||
@@ -131,17 +128,40 @@ export function writeCroppedH5(
       return b - a;
     }
     if (!Number.isFinite(rate) || rate <= 0) throw new Error(`${ds.path}: missing sampling rate.`);
-    const a = sampleBoundary(time.start, rate),
-      b = sampleBoundary(time.end, rate);
+    const streamOrigin =
+      streamClock === undefined &&
+      motion.source.h5Layout === 'institute-current' &&
+      Number.isFinite(scalar(ds.parent, 'StartFrame'))
+        ? scalar(ds.parent, 'StartFrame') / rate - origin
+        : 0;
+    const a = sampleBoundary(time.start, rate, streamOrigin),
+      b = sampleBoundary(time.end, rate, streamOrigin);
     // Legacy streams without Time cannot express a fractional time origin.
-    if (Math.abs(time.start * rate - a) > 1e-7 || Math.abs(time.end * rate - b) > 1e-7)
+    if (
+      motion.source.h5Layout !== 'institute-current' &&
+      (Math.abs((time.start - streamOrigin) * rate - a) > 1e-7 ||
+        Math.abs((time.end - streamOrigin) * rate - b) > 1e-7)
+    )
       throw new Error(`${ds.path}: crop boundaries must align with this stream's sampling grid.`);
     const n = ds.shape![axis];
-    const from = Math.min(n, a),
-      to = Math.min(n, b);
-    if (from === to) throw new Error(`${ds.path}: crop contains no samples.`);
+    const from = Math.max(0, Math.min(n, a)),
+      to = Math.max(from, Math.min(n, b));
+    if (from === to && motion.source.h5Layout !== 'institute-current')
+      throw new Error(`${ds.path}: crop contains no samples.`);
     slices.set(ds.path, { axis, start: from, end: to });
     return to - from;
+  };
+  const updateExtent = (ds: H5.Dataset, n: number) => {
+    const group = ds.parent,
+      selection = slices.get(ds.path);
+    const changes: Record<string, number> = { NumSamples: n };
+    const first = scalar(group, 'StartFrame');
+    const step = Number.isFinite(scalar(group, 'FrameStep')) ? scalar(group, 'FrameStep') : 1;
+    if (selection && Number.isFinite(first)) {
+      changes.StartFrame = first + selection.start * step;
+      if ('EndFrame' in group.attrs) changes.EndFrame = changes.StartFrame + (n - 1) * step;
+    }
+    updates.set(group.path, changes);
   };
   const primitive = (dtype: H5.Dataset['dtype'], path: string) => {
     if (typeof dtype !== 'string' || !/^(?:[<>|]?[bhiqefdBHIQ]|S\d*|A\d*)$/.test(dtype))
@@ -153,6 +173,12 @@ export function writeCroppedH5(
     const changes = updates.get(source.path) ?? {};
     const labelChanges = labelUpdates.get(source.path) ?? {};
     for (const [name, attr] of Object.entries(source.attrs)) {
+      if (attr.metadata.type === 8) {
+        const seeded = target.attrs[name];
+        if (!seeded || seeded.metadata.type !== 8)
+          throw new Error(`${source.path}@${name}: missing boolean template attribute.`);
+        continue;
+      }
       if (name in labelChanges) {
         const value = labelChanges[name];
         target.create_attribute(name, value, Array.isArray(value) ? [value.length] : undefined);
@@ -160,9 +186,9 @@ export function writeCroppedH5(
       }
       const editedLabels =
         source.path === '/Trajectories/Labeled'
-          ? labels
+          ? exportedMarkers
           : source.path === '/Analog'
-            ? analogLabels
+            ? exportedAnalogs
             : undefined;
       if (editedLabels && name === 'Labels') {
         // Variable-length UTF-8 avoids truncating labels stored in fixed-width source attributes.
@@ -196,15 +222,25 @@ export function writeCroppedH5(
       return;
     }
     if (/^\/(Analog|EMG|IKResults|IDResults)\/(Data|Time)$/.test(path)) {
+      // The unversioned current layout supplies no relation from model time zero
+      // to the trial clock. Retain independent derived results without guessing.
+      if (/^\/(IKResults|IDResults)\//.test(path) && motion.source.h5Layout === 'institute-current')
+        return;
       const n = slice(ds, shape.length - 1, scalar(ds.parent, 'SamplingFrequency'))!;
-      updates.set(ds.parent.path, { NumSamples: n });
+      updateExtent(ds, n);
       return;
     }
     if (/^\/RigidBodies\/[^/]+\/Markers$/.test(path)) return;
     if (/^\/RigidBodies\/[^/]+\/(Position|Rotation)$/.test(path)) {
       if (shape.at(-1) !== frames) throw new Error(`${path}: cannot establish rigid body timing.`);
-      slice(ds, shape.length - 1, motion.timeline.rate);
-      updates.set(ds.parent.path, { NumSamples: end - start });
+      const pointClock = input.get('Trajectories/Labeled/Time');
+      slice(
+        ds,
+        shape.length - 1,
+        motion.timeline.rate,
+        pointClock instanceof h5.Dataset ? pointClock : null,
+      );
+      updateExtent(ds, end - start);
       return;
     }
     if (path.startsWith('/Events/') && motion.source.eventSchema) {
@@ -226,7 +262,7 @@ export function writeCroppedH5(
         if ((shape[0] === 3 ? shape[1] : shape[0]) !== forceCount)
           throw new Error(`${path}: inconsistent force/moment/COP sample counts.`);
         const n = slice(ds, shape[0] === 3 ? 1 : 0, rate)!;
-        if (name === 'Force') updates.set(plate.path, { NumSamples: n });
+        if (name === 'Force') updateExtent(ds, n);
         return;
       }
       if (name === 'Time' || name === 'Tz') {
@@ -316,6 +352,8 @@ export function writeCroppedH5(
           shape[selection.axis] = selection.end - selection.start;
         } else data = entity.value;
         if (data === null) throw new Error(`${entity.path}: unreadable dataset.`);
+        if (labels && /^\/RigidBodies\/[^/]+\/Markers$/.test(entity.path) && Array.isArray(data))
+          data = data.map((name) => (typeof name === 'string' ? renamedMember(name) : name));
         if (
           entity.path.startsWith('/Events/') &&
           motion.source.eventSchema &&
@@ -332,6 +370,12 @@ export function writeCroppedH5(
             const sameTime = old && Math.abs(old.time - (e.time + time.start)) < 1e-12;
             if (key === 'Name') return e.label;
             if (key === 'Description') return e.description ?? '';
+            if (motion.source.eventSchema === 'institute-current') {
+              if (key === 'Context') return e.context;
+              if (key === 'Subject') return e.subject ?? '';
+              if (key === 'GenericFlag' || key === 'IconID')
+                return e.sourceIndex === undefined ? 0 : original[e.sourceIndex];
+            }
             if (key === 'Time')
               return sameTime ? original[e.sourceIndex!] : origin + time.start + e.time;
             if (key === 'Frame')
@@ -372,6 +416,45 @@ export function writeCroppedH5(
     }
   };
   copy(input, output);
+  if (events && motion.source.eventSchema === 'institute-current') {
+    const sourceEvents = input.get('Events');
+    if (!(sourceEvents instanceof h5.Group) || sourceEvents.keys().length === 0) {
+      const target = (output.get('Events') as H5.Group | null) ?? output.create_group('Events');
+      for (const key of [
+        'Name',
+        'Description',
+        'Context',
+        'Subject',
+        'Time',
+        'Frame',
+        'GenericFlag',
+        'IconID',
+      ]) {
+        const data = eventRows.map((event) => {
+          if (key === 'Name') return event.label;
+          if (key === 'Description') return event.description ?? '';
+          if (key === 'Context') return event.context;
+          if (key === 'Subject') return event.subject ?? '';
+          if (key === 'Time') return origin + time.start + event.time;
+          if (key === 'Frame')
+            return BigInt(
+              Math.round(motion.timeline.firstFrame + start + event.time * motion.timeline.rate),
+            );
+          return 0n;
+        });
+        target.create_dataset({
+          name: key,
+          shape: [data.length],
+          data: data as Writable,
+          dtype: ['Frame', 'GenericFlag', 'IconID'].includes(key)
+            ? '<q'
+            : key === 'Time'
+              ? '<d'
+              : 'S',
+        });
+      }
+    }
+  }
   output.flush();
 }
 
@@ -386,6 +469,10 @@ function copyDataset(
   primitive: (dtype: H5.Dataset['dtype'], path: string) => string,
 ) {
   const meta = source.metadata;
+  if (source.filters.some((filter) => filter.id !== 1))
+    throw new Error(
+      `${source.path}: unsupported filter pipeline; export stopped to avoid data loss.`,
+    );
   const chunks = meta.chunks?.map((n, i) => Math.max(1, Math.min(n, shape[i] || 1)));
   const gzip = source.filters.find((f) => f.id === 1);
   if (meta.type === 8 && ArrayBuffer.isView(data)) {

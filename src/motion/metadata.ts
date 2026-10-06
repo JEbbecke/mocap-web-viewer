@@ -6,6 +6,10 @@ export interface MetadataValue {
 /** Model variable catalog only: samples and independent clocks remain in the source file. */
 export interface ModelResultInfo {
   variables?: number;
+  samples?: number;
+  metadata?: string;
+  inDegrees?: boolean;
+  timeBasis?: 'trial' | 'independent';
   entries?: { name: string; unit?: string; rate?: number; sourceIndex?: number }[];
 }
 export interface RecordingInfo {
@@ -16,7 +20,7 @@ export interface RecordingInfo {
   platformTypes?: number[];
   emgChannels?: number;
   subject?: Partial<
-    Record<'id' | 'name' | 'age' | 'sex' | 'height' | 'mass' | 'condition', MetadataValue>
+    Record<'id' | 'name' | 'group' | 'age' | 'sex' | 'height' | 'mass' | 'condition', MetadataValue>
   >;
   provenance?: Partial<
     Record<
