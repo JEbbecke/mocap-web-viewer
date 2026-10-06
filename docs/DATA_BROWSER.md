@@ -1,5 +1,9 @@
 # Data sidebar
 
+Use [Data Explorer](DATA_EXPLORER.md) in the header for detailed numerical tables
+and local IK/ID sample inspection. The Data tab retains its quick selection,
+visibility and editing controls.
+
 The right sidebar contains Data, Display and File Info. Data replaces the former
 Markers tab with collapsible sections for available collections. Markers start
 expanded; other sections start collapsed. Each header shows its total count.

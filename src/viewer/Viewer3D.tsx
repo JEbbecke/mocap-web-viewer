@@ -462,10 +462,11 @@ function Ground() {
     </>
   );
 }
-export function Viewer3D({ data }: { data: MotionData | null }) {
+export function Viewer3D({ data, active = true }: { data: MotionData | null; active?: boolean }) {
   return (
     <div className="viewport">
       <Canvas
+        frameloop={active ? 'always' : 'never'}
         camera={{ position: [2, -3, 2], up: [0, 0, 1], near: 0.005, far: 2000, fov: 42 }}
         dpr={[1, 2]}
         gl={{ antialias: true }}

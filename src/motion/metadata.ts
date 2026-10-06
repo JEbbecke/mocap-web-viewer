@@ -10,7 +10,13 @@ export interface ModelResultInfo {
   metadata?: string;
   inDegrees?: boolean;
   timeBasis?: 'trial' | 'independent';
-  entries?: { name: string; unit?: string; rate?: number; sourceIndex?: number }[];
+  entries?: {
+    name: string;
+    unit?: string;
+    rate?: number;
+    sourceIndex?: number;
+    coordinateType?: 'rotation' | 'translation';
+  }[];
 }
 export interface RecordingInfo {
   created?: string;

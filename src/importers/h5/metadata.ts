@@ -7,6 +7,7 @@ import {
 } from '../../motion/metadata';
 import type { H5Node } from './schema';
 import { h5Layout } from './layout';
+import { modelCoordinateType } from '../../motion/modelUnits';
 
 /** Reads attributes and dataset shapes only; no IK/ID samples are loaded or interpreted. */
 export function h5RecordingInfo(root: H5Node): RecordingInfo {
@@ -42,6 +43,15 @@ export function h5RecordingInfo(root: H5Node): RecordingInfo {
     const namesMatch = labels.length === shape[0];
     const storedRate = Number(metadataText(attrs?.SamplingFrequency?.value));
     const rate = Number.isFinite(storedRate) && storedRate > 0 ? storedRate : undefined;
+    const declaration = `${attrs?.inDegrees?.value ?? ''} ${attrs?.Metadata?.value ?? ''}`;
+    const inDegrees =
+      /^(yes|true|1)\b/i.test(declaration.trim()) ||
+      /["']inDegrees["']\s*:\s*["']yes["']/i.test(declaration)
+        ? true
+        : /^(no|false|0)\b/i.test(declaration.trim()) ||
+            /["']inDegrees["']\s*:\s*["']no["']/i.test(declaration)
+          ? false
+          : undefined;
     const entries = Array.from({ length: shape[0] }, (_, i) => {
       const rawName = namesMatch ? labels[i] : undefined;
       const name =
@@ -49,7 +59,19 @@ export function h5RecordingInfo(root: H5Node): RecordingInfo {
       // The institute schema can include its independent time row in Data.
       if (name?.toLowerCase() === 'time') return [];
       const unit = units.length === shape[0] ? metadataText(units[i]) : undefined;
-      return [{ name: name ?? `Variable ${i + 1} (unlabelled)`, unit, rate, sourceIndex: i }];
+      const coordinateType =
+        path === 'IKResults' && inDegrees !== undefined && name
+          ? modelCoordinateType(name)
+          : undefined;
+      return [
+        {
+          name: name ?? `Variable ${i + 1} (unlabelled)`,
+          unit,
+          rate,
+          sourceIndex: i,
+          ...(coordinateType ? { coordinateType } : {}),
+        },
+      ];
     }).flat();
     return {
       variables: entries.length,
@@ -59,14 +81,7 @@ export function h5RecordingInfo(root: H5Node): RecordingInfo {
         h5Layout(root) === 'institute-current' ? ('independent' as const) : ('trial' as const),
       metadata: typeof attrs?.Metadata?.value === 'string' ? attrs.Metadata.value : undefined,
       // A literal declaration is metadata, not permission to assign degrees to translations.
-      inDegrees:
-        typeof attrs?.Metadata?.value === 'string'
-          ? /["']inDegrees["']\s*:\s*["']yes["']/i.test(attrs.Metadata.value)
-            ? true
-            : /["']inDegrees["']\s*:\s*["']no["']/i.test(attrs.Metadata.value)
-              ? false
-              : undefined
-          : undefined,
+      inDegrees,
     };
   };
   const coordinates = metadataValues(group('Trajectories')?.attrs?.GlobalCoordinateSystem?.value);

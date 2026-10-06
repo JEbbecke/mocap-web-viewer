@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: "If you use JE Motion in scientific work, please cite it using this metadata."
+title: "JE Motion"
+type: software
+authors:
+  - family-names: Ebbecke
+    given-names: Jonas
+version: "0.4.0"
+date-released: "2026-09-28"
+repository-code: "https://github.com/JEbbecke/mocap-web-viewer"
+url: "https://app.jemolab.com/"
+license: Apache-2.0

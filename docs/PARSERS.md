@@ -16,4 +16,6 @@ The HDF5 browser bundle is approximately 4.8 MB before transport compression and
 
 ## Static deployment
 
+JE Motion Lab's web app is hosted on GitHub Pages at [app.jemolab.com](https://app.jemolab.com/) using a custom domain. The workflow builds with `VITE_BASE_PATH=/`; the default outside CI remains relative (`./`). The separately maintained, SEO-optimized static landing page is [jemolab.com](https://jemolab.com/) and is not included in the app's `dist/` output.
+
 Base-path and Pages workflow behavior follows the [Vite static deployment guide](https://vite.dev/guide/static-deploy.html#github-pages). The workflow pins action revisions. Production CSP uses `connect-src 'self' https://je-motion-analytics.jonasebbecke97.workers.dev`; local script/worker assets remain permitted. Development adds the inline preamble and local WebSocket connections required by Vite. Both modes send event-only analytics to the configured Cloudflare Worker; parser inputs, filenames, metadata and measurements remain local. See [analytics and network behavior](ANALYTICS.md).

@@ -17,7 +17,7 @@ export async function trackEvent(event: AnalyticsEvent): Promise<void> {
       console.debug(`Analytics request failed: ${response.status}`);
     }
   } catch {
-    // Analytics must never interfere with JE Motion.
+    // Analytics must never interfere with JE Motion Lab.
     console.debug('Analytics unavailable');
   }
 }

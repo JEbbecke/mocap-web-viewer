@@ -76,7 +76,7 @@ IK/ID variable name. If source model labels are missing/misaligned, export creat
 a complete label vector using the displayed generated names for unnamed rows.
 
 C3D force-platform names use an optional `FORCE_PLATFORM:LABELS` parameter with
-continuation records when needed. JE Motion reads these names back; other readers
+continuation records when needed. JE Motion Lab reads these names back; other readers
 may continue to display platform numbers. Source platform indices preserve the
 mapping even when unsupported platforms were omitted during import. Calibration,
 channels, force/moment/COP samples and group order are unchanged.
