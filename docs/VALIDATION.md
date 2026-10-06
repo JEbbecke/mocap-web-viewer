@@ -2,6 +2,57 @@
 
 Initial validation was performed locally on Windows, Node 24 and headless Chrome on 24 September 2026. The scientific results below are a historical record, with later H5 coverage linked at the end; they are not the current suite totals. The original Python project and measurements were read-only throughout. The sibling reference files are not copied to application assets or committed fixtures.
 
+## Cross-format export — 6 October 2026
+
+On `feature/cross-format-export`, all **191 tests across 18 files** passed with
+`JE_VALIDATE_REFERENCE=1`, including 41 conversion tests (one is an opt-in
+read-only authoritative-file check). The typechecked production build and full
+Chromium smoke suite passed. Browser checks exercised both conversion workers,
+downloads and re-import, Data Explorer values, cancelling the conversion report,
+blocked incompatible analog sampling, corrected-COP omission warnings and
+reconstructed Force/Moment/COP/free-moment table values, and existing
+analytics/storage checks.
+Same-format C3D and H5 preservation regressions remain green; version `0.4.0`
+is unchanged.
+
+Independent `h5py` and `ezc3d` comparisons accepted seven synthetic H5/C3D pairs:
+ordinary, tilted, oblique, cropped/edited, extended-frame, corrected-COP and
+surveyed-corner recordings. They checked 2,454 valid marker samples, 147,600 analog values,
+24,600 force samples and 25 events, including units, source frames and
+reconstructed plate geometry, moment, COP and free moment. Generated files remain
+under ignored `.local/`; no participant recordings were added to the repository. Run
+`python scripts/validate-cross-format.py` after the conversion tests to repeat
+these comparisons in an environment with numpy, h5py and ezc3d.
+
+The COP follow-up retains compatible force/moment plates when stored COP differs
+from reconstruction, with explicit COP/free-moment omission warnings. Source
+arrays remain untouched. The synthetic corrected case verifies reconstruction
+instead of equality to the omitted stored COP/Tz. An independent read-only check
+of `.local/authoritative-force-export.c3d` against the authoritative H5 also passed
+for all five plates (3,940 samples each): force/moment values are retained and
+COP/free moment agree with wrench-based reconstruction. Plate 1's stored COP
+differs as reported; these private outputs remain ignored and are never fixtures.
+
+The geometry follow-up accepts small surveyed-corner deviations within documented
+limits (1 degree, diagonal-midpoint separation 1% of shortest edge capped at 5 mm,
+non-planarity 0.5% capped at 2 mm). Plates 3 and 4 are included with per-plate
+warnings. Their original corner coordinates/order remain unchanged except for
+C3D float32 storage, and ezc3d reconstructs their stored COP/free moment within
+the tested tolerances. New regressions reject excessive angular, midpoint and
+plane errors, crossed/duplicate/nonfinite corners and verify translation-invariant
+acceptance without fitting a new rectangle. This validates the tested readers;
+other vendor implementations may impose stricter geometry assumptions.
+The production browser check also passed the accepted-geometry warning, download,
+re-import and exact surveyed-corner table values, together with reconstructed COP.
+
+The unchanged older institute Python reader fails on missing legacy `Location`
+when reading the current `Corners` schema; this existing limitation is described
+in [H5 validation](H5_VALIDATION.md). The installed ezc3d positive float-residual
+decoding discrepancy below also remains; packed residuals are checked against
+the C3D standard rather than that incorrect magnitude. These checks establish
+the tested mappings, not all vendor variants or very large recordings. See the
+[compatibility matrix and limitations](CROSS_FORMAT_EXPORT.md).
+
 ## Branding, domains and current checks — 6 October 2026
 
 The application, HTML title/description/application name, accessible footer,

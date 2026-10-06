@@ -14,6 +14,7 @@ import { renameMarkerCommand } from '../motion/markerLabels';
 import { renameAnalogCommand } from '../motion/analogLabels';
 import { renameDataCommand, type DataLabelTarget } from '../motion/dataLabels';
 import { trackEvent } from '../analytics';
+import type { ExportFormat } from '../exporters/conversion';
 export type DisplayKey =
   | 'markers'
   | 'connections'
@@ -287,7 +288,7 @@ function moveHistory(direction: 'undo' | 'redo') {
     error: null,
   });
 }
-export function saveAs() {
+export function saveAs(target?: ExportFormat) {
   const { data, sourceFile, busy } = useSession.getState();
   if (!data || !sourceFile || busy) return;
   useSession.setState({
@@ -314,17 +315,20 @@ export function saveAs() {
     );
     const link = document.createElement('a');
     link.href = url;
-    link.download = data.source.crop
-      ? croppedFilename(sourceFile.name)
-      : sourceFile.name.replace(
-          /\.(c3d|h5|hdf5)$/i,
-          data.source.eventsEdited ||
-            data.source.labelsEdited ||
-            data.source.analogLabelsEdited ||
-            Object.keys(data.source.dataLabels ?? {}).length
-            ? '_edited.$1'
-            : '_copy.$1',
-        );
+    link.download =
+      target && target !== data.source.format
+        ? sourceFile.name.replace(/\.(c3d|h5|hdf5)$/i, `.${target.toLowerCase()}`)
+        : data.source.crop
+          ? croppedFilename(sourceFile.name)
+          : sourceFile.name.replace(
+              /\.(c3d|h5|hdf5)$/i,
+              data.source.eventsEdited ||
+                data.source.labelsEdited ||
+                data.source.analogLabelsEdited ||
+                Object.keys(data.source.dataLabels ?? {}).length
+                ? '_edited.$1'
+                : '_copy.$1',
+            );
     document.body.append(link);
     link.click();
     link.remove();
@@ -345,5 +349,7 @@ export function saveAs() {
     labels: data.source.labelsEdited ? data.markers.labels : undefined,
     analogLabels: data.source.analogLabelsEdited ? data.analogs.map((a) => a.name) : undefined,
     dataLabels: data.source.dataLabels,
+    target,
+    ...(target && target !== data.source.format ? { data } : {}),
   });
 }

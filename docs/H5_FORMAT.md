@@ -5,6 +5,19 @@ inspected on 6 October 2026. It replaces the previous reference described below.
 No participant values are documented. `scripts/inspect-h5.mjs` produces a
 redacted structural inventory; private values must not enter logs or fixtures.
 
+## Fresh H5 from C3D
+
+C3D→H5 export creates the current unversioned institute hierarchy from normalized
+MotionData, with nested MetaData/Project and FileInfo, float64 trajectories and
+residuals, explicit clocks, expanded Events and available Analog/ForcePlates.
+Spatial values are mm, force N, and internal Nm moment/free moment values become
+declared Nmm. The unspecified trajectory fourth row is NaN; optional missing
+groups are not fabricated. Known subject metadata and minimal conversion
+provenance are mapped without embedding C3D parameter trees or local filesystem
+paths. Existing H5→H5 export retains its original source-preserving layout.
+See [cross-format compatibility](CROSS_FORMAT_EXPORT.md) for exact mappings,
+H5→C3D losses, sampling guards and derived force-platform requirements.
+
 ## Current layout
 
 ```text
