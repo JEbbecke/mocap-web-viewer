@@ -1,4 +1,4 @@
-"""Independent read-only h5py comparison of intentional local JE Motion exports.
+"""Independent read-only h5py comparison of intentional local JE Motion Lab exports.
 
 Run JE_VALIDATE_REFERENCE=1 npm test -- tests/current-h5.test.ts first.
 No participant values are printed or persisted in the report. The source and the

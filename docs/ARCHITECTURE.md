@@ -26,7 +26,9 @@ MoCap files, filenames, metadata and measurements remain local and never enter a
 
 Production CSP permits connections to `'self'` and `https://je-motion-analytics.jonasebbecke97.workers.dev`; development additionally permits local Vite WebSockets and its inline preamble. Analytics JSON POSTs may require CORS preflights. External scripts, frames, objects and form submissions remain blocked. The event-only payload does not conceal IP addresses or normal request headers from hosting/Cloudflare infrastructure. Offline PWA caching is deferred.
 
-Vite emits static dist assets with a configurable base path and injects the `package.json` version into the footer at build time. GitHub Actions installs lockfile dependencies, runs tests/typechecks/build and deploys only dist from main; it does not deploy the analytics backend or publish releases. Private reference files and locally generated validation outputs are excluded from dist; never put them in public assets. See [releasing](RELEASING.md).
+JE Motion Lab's SEO-optimized static landing page is [jemolab.com](https://jemolab.com/), maintained separately from this repository. The React web app is [app.jemolab.com](https://app.jemolab.com/), still hosted on GitHub Pages through a custom domain. Its HTML declares the app URL as canonical. The app's welcome screen and usage totals are separate from the static landing page.
+
+Vite emits static dist assets with a configurable base path and injects the `package.json` version into the footer at build time. GitHub Actions installs lockfile dependencies, runs tests/typechecks/build with `VITE_BASE_PATH=/` and deploys only dist from main to the custom app domain; it does not deploy the landing page or analytics backend, or publish releases. Private reference files and locally generated validation outputs are excluded from dist; never put them in public assets. See [releasing](RELEASING.md).
 
 See [event visualization and editing](EVENT_EDITING.md) for immutable event operations, relative-second timing, C3D serialization and current and previous supported institute H5 event layouts. Explicit Series clocks, structured quality/body data and additional named signals keep H5 details at the importer/exporter boundary. The original File backs preservation of unknown data. Layout detection honors explicit versions and recognizes the unversioned nested current layout. Nested project/file/C3D provenance stays structured. Mapped EMG and body signals share arrays, including after crop. Current event rows retain context, subject and flags. Streams keep their own frame origins; independent model clocks remain unchanged when the trial relationship is unspecified.
 
@@ -38,5 +40,14 @@ The [Data browser](DATA_BROWSER.md) builds memoized entry catalogs from current
 MotionData and reuses session marker visibility, plot selection and timeline
 event-editor requests. H5 model-variable names, explicit units/rates and counts are normalized
 into `source.info.modelResults`; model samples and clocks are not loaded for browsing.
+
+The [Data Explorer](DATA_EXPLORER.md) uses memoized descriptors and row accessors
+over current MotionData. A fixed-height table window bounds rendered rows without
+duplicating scientific arrays. View state stays local to the workspace. H5 model
+variables use a separate short-lived local worker with bounded hyperslab reads,
+two 200-sample buffers and source row identities; trial-aligned results follow
+crop boundaries while undeclared independent clocks remain independent. Source
+units take precedence, with a conservative tested IK rotation convention retained
+as small importer metadata. ID units are never inferred from names.
 
 Additional data-label commands retain small name overrides and source identities. H5 platforms and bodies retain original group paths, and EMG/model variables retain original row indices (including gaps from hidden time rows). Body renames update their copied signal names. The export worker resolves these identities against its source import; it never uses the new display name as a source lookup key.

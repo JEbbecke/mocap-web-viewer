@@ -5,7 +5,18 @@ separate Cloudflare Worker; it never sends MoCap files, filenames, marker labels
 source metadata or measurements to analytics. The application payload and the
 network infrastructure have different privacy properties; see [README privacy](../README.md#privacy).
 
+The footer's [Privacy](https://jemolab.com/privacy.html) and
+[Imprint](https://jemolab.com/imprint.html) links open the authoritative external
+legal pages. This document describes technical analytics behavior and does not
+duplicate those pages' legal text.
+
 ## Client behavior
+
+These client behaviors apply to the JE Motion Lab web app at
+[app.jemolab.com](https://app.jemolab.com/). The static landing page at
+[jemolab.com](https://jemolab.com/) is maintained separately. The deployed Worker
+hostname and session flag retain their existing identifiers across the branding
+change so the analytics endpoint and visit suppression keep working.
 
 [`src/analytics.ts`](../src/analytics.ts) posts JSON to
 `https://je-motion-analytics.jonasebbecke97.workers.dev/event` with
@@ -46,7 +57,7 @@ storage access.
 The client also reads `/stats` once on application mount with a bodyless GET.
 The response includes `visits`, `c3d_loaded`, `h5_loaded`, `files_loaded` and a
 `countries` array of `{ country, visits }` entries. While no recording is
-loaded, the landing page shows visits, the number of country entries and the
+loaded, the app's welcome screen shows visits, the number of country entries and the
 combined `files_loaded` total. Invalid or unavailable totals leave the summary
 hidden; the example display numbers are not fallback data. This read does not
 send recording information or create an analytics event.
@@ -90,7 +101,7 @@ Normal traffic consists of same-origin application asset requests, a GET for
 aggregate statistics and analytics JSON POSTs; cross-origin JSON POSTs can trigger
 an OPTIONS preflight. The separately
 managed Worker must provide CORS responses for the intended application origins.
-External links, such as the footer's GitHub link, navigate separately; `connect-src`
+The footer's GitHub, Privacy and Imprint links navigate separately; `connect-src`
 is not a blanket ban on browser navigation or all network activity.
 
 ## Verification

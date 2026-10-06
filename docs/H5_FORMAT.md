@@ -189,7 +189,7 @@ See [data-label export mappings](MARKER_EDITING.md) for collection/source identi
 
 ## Timing, coordinates and uncertainty
 
-Point/analog/force clocks agree at 120/960 Hz. IK/ID times are approximately 3.825-4.608 seconds, entirely outside the point interval 0.7333-2.6083 seconds. Data and File Info read dataset shapes and labels for variable names/counts, excluding the labelled time row; their signals and clocks are not interpreted or plotted. Raw source data remains available for export. Do not force-align them. Cropping uses absolute time and yields empty model streams for this example.
+Point/analog/force clocks agree at 120/960 Hz. IK/ID times are approximately 3.825-4.608 seconds, entirely outside the point interval 0.7333-2.6083 seconds. Data and File Info read dataset shapes and labels for variable names/counts, excluding the labelled time row. [Data Explorer](DATA_EXPLORER.md) reads bounded local pages of model values and their own clocks; they are not added to plots. Raw source data remains available for export. Do not force-align them. Cropping uses absolute time and yields empty model streams for this example.
 
 The reference marks forces and free moments global. Lab XYZ is retained; scientific normalization is mm/N/Nm (source Nmm moments convert independently to Nm) and the viewer is Z-up. No compass directions or lab handedness can be established from this file alone. Corner order is preserved. Global vectors must not be rotated again. Body parent convention and Type codes remain unestablished.
 

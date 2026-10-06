@@ -15,6 +15,7 @@ import {
 } from './state/session';
 import { handleHistoryShortcut } from './state/shortcuts';
 import { PanelToggle } from './components/PanelToggle';
+import { DataExplorer } from './components/DataExplorer';
 import { getAnalyticsStats, trackEvent, type AnalyticsStats } from './analytics';
 class ViewerBoundary extends Component<{ children: ReactNode }, { error: string | null }> {
   state = { error: null as string | null };
@@ -41,6 +42,7 @@ export function App() {
     input = useRef<HTMLInputElement>(null),
     [showPlot, setShowPlot] = useState(true),
     [showSidebar, setShowSidebar] = useState(true),
+    [showExplorer, setShowExplorer] = useState(false),
     [dragging, setDragging] = useState(false);
   const [analyticsStats, setAnalyticsStats] = useState<AnalyticsStats | null>(null);
 
@@ -120,7 +122,7 @@ export function App() {
         </div>
         <div className="brand">
           <strong>
-            JE <span>Motion</span>
+            JE <span>Motion Lab</span>
           </strong>
           <span>MoCap Viewer &amp; Editor</span>
         </div>
@@ -140,6 +142,9 @@ export function App() {
         </div>
         {data && (
           <div className="history-controls">
+            <button aria-pressed={showExplorer} onClick={() => setShowExplorer((value) => !value)}>
+              {showExplorer ? 'Data Viewer' : 'Data Explorer'}
+            </button>
             <button
               onClick={undoEdit}
               disabled={busy || !history.past.length}
@@ -193,55 +198,60 @@ export function App() {
           </ul>
         </details>
       ) : null}
-      <div className="workspace">
+      <div className={`workspace ${data && showExplorer ? 'is-exploring' : ''}`}>
         <div className="main-column">
-          <div className="scene-wrap">
-            <ViewerBoundary>
-              <Viewer3D data={data} />
-            </ViewerBoundary>
-            {!data && (
-              <div className="welcome">
-                <div className="eyebrow">YOUR DATA. YOUR WORKSPACE.</div>
-                <h1>
-                  Explore motion,
-                  <br />
-                  frame by frame.
-                </h1>
-                <p>
-                  Open a C3D or H5 recording to inspect and edit
-                  <br />
-                  trajectories, forces, analogs and events.
-                </p>
-                <button className="primary" onClick={open}>
-                  Open a recording
-                </button>
-                <span className="muted">or drop a file anywhere</span>
-                <div className="format-tags">
-                  <span>C3D</span>
-                  <span>H5 / HDF5</span>
-                  <span>LOCAL ONLY</span>
-                </div>
-                {analyticsStats && (
-                  <p className="welcome-stats">
-                    <strong>
-                      {analyticsStats.visits.toLocaleString('en-US')}{' '}
-                      {analyticsStats.visits === 1 ? 'visit' : 'visits'} ·{' '}
-                      {analyticsStats.countries.length.toLocaleString('en-US')}{' '}
-                      {analyticsStats.countries.length === 1 ? 'Country' : 'Countries'} ·{' '}
-                      {analyticsStats.files_loaded.toLocaleString('en-US')} MoCap{' '}
-                      {analyticsStats.files_loaded === 1 ? 'file' : 'files'} visualized
-                    </strong>
+          {data && showExplorer && (
+            <DataExplorer data={data} onClose={() => setShowExplorer(false)} />
+          )}
+          <div className="viewer-workspace" hidden={!!data && showExplorer}>
+            <div className="scene-wrap">
+              <ViewerBoundary>
+                <Viewer3D data={data} active={!data || !showExplorer} />
+              </ViewerBoundary>
+              {!data && (
+                <div className="welcome">
+                  <div className="eyebrow">YOUR DATA. YOUR WORKSPACE.</div>
+                  <h1>
+                    Explore motion,
+                    <br />
+                    frame by frame.
+                  </h1>
+                  <p>
+                    Open a C3D or H5 recording to inspect and edit
+                    <br />
+                    trajectories, forces, analogs and events.
                   </p>
-                )}
-              </div>
-            )}
+                  <button className="primary" onClick={open}>
+                    Open a recording
+                  </button>
+                  <span className="muted">or drop a file anywhere</span>
+                  <div className="format-tags">
+                    <span>C3D</span>
+                    <span>H5 / HDF5</span>
+                    <span>LOCAL ONLY</span>
+                  </div>
+                  {analyticsStats && (
+                    <p className="welcome-stats">
+                      <strong>
+                        {analyticsStats.visits.toLocaleString('en-US')}{' '}
+                        {analyticsStats.visits === 1 ? 'visit' : 'visits'} ·{' '}
+                        {analyticsStats.countries.length.toLocaleString('en-US')}{' '}
+                        {analyticsStats.countries.length === 1 ? 'Country' : 'Countries'} ·{' '}
+                        {analyticsStats.files_loaded.toLocaleString('en-US')} MoCap{' '}
+                        {analyticsStats.files_loaded === 1 ? 'file' : 'files'} visualized
+                      </strong>
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
           {data && (
             <>
               <Timeline data={data} />
               <SignalPlot
                 data={data}
-                collapsed={!showPlot}
+                collapsed={!showPlot || showExplorer}
                 onToggle={() => setShowPlot((value) => !value)}
               />
             </>
@@ -292,7 +302,7 @@ export function App() {
           {data
             ? `${data.timeline.rate} Hz · ${data.markers.labels.length} markers · ${data.forcePlatforms.length} plates`
             : 'C3D + H5'}
-          <span className="footer-version" aria-label={`JE Motion version ${__APP_VERSION__}`}>
+          <span className="footer-version" aria-label={`JE Motion Lab version ${__APP_VERSION__}`}>
             v{__APP_VERSION__}
           </span>
           <span className="footer-gh-repo">
@@ -302,6 +312,24 @@ export function App() {
               rel="noopener noreferrer"
             >
               Open Source on Github
+            </a>
+          </span>
+          <span className="footer-gh-repo">
+            <a
+              href="https://jemolab.com/privacy.html"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Privacy
+            </a>
+          </span>
+          <span className="footer-gh-repo">
+            <a
+              href="https://jemolab.com/imprint.html"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Imprint
             </a>
           </span>
         </span>

@@ -1,7 +1,8 @@
 {
-  "name": "je-motion",
+  "name": "je-motion-lab",
   "version": "0.4.0",
   "private": true,
+  "license": "Apache-2.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",

@@ -1,6 +1,6 @@
 # Changelog
 
-Notable changes to JE Motion are recorded here, using a Keep a Changelog-style
+Notable changes to JE Motion Lab are recorded here, using a Keep a Changelog-style
 structure and Semantic Versioning. Published GitHub releases and their Git tags
 establish release history; `package.json` supplies the matching application version.
 Changes since the latest formal release remain under `[Unreleased]`.
@@ -9,24 +9,30 @@ Changes since the latest formal release remain under `[Unreleased]`.
 
 ### Added
 
-- Label assignment/relabeling for markers, analog channels, force platforms, rigid bodies, EMG and IK/ID variables in the Data tab via pencil or double-click, with inline validation and source-preserving C3D/H5 export.
-- Undo/redo for committed data-label renames and event add/edit/delete, with up to 100 reversible actions per recording, modified-state tracking and Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z and Ctrl+Y shortcuts. Native text-field undo and view settings remain separate from data-edit history.
+- Apache-2.0 licensing, author attribution in `NOTICE`, and scientific citation metadata in `CITATION.cff`, with README guidance distinguishing license obligations from requested scientific citation.
+- Footer links to [Privacy](https://jemolab.com/privacy.html) and [Imprint](https://jemolab.com/imprint.html) give access to the current privacy policy and legal notice.
+- Read-only Data Explorer workspace with structured numerical marker, analog, force-platform, event, rigid-body, EMG and IK/ID tables, curated metadata, dataset search, playback highlighting, subtle selection row/column highlights, exact cell/range/selected-row/selected-column/full-table copying and bounded table rendering. The header switches between Explorer and Viewer; navigation starts collapsed with Metadata first. H5 model samples load locally in small pages, including complete clipboard copies, without loading full numerical result matrices.
+- Label assignment/relabeling for markers, analog channels, force platforms, rigid bodies, EMG and IK/ID variables in the Data tab via pencil or double-click, with inline validation and source-preserving C3D/H5 export. ([#9])
+- Undo/redo for committed data-label renames and event add/edit/delete, with up to 100 reversible actions per recording, modified-state tracking and Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z and Ctrl+Y shortcuts. Native text-field undo and view settings remain separate from data-edit history. ([#9])
 - Data sidebar replacing the Markers tab, with searchable, counted sections for available markers, analog channels, force platforms, events, rigid bodies, EMG and IK/ID variables. Marker visibility/selection and Show all are preserved; supported signals open in the existing plot and events seek the timeline. IK/ID show variable metadata only, excluding labelled time rows from lists and counts. ([#8])
-- Landing-page usage summary showing live visit, country and combined MoCap load totals from the analytics `/stats` endpoint; unavailable totals remain hidden. ([#5])
+- App welcome-screen usage summary showing live visit, country and combined MoCap load totals from the analytics `/stats` endpoint; unavailable totals remain hidden. ([#5])
 - Anonymous session visit attempts and successful C3D/H5/HDF5 load events, with a per-tab `sessionStorage` visit flag and event-only payloads. Repeated successful loads count again; failed/cancelled imports do not count as loads. ([#5])
 - Cloudflare Worker analytics integration for aggregate counts by date, country and event type in D1. Motion-capture files, filenames, measurements and metadata remain local. Backend deployment and verification scope are documented in [docs/ANALYTICS.md](docs/ANALYTICS.md). ([#5])
 
 ### Changed
 
-- Updated institute H5 compatibility for nested project/file metadata, expanded event context/subject fields and independent stream frame ranges. Older supported H5 layouts remain readable.
+- Standardized the application and project branding as JE Motion Lab. The SEO-optimized static landing page is at [jemolab.com](https://jemolab.com/); the web app is at [app.jemolab.com](https://app.jemolab.com/), still hosted on GitHub Pages. Updated application metadata, canonical URL, package name, synthetic README screenshot and deployment/release documentation.
+- GitHub Pages builds use the root base path (`/`) for the custom domain. ([#10])
+- Updated institute H5 compatibility for nested project/file metadata, expanded event context/subject fields and independent stream frame ranges. Older supported H5 layouts remain readable. ([#11])
 - Clicking a Data-tab event now seeks to its frame and opens the same editor as clicking the timeline event.
 - Restore original discards all label/event edits and crops. Loading another recording or restoring the original clears edit history; cropping establishes a modified baseline and clears undo/redo without retaining numerical snapshots.
 - Redesigned File Info as a curated recording/acquisition and metadata inspector for C3D and institute H5, with honest sampling-rate summaries, data counts, optional subject/provenance/location sections and compact lists replacing the raw JSON and event listings. Raw metadata remains internal; event editing stays on the timeline. ([#7])
-- Updated the production Content Security Policy to allow connections to the JE Motion analytics origin and the application's own origin. Development also permits local Vite WebSockets. ([#5])
+- Updated the production Content Security Policy to allow connections to the JE Motion Lab analytics origin and the application's own origin. Development also permits local Vite WebSockets. ([#5])
 - Updated documentation and browser privacy checks for analytics payloads, session storage and network behavior, including infrastructure privacy limits. Browser checks intercept analytics locally without updating live statistics. ([#5])
 
 ### Fixed
 
+- Fixed the 3D stage overlapping the right sidebar after hiding and reopening it in Data Viewer. The stage now shrinks to the available workspace width.
 - H5 edited/cropped exports preserve nested C3D provenance and boolean types, keep marker label aliases consistent, and update each stream's own sample/frame extents. Mapped EMG shares identical analog signals; independent IK/ID results are retained when their trial-time relationship is unspecified.
 - Removed the misleading V-channel warning for validated QTM-style C3D Type 2/3 force platforms while retaining calibrated force/moment/COP calculations and other validation warnings. ([#7])
 - Spatial MoCap data now consistently uses millimetres for marker positions, residuals, force-plate geometry and COP, with matching inspector/plot labels and unchanged 3D scene scale. H5/C3D import respects declared units; source-preserving exports retain matching numerical values and unit metadata. Force remains N and moments remain Nm with independent conversion and round-trip regression coverage. ([#6])
@@ -35,7 +41,7 @@ Changes since the latest formal release remain under `[Unreleased]`.
 ### Removed
 
 - Per-platform cards and their force-signal shortcuts from the Display tab. Force signals remain selectable in the signal inspector; File Info summarizes platform counts, types and rates. ([#7])
-- Built-in synthetic demo, its landing-page button and generated motion data. Viewer controls are tested with local file fixtures; the existing README screenshot is retained. ([#5])
+- Built-in synthetic demo, its welcome-screen button and generated motion data. Viewer controls and the README screenshot use local synthetic file fixtures. ([#5])
 
 ## [0.4.0] - 2026-09-28
 
@@ -69,3 +75,6 @@ The published tag retained `0.1.0` in its package files despite being released a
 [#6]: https://github.com/JEbbecke/mocap-web-viewer/pull/6
 [#7]: https://github.com/JEbbecke/mocap-web-viewer/pull/7
 [#8]: https://github.com/JEbbecke/mocap-web-viewer/pull/8
+[#9]: https://github.com/JEbbecke/mocap-web-viewer/pull/9
+[#10]: https://github.com/JEbbecke/mocap-web-viewer/pull/10
+[#11]: https://github.com/JEbbecke/mocap-web-viewer/pull/11

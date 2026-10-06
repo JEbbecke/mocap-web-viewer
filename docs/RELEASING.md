@@ -1,6 +1,6 @@
 # Versioning and manual releases
 
-JE Motion uses Semantic Versioning (`MAJOR.MINOR.PATCH`). During pre-1.0
+JE Motion Lab uses Semantic Versioning (`MAJOR.MINOR.PATCH`). During pre-1.0
 development, increment the minor version for meaningful functionality and the
 patch version for fixes or small improvements. Reserve `1.0.0` for an intentionally
 stable release; pre-1.0 compatibility and supported scientific formats can evolve.
@@ -8,14 +8,13 @@ stable release; pre-1.0 compatibility and supported scientific formats can evolv
 The latest formal GitHub release is [v0.4.0](https://github.com/JEbbecke/mocap-web-viewer/releases/tag/v0.4.0),
 published on 28 September 2026 at commit `efc2189d0d2260781c09cefa6f6b4f8fb9c6a17c`
 and containing the initial application and PRs #1–#4. Its tag was created at
-06:30:11 UTC and the release published at 06:32:12 UTC. PR #5 (analytics,
-`dede4fd6997c4da8caa2ea0b64db1197432394a1`), PR #6 (mm units and version
-reconciliation, `e73dbe89cb1edb1dccf241f00f98fa870c042f9d`), PR #7 (File Info,
-`e3771595c89e79e459bb27431a2976886eabfff6`), and PR #8 (Data sidebar,
-`e81278b5514cc93f0da6b1bb6db7b2161b81d03a`) merged afterward and remain under
-`[Unreleased]`. This release/tag boundary was verified against GitHub on
-30 September 2026. Data-label editing, shared undo/redo and Data-tab event-editor
-navigation are also unreleased; they do not imply a new formal release.
+06:30:11 UTC and the release published at 06:32:12 UTC. PRs #5–#11 merged
+afterward and remain under `[Unreleased]`: analytics, mm units and version
+reconciliation, File Info, the Data sidebar, data-label editing and shared
+undo/redo (#9), the custom-domain root base path (#10), and the updated institute
+H5 schema (#11). GitHub releases, merged PRs and the local tag target were checked
+again on 6 October 2026. The current Data Explorer, sidebar fix and JE Motion Lab
+branding changes also remain unreleased; they do not imply a new formal release.
 
 The tagged package files incorrectly retained `0.1.0`. Current development
 corrects them to `0.4.0` without moving the published tag or inventing another
@@ -33,9 +32,20 @@ request or independent source-code version is needed.
 Restart the dev server or rebuild after changing the package version. The browser
 smoke check compares the rendered footer against the package version.
 
+When preparing a formal release, keep [CITATION.cff](../CITATION.cff)'s `version`
+in sync with the package and set `date-released` to the actual release date.
+Ordinary unreleased changes do not advance either field. Citation metadata
+requests scholarly credit. The [Apache-2.0 license](../LICENSE) defines the license
+conditions, and [NOTICE](../NOTICE) records author attribution.
+
+The footer also links to [Privacy](https://jemolab.com/privacy.html) and
+[Imprint](https://jemolab.com/imprint.html). These external pages are the single
+source of truth for legal text; release notes describe the links without copying
+their contents into the repository.
+
 [README](../README.md) describes capabilities without a duplicated current-version
 label. [CHANGELOG](../CHANGELOG.md) records numbered release entries only when
-formally released. PR #4 belongs under `[0.4.0]`; PRs #5–#8 and subsequent
+formally released. PR #4 belongs under `[0.4.0]`; PRs #5–#11 and subsequent
 changes belong under `[Unreleased]` until released.
 Keep the latest formal version in the package and footer while unreleased work
 accumulates. A version bump happens when intentionally preparing the next release,
@@ -110,7 +120,7 @@ npm run test:browser
 git diff --check
 git diff
 git status --short
-git add package.json package-lock.json CHANGELOG.md
+git add package.json package-lock.json CHANGELOG.md CITATION.cff
 git diff --cached
 git commit -m "Prepare release"
 git push -u origin release/prepare
@@ -137,7 +147,7 @@ git switch --detach <reviewed-release-commit-sha>
 $releaseVersion = node -p "require('./package.json').version"
 $releaseTag = "v$releaseVersion"
 git show --stat HEAD
-git tag -a $releaseTag -m "JE Motion $releaseTag"
+git tag -a $releaseTag -m "JE Motion Lab $releaseTag"
 git push origin $releaseTag
 ```
 
@@ -146,7 +156,7 @@ checks before tagging. Copy the matching CHANGELOG release section into a local
 `.local/release-notes.md` file, then publish:
 
 ```powershell
-gh release create $releaseTag --verify-tag --title "JE Motion $releaseTag" --notes-file .local/release-notes.md
+gh release create $releaseTag --verify-tag --title "JE Motion Lab $releaseTag" --notes-file .local/release-notes.md
 git switch main
 ```
 
@@ -154,10 +164,16 @@ Use `--prerelease` only for intentionally designated preview releases; pre-1.0
 numbering alone does not require that GitHub flag. Never move or overwrite a
 published release tag; ship a new patch for corrections.
 
-GitHub Pages continues to deploy from `main` through
+The SEO-optimized static landing page is [jemolab.com](https://jemolab.com/).
+The application is [app.jemolab.com](https://app.jemolab.com/), using a GitHub Pages
+custom domain configured in the repository's Pages settings. The landing page is
+maintained separately and is not part of this repository's application release.
+
+GitHub Pages continues to deploy the web app from `main` through
 [deploy.yml](../.github/workflows/deploy.yml). Pull requests run checks without
 deployment. Pushing a tag or creating a GitHub Release does not trigger a Pages
 deployment. Pages can therefore show newer development than the latest release.
-Manual workflow runs deploy only from main. CI runs `npm ci`, `npm test` and
+Manual workflow runs deploy only from main. The workflow builds with
+`VITE_BASE_PATH=/` for `app.jemolab.com`. CI runs `npm ci`, `npm test` and
 `npm run build`; browser checks remain a local release step. There is no automated
 release, package publication or Cloudflare Worker/D1 deployment workflow.

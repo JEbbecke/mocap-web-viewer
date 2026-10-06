@@ -5,6 +5,7 @@ import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import assert from 'node:assert/strict';
 import * as h5 from 'h5wasm/node';
+import { verifyExplorer, verifyLargeExplorer, verifyCroppedExplorer } from './browser-explorer.mjs';
 
 const root = process.cwd();
 const { version } = JSON.parse(await readFile('package.json', 'utf8'));
@@ -31,6 +32,45 @@ const currentH5 = JSON.parse(await readFile('tests/fixtures/current-h5.json', 'u
 await writeFile('.local/current-browser.h5', Buffer.from(currentH5.base64, 'base64'));
 // Synthetic metadata exercises all curated sections without participant data.
 await h5.ready;
+// Large, wholly synthetic recording for bounded table DOM/scroll checks.
+const largeFile = new h5.File(resolve('.local/explorer-large.h5'), 'w');
+try {
+  const trajectories = largeFile.create_group('Trajectories');
+  trajectories.create_attribute('SamplingFrequency', 100);
+  trajectories.create_attribute('StartFrame', 0);
+  const labeled = trajectories.create_group('Labeled');
+  labeled.create_attribute('Labels', ['Synthetic marker']);
+  labeled.create_attribute('Unit', 'mm');
+  labeled.create_dataset({
+    name: 'Data',
+    data: new Float64Array(4 * 4000).fill(1),
+    shape: [1, 4, 4000],
+  });
+  const analog = largeFile.create_group('Analog');
+  analog.create_attribute('Labels', ['Large analog']);
+  analog.create_attribute('Units', ['V']);
+  analog.create_attribute('SamplingFrequency', 5000);
+  analog.create_dataset({
+    name: 'Data',
+    data: Float64Array.from({ length: 200000 }, (_, i) => i),
+    shape: [1, 200000],
+  });
+  largeFile.create_group('MetaData').create_group('Project');
+  const model = largeFile.create_group('IKResults');
+  model.create_attribute('Labels', ['Large model']);
+  model.create_dataset({
+    name: 'Data',
+    data: Float64Array.from({ length: 1005 }, (_, i) => i + 4),
+    shape: [1, 1005],
+  });
+  model.create_dataset({
+    name: 'Time',
+    data: Float64Array.from({ length: 1005 }, (_, i) => 0.25 + i * 0.001),
+    shape: [1005],
+  });
+} finally {
+  largeFile.close();
+}
 const syntheticInfoPath = 'C:\\synthetic\\' + 'long-folder-name-'.repeat(12) + '\\recording.c3d';
 const populatedFile = new h5.File(resolve('.local/populated.h5'), 'a');
 try {
@@ -141,7 +181,25 @@ try {
     }),
   );
   await page.goto(`http://127.0.0.1:4173${base}`, { waitUntil: 'networkidle' });
+  assert.equal(await page.title(), 'JE Motion Lab | MoCap Viewer & Editor');
+  assert.equal(await page.locator('.brand strong').innerText(), 'JE Motion Lab');
+  assert.equal(
+    await page.locator('meta[name="application-name"]').getAttribute('content'),
+    'JE Motion Lab',
+  );
+  assert.match(
+    await page.locator('meta[name="description"]').getAttribute('content'),
+    /^JE Motion Lab \|/,
+  );
+  assert.equal(
+    await page.locator('link[rel="canonical"]').getAttribute('href'),
+    'https://app.jemolab.com/',
+  );
   assert.equal(await page.locator('.footer-version').textContent(), `v${version}`);
+  assert.equal(
+    await page.locator('.footer-version').getAttribute('aria-label'),
+    `JE Motion Lab version ${version}`,
+  );
   assert.deepEqual(analyticsEvents(), ['visit'], 'one visit on initial mount');
   assert.equal(
     (await page.locator('.welcome-stats').textContent()).replace(/\s+/g, ' ').trim(),
@@ -756,6 +814,7 @@ try {
     };
     await mkdir('.local/h5-validation', { recursive: true });
     await open(path);
+    await verifyExplorer(page, 'H5');
     assert.equal(
       await page.getByRole('button', { name: 'Add Event', exact: true }).isEnabled(),
       true,
@@ -833,6 +892,7 @@ try {
     await page.getByRole('slider', { name: 'Crop start', exact: true }).press('ArrowRight');
     await page.getByRole('slider', { name: 'Crop end', exact: true }).press('Home');
     await page.getByRole('button', { name: 'Crop', exact: true }).click();
+    await verifyCroppedExplorer(page, label);
     const cropped = await save('cropped');
     await open(cropped);
     assert.equal(
@@ -1046,6 +1106,12 @@ try {
   });
   await hdf5Load;
   await page.waitForFunction(() => !document.body.textContent.includes('Reading your recording'));
+  await page.getByLabel('Open motion file').setInputFiles(resolve('.local/synthetic.c3d'));
+  await page.waitForFunction(() => !document.body.textContent.includes('Reading your recording'));
+  await verifyExplorer(page, 'C3D');
+  await page.getByLabel('Open motion file').setInputFiles(resolve('.local/explorer-large.h5'));
+  await page.waitForFunction(() => !document.body.textContent.includes('Reading your recording'));
+  await verifyLargeExplorer(page);
   const eventsBeforeFailure = analyticsEvents();
   assert.deepEqual(errors, [], 'no runtime/CSP errors while opening valid files');
   // Bad file must leave the previous usable trial in place.

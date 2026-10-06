@@ -34,7 +34,7 @@ C3D export limits:
 
 - Import restrictions still apply: DEC/VAX and nonstandard rotation records are unsupported.
 - Segmented event arrays (more than 255 events or continuation parameters) and malformed event dimensions are rejected.
-- Marker/analog/force-platform labels support 255 UTF-8 bytes per name and continuation parameters within record/block capacity. Optional `FORCE_PLATFORM:LABELS` names round-trip in JE Motion; other readers may display platform numbers instead.
+- Marker/analog/force-platform labels support 255 UTF-8 bytes per name and continuation parameters within record/block capacity. Optional `FORCE_PLATFORM:LABELS` names round-trip in JE Motion Lab; other readers may display platform numbers instead.
 - A crop excluding any active `FORCE_PLATFORM:ZERO` baseline frames is rejected: recalculating with a partial baseline or disabling it would change force interpretation in other readers. `[0,0]` and inactive reversed ranges require no baseline interval.
 - Nonzero undocumented records beyond the standard padded data section are rejected. Ordinary trailing padding is regenerated.
 - Unknown vendor parameters are preserved byte-for-byte but cannot be interpreted or temporally adjusted. Vendor-specific temporal parameters require manual review. No arbitrary vendor-specific time series are claimed to be supported.
