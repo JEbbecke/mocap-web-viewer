@@ -1,4 +1,4 @@
-"""Read only synthetic files produced by tests/cross-format.test.ts.
+"""Read only synthetic files produced by conversion and channel-reuse tests.
 
 Requires numpy, h5py and ezc3d. Prints aggregate checks, never recording values.
 Does not change the independent readers or any source file.
@@ -19,6 +19,8 @@ pairs = [
     ('synthetic-extended.h5', 'synthetic-extended.c3d'),
     ('synthetic-corrected-cop.h5', 'synthetic-corrected-cop.c3d'),
     ('synthetic-surveyed-corners.h5', 'synthetic-surveyed-corners.c3d'),
+    ('synthetic-metadata.h5', 'synthetic-metadata.c3d'),
+    ('synthetic-native.h5', 'synthetic-native.c3d'),
 ]
 
 
@@ -85,8 +87,12 @@ for h5_name, c3d_name in pairs:
             close(plate['corners'], p['Corners'][:, :, 0])
             checked['force_samples'] += int(p['Force'].shape[1])
         events = source['Events']
-        used = int(c3d['parameters']['EVENT']['USED']['value'][0])
+        used = int(c3d['parameters'].get('EVENT', {}).get('USED', {'value': [0]})['value'][0])
         assert used == len(events['Time'])
+        if not used:
+            checked['h5_files'] += 1
+            checked['c3d_files'] += 1
+            continue
         for target, original in [('LABELS', 'Name'), ('CONTEXTS', 'Context'),
                                  ('DESCRIPTIONS', 'Description'), ('SUBJECTS', 'Subject')]:
             assert c3d['parameters']['EVENT'][target]['value'] == [s.strip() for s in events[original].asstr()[:]]
@@ -95,5 +101,48 @@ for h5_name, c3d_name in pairs:
         checked['events'] += used
         checked['h5_files'] += 1
         checked['c3d_files'] += 1
+
+metadata = ezc3d.c3d(str(folder / 'synthetic-metadata.c3d'))['parameters']['JE_METADATA']
+assert metadata['VERSION']['value'] == ['1']
+
+
+def embedded(name):
+    chunks = list(metadata[name]['value'])
+    segment = 2
+    while f'{name}{segment}' in metadata:
+        chunks.extend(metadata[f'{name}{segment}']['value'])
+        segment += 1
+    return json.loads(''.join(chunks))
+
+
+checked['metadata_fields'] = 0
+with h5py.File(folder / 'synthetic-metadata.h5', 'r') as source:
+    for group, fields in [
+        ('MetaData/Project', {'SubjectID': 'SUBJECT_ID', 'SubjectGroup': 'SUBJECT_GROUP',
+                             'Age': 'SUBJECT_AGE', 'Sex': 'SUBJECT_SEX',
+                             'BodyHeight': 'SUBJECT_HEIGHT', 'BodyMass': 'SUBJECT_MASS',
+                             'Condition': 'SUBJECT_CONDITION', 'Project': 'PROJECT',
+                             'ProjectPI': 'PROJECT_PI'}),
+        ('MetaData/FileInfo', {'OriginalFiles': 'ORIGINAL_FILES', 'PathFile': 'SOURCE_PATH',
+                              'FileCreationLocal': 'CREATED_LOCAL', 'FileCreationUTC': 'CREATED_UTC',
+                              'LastUpdate': 'LAST_UPDATED'}),
+        ('MetaData/Location', {'Lat': 'LATITUDE', 'Lon': 'LONGITUDE'}),
+    ]:
+        attrs = source[group].attrs
+        for field, parameter in fields.items():
+            expected = {'values': [str(v).strip() for v in np.atleast_1d(attrs[field])]}
+            if f'{field}Unit' in attrs:
+                expected['unit'] = str(attrs[f'{field}Unit'])
+            assert embedded(parameter) == expected, parameter
+            checked['metadata_fields'] += 1
+    assert embedded('COORDINATES') == source['Trajectories'].attrs['GlobalCoordinateSystem']
+    assert embedded('CREATED') == source['MetaData/FileInfo'].attrs['FileCreationLocal']
+    checked['metadata_fields'] += 2
+
+native = ezc3d.c3d(str(folder / 'synthetic-native.c3d'))
+assert list(native['parameters']['FORCE_PLATFORM']['TYPE']['value']) == [2, 3, 4]
+assert int(native['parameters']['ANALOG']['USED']['value'][0]) == 20
+assert any(native['parameters']['FORCE_PLATFORM']['FPCOPPOLY']['value'].ravel())
+checked['reused_force_platforms'] = 3
 
 print(json.dumps({'passed': True, 'independent_readers': ['h5py', 'ezc3d'], **checked}))

@@ -6,7 +6,12 @@ import { resolve } from 'node:path';
 import assert from 'node:assert/strict';
 import * as h5 from 'h5wasm/node';
 import { verifyExplorer, verifyLargeExplorer, verifyCroppedExplorer } from './browser-explorer.mjs';
-import { createCorrectedCopFixture, verifyCrossFormat } from './browser-cross-format.mjs';
+import {
+  chooseExportFormat,
+  createCorrectedCopFixture,
+  verifyCrossFormat,
+  verifyExportToolbar,
+} from './browser-cross-format.mjs';
 
 const root = process.cwd();
 const { version } = JSON.parse(await readFile('package.json', 'utf8'));
@@ -246,6 +251,7 @@ try {
   await page.getByLabel('Open motion file').setInputFiles(resolve('.local/populated.h5'));
   await controlsLoad;
   await page.getByRole('slider', { name: 'Frame', exact: true }).waitFor();
+  await verifyExportToolbar(page);
   await page.getByRole('tab', { name: 'File Info', exact: true }).click();
   const fileInfo = page.getByRole('tabpanel', { name: 'File Info', exact: true });
   const infoValue = (label) =>
@@ -433,10 +439,12 @@ try {
     await redoButton.click();
     assert.equal(await section.locator('.data-entry').first().getAttribute('title'), newName);
   }
-  const allLabelsDownload = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Export', exact: true }).click();
+  const allLabelsExport = page.waitForEvent('download');
+  await chooseExportFormat(page, 'H5');
+  await page.locator('.export-status').waitFor();
+  assert.equal(await page.locator('.export-status').innerText(), 'Export prepared');
   const labelsPath = resolve('.local/all-data-renamed.h5');
-  await (await allLabelsDownload).saveAs(labelsPath);
+  await (await allLabelsExport).saveAs(labelsPath);
   const labelsFile = new h5.File(labelsPath, 'r');
   try {
     assert.equal(labelsFile.get('ForcePlates/0').attrs.Name.value, 'Renamed_Force');
@@ -742,7 +750,7 @@ try {
   await page.getByLabel('Time (s)', { exact: true }).fill('0.02');
   await page.screenshot({ path: '.local/event-editor.png' });
   await page.getByRole('button', { name: 'Save event', exact: true }).click();
-  const eventDownload = page.waitForEvent('download');
+  const eventExport = page.waitForEvent('download');
   // Compare the arrow's geometric tip with the playback axis, including a scroll gutter.
   const alignment = await page.evaluate(() => {
     const marker = document.querySelector(
@@ -764,8 +772,8 @@ try {
   });
   assert(Math.abs(alignment.normal) < 0.1, 'event tip aligns with its frame');
   assert(Math.abs(alignment.scrolling) < 0.1, 'event scrolling preserves the time axis');
-  await page.getByRole('button', { name: 'Export', exact: true }).click();
-  const eventFile = await eventDownload;
+  await chooseExportFormat(page, 'C3D');
+  const eventFile = await eventExport;
   assert.equal(eventFile.suggestedFilename(), 'synthetic_edited.c3d');
   await eventFile.saveAs(resolve('.local/events-edited.c3d'));
   await page.getByLabel('Open motion file').setInputFiles(resolve('.local/events-edited.c3d'));
@@ -825,10 +833,10 @@ try {
     };
     const save = async (suffix) => {
       const pending = page.waitForEvent('download');
-      await page.getByRole('button', { name: 'Export', exact: true }).click();
-      const downloaded = await pending,
+      await chooseExportFormat(page, 'H5');
+      const exportedFile = await pending,
         target = resolve(`.local/h5-validation/${label}-browser-${suffix}.h5`);
-      await downloaded.saveAs(target);
+      await exportedFile.saveAs(target);
       return target;
     };
     await mkdir('.local/h5-validation', { recursive: true });
@@ -919,7 +927,7 @@ try {
       '0',
     );
   }
-  // Actual worker export/download/re-import, with request and storage monitoring still active.
+  // Actual worker export/re-import, with request and storage monitoring still active.
   for (const extension of ['c3d', 'h5']) {
     await page
       .getByLabel('Open motion file')
@@ -1037,12 +1045,12 @@ try {
       await page.getByRole('slider', { name: 'Frame', exact: true }).getAttribute('aria-valuemax'),
       '1',
     );
-    const downloadPromise = page.waitForEvent('download');
-    await page.getByRole('button', { name: 'Export', exact: true }).click();
-    const download = await downloadPromise;
-    assert.equal(download.suggestedFilename(), `synthetic_cropped.${extension}`);
-    const downloaded = resolve(`.local/synthetic_cropped.${extension}`);
-    await download.saveAs(downloaded);
+    const exportPromise = page.waitForEvent('download');
+    await chooseExportFormat(page, extension === 'c3d' ? 'C3D' : 'H5');
+    const exportedFile = await exportPromise;
+    assert.equal(exportedFile.suggestedFilename(), `synthetic_cropped.${extension}`);
+    const exportedPath = resolve(`.local/synthetic_cropped.${extension}`);
+    await exportedFile.saveAs(exportedPath);
     await page.getByRole('button', { name: 'Restore original', exact: true }).click();
     assert.equal(
       await dataBrowser.getByRole('button', { name: importedLabel, exact: true }).count(),
@@ -1052,7 +1060,7 @@ try {
       await page.getByRole('slider', { name: 'Frame', exact: true }).getAttribute('aria-valuemax'),
       '2',
     );
-    await page.getByLabel('Open motion file').setInputFiles(downloaded);
+    await page.getByLabel('Open motion file').setInputFiles(exportedPath);
     await page.waitForFunction(() => !document.body.textContent.includes('Reading your recording'));
     assert.equal(await page.getByRole('alert').count(), 0);
     assert.equal(

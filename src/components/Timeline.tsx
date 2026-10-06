@@ -1,13 +1,11 @@
 import { applyCrop, restoreOriginal, setFrame, togglePlay, useSession } from '../state/session';
 import type { MotionData } from '../motion/types';
-import { EventEditor } from './EventEditor';
-import { ExportControl } from './ExportControl';
+import { EventControls, EventEditor } from './EventEditor';
 export function Timeline({ data }: { data: MotionData }) {
   const frame = useSession((s) => s.frame),
     playing = useSession((s) => s.playing),
     selection = useSession((s) => s.cropSelection),
     file = useSession((s) => s.sourceFile),
-    saved = useSession((s) => s.saved),
     dirty = useSession((s) => s.dirty),
     speed = useSession((s) => s.speed),
     loop = useSession((s) => s.loop);
@@ -93,25 +91,22 @@ export function Timeline({ data }: { data: MotionData }) {
           Loop
         </label>
         <div className="timeline-actions">
-          <button
-            onClick={applyCrop}
-            disabled={!selection}
-            title="Drag the timeline handles to select a crop"
-          >
-            Crop
-          </button>
-          {selection && (
-            <button onClick={() => useSession.setState({ cropSelection: null, playing: false })}>
-              Cancel crop
+          <div className="crop-actions">
+            <button
+              onClick={applyCrop}
+              disabled={!selection}
+              title="Drag the timeline handles to select a crop"
+            >
+              Crop
             </button>
-          )}
-          {file && (
-            <>
-              <ExportControl data={data} disabled={!file || Boolean(selection)} />
-              {dirty && <button onClick={restoreOriginal}>Restore original</button>}
-              {saved && <span role="status">Download prepared</span>}
-            </>
-          )}
+            {selection && (
+              <button onClick={() => useSession.setState({ cropSelection: null, playing: false })}>
+                Cancel crop
+              </button>
+            )}
+            {file && dirty && <button onClick={restoreOriginal}>Restore original</button>}
+          </div>
+          <EventControls data={data} />
         </div>
       </div>
     </section>

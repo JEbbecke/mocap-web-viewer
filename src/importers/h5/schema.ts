@@ -4,10 +4,11 @@ import { forceScale, millimetres, momentScale, MOTION_UNITS } from '../../motion
 import { validateMotion } from '../../motion/validation';
 import { h5RecordingInfo } from './metadata';
 import { h5Layout } from './layout';
+import { embeddedC3DAnalogEncoding, embeddedC3DPlate } from './c3dForceMetadata';
 
 /** Structural subset of h5wasm, also usable with an in-memory test tree. */
 export interface H5Node {
-  attrs?: Record<string, { value: unknown }>;
+  attrs?: Record<string, { value: unknown; shape?: number[] | null }>;
   shape?: number[] | null;
   value?: unknown;
   metadata?: { type: number };
@@ -419,6 +420,7 @@ export function parseH5Tree(root: H5Node, name: string): MotionData {
         provenance: converter
           ? 'Legacy converter: stored global vectors'
           : `Stored CoordinateSystem=${coord}`,
+        c3dSource: embeddedC3DPlate(root, key),
       });
     } catch (e) {
       warnings.push(
@@ -677,6 +679,7 @@ export function parseH5Tree(root: H5Node, name: string): MotionData {
       ...(hasTrialClock ? { timeOrigin } : {}),
       ...(eventSchema ? { eventSchema } : {}),
       h5Layout: layout,
+      c3dAnalogEncoding: embeddedC3DAnalogEncoding(root),
     },
     timeline: { frameCount, rate, firstFrame, duration: (frameCount - 1) / rate },
     markers: { labels, positions, valid, residuals, quality },

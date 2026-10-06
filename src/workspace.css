@@ -52,6 +52,59 @@ header {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
+}
+.header-file > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.file-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+.export-control {
+  position: relative;
+}
+.export-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 25;
+  min-width: 175px;
+  padding: 5px;
+  border: 1px solid #3b5666;
+  border-radius: 7px;
+  background: #1b2c38;
+  box-shadow: 0 8px 24px #0006;
+}
+.export-menu button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  width: 100%;
+  border: 0;
+  padding: 9px;
+  text-align: left;
+  background: none;
+}
+.export-menu button:hover,
+.export-menu button:focus {
+  background: #2b3c4c;
+}
+.export-menu button span {
+  font-size: 10px;
+  color: #8ce0c9;
+}
+.export-status {
+  position: absolute;
+  top: calc(100% + 3px);
+  right: 0;
+  white-space: nowrap;
+  font-size: 9px;
+  color: #8ce0c9;
 }
 .file-badge {
   font-size: 9px;
@@ -670,17 +723,18 @@ dd {
 }
 .timeline-actions {
   display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+.crop-actions {
+  display: flex;
   flex-direction: column;
   gap: 4px;
-  flex: none;
 }
 .timeline-actions button {
   padding: 4px 8px;
   font-size: 11px;
-}
-.timeline-actions [role='status'] {
-  font-size: 9px;
-  color: #8ce0c9;
 }
 .scrubber:has(.timeline-slider) .events-track {
   left: 10px;
@@ -763,19 +817,19 @@ dd {
 }
 .event-toolbar {
   display: flex;
-  gap: 6px;
-  align-items: center;
-  margin: 3px 10px 0;
+  flex-direction: column;
+  gap: 4px;
+  width: 150px;
   font-size: 10px;
   color: #b9cbd6;
 }
 .event-toolbar button,
 .event-toolbar select {
-  font-size: 10px;
-  padding: 2px 6px;
+  font-size: 11px;
+  padding: 4px 8px;
 }
 .event-toolbar select {
-  max-width: 210px;
+  width: 100%;
 }
 .event-scroll {
   margin: 2px 10px 0;
@@ -1107,6 +1161,13 @@ footer .privacy-dot {
     gap: 10px;
     padding: 12px;
   }
+  .event-toolbar {
+    width: 125px;
+  }
+  header {
+    gap: 10px;
+    padding-inline: 16px;
+  }
   .transport button {
     padding: 4px;
   }
@@ -1129,6 +1190,18 @@ footer .privacy-dot {
   }
   .brand strong span {
     font-size: 14px;
+  }
+}
+@media (max-width: 900px) {
+  .timeline {
+    flex-wrap: wrap;
+  }
+  .scrubber {
+    order: -1;
+    flex-basis: 100%;
+  }
+  .timeline-actions {
+    margin-left: auto;
   }
 }
 @media (max-width: 760px) {
@@ -1155,8 +1228,13 @@ footer .privacy-dot {
   .empty-inspector {
     display: none;
   }
-  header > .primary {
+  .file-actions {
     margin-left: auto;
+  }
+  .history-controls {
+    order: 1;
+    width: 100%;
+    justify-content: flex-end;
   }
   .workspace {
     display: block;
@@ -1171,6 +1249,9 @@ footer .privacy-dot {
   }
   .timeline {
     gap: 8px;
+  }
+  .event-toolbar {
+    width: 120px;
   }
   .transport button:first-child,
   .transport button:last-child {

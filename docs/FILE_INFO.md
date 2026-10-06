@@ -63,6 +63,14 @@ are not reinterpreted. See the C3D documentation for
 [SUBJECTS](https://www.c3d.org/HTML/Documents/thesubjectsgroup.htm) and
 [MANUFACTURER](https://www.c3d.org/HTML/Documents/manufacturercompany.htm).
 
+Converted H5→C3D files also carry the versioned `JE_METADATA` mapping for imported
+subject values/units, project/file/location facts and explicit coordinate
+descriptions. Valid fields restore `source.info` without inventing subject
+associations; compatible SUBJECT parameters remain a fallback for malformed or
+unsupported extension versions. Other C3D readers may expose these custom
+parameters without displaying them as File Info. See
+[metadata parameters and limits](CROSS_FORMAT_EXPORT.md#recording-metadata-in-c3d).
+
 ## Display and validation
 
 Empty values, null/undefined/NaN, empty arrays/objects and placeholder strings

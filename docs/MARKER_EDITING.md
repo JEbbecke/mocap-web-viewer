@@ -45,7 +45,7 @@ imports leave the existing recording and history intact. Crop clears history and
 establishes a modified baseline, because undoing numerical cuts would require
 retaining potentially large arrays; subsequent metadata edits can be undone back
 to that baseline. Restore original discards all edits and crops. Export preserves
-history and Modified status: preparing a download does not replace the imported
+history and Modified status: preparing an export does not replace the imported
 source or confirm a disk save. Edits and history traversal are blocked while an
 import or export is running.
 

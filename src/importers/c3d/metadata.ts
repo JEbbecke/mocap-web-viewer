@@ -4,7 +4,8 @@ import {
   type RecordingInfo,
   type MetadataValue,
 } from '../../motion/metadata';
-import { number, nums, type Parameters } from './parameters';
+import { labels, number, nums, type Parameters } from './parameters';
+import { readC3DMetadata } from '../../motion/c3dMetadata';
 
 /** SUBJECT(S) is application-specific. Map only explicit field names, never infer
  * age from birth date, mass from WEIGHT, ID from NAME, or units from POINT:UNITS. */
@@ -48,8 +49,8 @@ export function c3dRecordingInfo(p: Parameters): RecordingInfo {
   }
   const software = scalar('MANUFACTURER:SOFTWARE');
   const version = scalar('MANUFACTURER:VERSION_LABEL') ?? scalar('MANUFACTURER:VERSION');
+  const embedded = readC3DMetadata((name) => labels(p, `JE_METADATA:${name}`));
   return {
-    subject,
     manufacturer: scalar('MANUFACTURER:COMPANY'),
     software: software ? [software, version].filter(Boolean).join(' ') : undefined,
     platformTypes: nums(p, 'FORCE_PLATFORM:TYPE')
@@ -57,5 +58,7 @@ export function c3dRecordingInfo(p: Parameters): RecordingInfo {
       .filter((v) => Number.isSafeInteger(v) && v > 0),
     // C3D screen axes describe viewing, not a lab coordinate system. TRIAL frame
     // indices, ambiguous DATE parameters and browser lastModified are not dates.
+    ...embedded,
+    subject: { ...subject, ...embedded.subject },
   };
 }

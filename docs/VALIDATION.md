@@ -1,14 +1,52 @@
 # Validation record
 
-Initial validation was performed locally on Windows, Node 24 and headless Chrome on 24 September 2026. The scientific results below are a historical record, with later H5 coverage linked at the end; they are not the current suite totals. The original Python project and measurements were read-only throughout. The sibling reference files are not copied to application assets or committed fixtures.
+Initial validation was performed locally on Windows, Node 24 and headless Chrome on 24 September 2026. The latest audit is recorded first; subsequent dated entries retain historical scientific results and suite totals. The original Python project and measurements were read-only throughout. The sibling reference files are not copied to application assets or committed fixtures.
 
-## Cross-format export — 6 October 2026
+## Final documentation and terminology audit — 6 October 2026
+
+Verified branch `feature/cross-format-export`, local Git history/tag and GitHub
+release/merged-PR metadata. The latest formal release remains `v0.4.0` at
+`efc2189d0d2260781c09cefa6f6b4f8fb9c6a17c`; PRs #5–#12 and the current
+cross-format work remain unreleased. Package, lockfile roots, footer and citation
+version stay at `0.4.0`. No commit, push, merge, tag or release was created.
+
+The full `npm test` run reported **203 passed, 2 failed, 1 skipped** across 19
+files. Both failures are the existing `tests/reference.test.ts` setup issue:
+the ignored oracle points to a missing source under another Windows user, and
+the paired comparison depends on that failed import. The oracle and scientific
+tests were not changed. A separately reported portable run,
+`npm test -- --exclude tests/reference.test.ts`, passed **202 tests across 18
+files**, with the one opt-in authoritative conversion check skipped. This does
+not make the full run green or revalidate the private oracle.
+
+The typechecked production build, full Chrome smoke suite, formatting checks for
+the audit's edited files and `git diff --check` passed. Repository-wide
+`npm run format:check` reports CRLF line-ending differences in 78 untouched files;
+their content passes after read-only LF normalization. Those files were left
+unchanged to avoid an unrelated formatting rewrite. All 108 local Markdown file
+links resolved. Browser
+coverage includes both conversion workers, source-format preservation, event
+editing, Export prepared status, menu keyboard/outside-click behavior and layouts
+from 390 to 1440 pixels. Analytics was intercepted locally. The README screenshot
+was refreshed from the invented populated H5 fixture, not a participant file.
+
+Product/UI/docs now consistently use Export. Remaining `download` uses are the
+DOM anchor attribute, its technical documentation (including this audit record)
+and six Playwright `waitForEvent('download')` calls. Third-party APIs remain intact.
+README and technical mappings describe all four export paths, verified original
+force-channel reuse and fallback, JE_METADATA, changed-before-omitted reporting
+and reader/privacy limits. Dated migration/Python audits, earlier validation
+counts and the released package-version mismatch remain as explicit history.
+Final review is appropriate; merge still requires passing PR checks and a valid
+private-oracle setup wherever those comparisons are run.
+
+## Initial cross-format implementation — 6 October 2026
 
 On `feature/cross-format-export`, all **191 tests across 18 files** passed with
 `JE_VALIDATE_REFERENCE=1`, including 41 conversion tests (one is an opt-in
 read-only authoritative-file check). The typechecked production build and full
 Chromium smoke suite passed. Browser checks exercised both conversion workers,
-downloads and re-import, Data Explorer values, cancelling the conversion report,
+exports and re-import, Data Explorer values, cancelling the conversion report,
 blocked incompatible analog sampling, corrected-COP omission warnings and
 reconstructed Force/Moment/COP/free-moment table values, and existing
 analytics/storage checks.
@@ -24,7 +62,7 @@ under ignored `.local/`; no participant recordings were added to the repository.
 `python scripts/validate-cross-format.py` after the conversion tests to repeat
 these comparisons in an environment with numpy, h5py and ezc3d.
 
-The COP follow-up retains compatible force/moment plates when stored COP differs
+Before the original-channel reuse follow-up below, the derived COP fallback retained compatible force/moment plates when stored COP differed
 from reconstruction, with explicit COP/free-moment omission warnings. Source
 arrays remain untouched. The synthetic corrected case verifies reconstruction
 instead of equality to the omitted stored COP/Tz. An independent read-only check
@@ -35,14 +73,14 @@ differs as reported; these private outputs remain ignored and are never fixtures
 
 The geometry follow-up accepts small surveyed-corner deviations within documented
 limits (1 degree, diagonal-midpoint separation 1% of shortest edge capped at 5 mm,
-non-planarity 0.5% capped at 2 mm). Plates 3 and 4 are included with per-plate
-warnings. Their original corner coordinates/order remain unchanged except for
+non-planarity 0.5% capped at 2 mm). Plates 3 and 4 are included without geometry
+warnings when these checks pass. Their original corner coordinates/order remain unchanged except for
 C3D float32 storage, and ezc3d reconstructs their stored COP/free moment within
 the tested tolerances. New regressions reject excessive angular, midpoint and
 plane errors, crossed/duplicate/nonfinite corners and verify translation-invariant
 acceptance without fitting a new rectangle. This validates the tested readers;
 other vendor implementations may impose stricter geometry assumptions.
-The production browser check also passed the accepted-geometry warning, download,
+The production browser check also passed the accepted geometry, export,
 re-import and exact surveyed-corner table values, together with reconstructed COP.
 
 The unchanged older institute Python reader fails on missing legacy `Location`
@@ -53,7 +91,43 @@ the C3D standard rather than that incorrect magnitude. These checks establish
 the tested mappings, not all vendor variants or very large recordings. See the
 [compatibility matrix and limitations](CROSS_FORMAT_EXPORT.md).
 
-## Branding, domains and current checks — 6 October 2026
+### Metadata mapping follow-up — 6 October 2026
+
+H5 → C3D now embeds the imported project/file/location, coordinate description
+and complete known subject values/units in versioned JE_METADATA parameters.
+The mapping is documented in [cross-format export](CROSS_FORMAT_EXPORT.md).
+The 52 targeted conversion/File Info tests passed, including the read-only
+authoritative H5 export check, long and multi-record text, Unicode/whitespace,
+crop preservation, invalid extension fields and capacity overflow. The
+production build and Chromium smoke suite passed, including metadata visible in
+File Info after conversion/export/re-import. h5py and ezc3d independently accepted eight synthetic
+pairs and confirmed all 18 mapped fields in the metadata-rich recording.
+The full suite passed 192 tests; two private reference comparisons failed
+because the saved local oracle references a file under a different Windows
+user directory. These missing source paths are unrelated to this mapping.
+
+### Original force-channel reuse follow-up — 6 October 2026
+
+H5 to C3D conversion now validates and reuses embedded original TYPE-2/3/4
+definitions and existing analog channels, with a per-plate derived TYPE-2
+fallback when metadata or reconstruction is incompatible. The authoritative
+recording retains all 56 analog channels and plate types `[3,3,4,3,3]`.
+Its original COP correction is preserved. Independent ezc3d checks accepted
+force/moment/COP/free moment for all five plates, 3,940 samples each, together
+with the complete analog data. The source H5 was opened read-only.
+
+All 203 applicable tests across 18 suites passed with the authoritative check
+enabled; the stale private reference-oracle suite was excluded for its previously
+documented missing Windows paths. Twelve synthetic reuse regressions cover mixed
+types, off-diagonal calibration, COP correction, crop/rename/reorder, missing or
+stale metadata/channels, units, negative analog offsets and float32 failure with
+a working fallback. The typechecked production build passed. Independent h5py
+and ezc3d checks accepted nine synthetic pairs, including native TYPE-2/3/4 reuse
+without added channels. The full Chromium smoke suite and a focused production
+browser check passed mixed reuse and fallback, exports/re-import, scientific
+table values and metadata in File Info.
+
+## Earlier branding and domains review — 6 October 2026
 
 The application, HTML title/description/application name, accessible footer,
 package name, README screenshot and project documentation now use **JE Motion Lab**.
@@ -178,6 +252,6 @@ This covers Chromium and the inspected datasets, not every vendor encoding, arbi
 
 ## Authoritative populated H5
 
-The 25 September schema/lifecycle audit supersedes earlier empty-event H5 assumptions. See [H5_VALIDATION.md](H5_VALIDATION.md) for complete recursive comparisons, actual worker downloads, enum preservation, Python reader compatibility and known limits. H5 marker display arrays now retain float64; comparison to C3D float32 display arrays uses a 1e-3 millimetre tolerance. H5 raw export comparisons remain exact.
+The 25 September schema/lifecycle audit supersedes earlier empty-event H5 assumptions. See [H5_VALIDATION.md](H5_VALIDATION.md) for complete recursive comparisons, actual worker exports, enum preservation, Python reader compatibility and known limits. H5 marker display arrays now retain float64; comparison to C3D float32 display arrays uses a 1e-3 millimetre tolerance. H5 raw export comparisons remain exact.
 
 Current unit regression checks are documented in [UNITS.md](UNITS.md). The private reference H5 is now read-only in automated tests; its reconstruction/export/crop and browser checks use synthetic H5 files. The existing private ezc3d JSON oracle remains in SI and comparisons convert mm to m explicitly.
