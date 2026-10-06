@@ -9,6 +9,7 @@ Changes since the latest formal release remain under `[Unreleased]`.
 
 ### Added
 
+- Browser-local C3D→H5 and supported H5→C3D export, with source-format output as the default and a preview reporting omissions, precision changes and incompatible clocks. Compatible stationary force plates use an explicitly derived six-axis C3D representation. Differing stored COP/free moment is omitted with warnings and reconstructed from force/moment instead of discarding the plate. Slightly irregular surveyed corners are retained within documented geometry tolerances, with per-plate warnings; source-preserving exports remain available.
 - Apache-2.0 licensing, author attribution in `NOTICE`, and scientific citation metadata in `CITATION.cff`, with README guidance distinguishing license obligations from requested scientific citation.
 - Footer links to [Privacy](https://jemolab.com/privacy.html) and [Imprint](https://jemolab.com/imprint.html) give access to the current privacy policy and legal notice.
 - Read-only Data Explorer workspace with structured numerical marker, analog, force-platform, event, rigid-body, EMG and IK/ID tables, curated metadata, dataset search, playback highlighting, subtle selection row/column highlights, exact cell/range/selected-row/selected-column/full-table copying and bounded table rendering. The header switches between Explorer and Viewer; navigation starts collapsed with Metadata first. H5 model samples load locally in small pages, including complete clipboard copies, without loading full numerical result matrices.

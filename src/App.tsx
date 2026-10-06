@@ -339,9 +339,7 @@ export function App() {
         <div className="loading-overlay" role="status">
           <div className="loading-card">
             <span className="spinner" />
-            <h2>
-              {operation === 'export' ? 'Preparing your cropped file' : 'Reading your recording'}
-            </h2>
+            <h2>{operation === 'export' ? 'Preparing your download' : 'Reading your recording'}</h2>
             <p>Processing locally. Your file stays on this device.</p>
             <button onClick={cancelImport}>Cancel</button>
           </div>

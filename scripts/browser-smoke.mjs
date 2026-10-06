@@ -6,6 +6,7 @@ import { resolve } from 'node:path';
 import assert from 'node:assert/strict';
 import * as h5 from 'h5wasm/node';
 import { verifyExplorer, verifyLargeExplorer, verifyCroppedExplorer } from './browser-explorer.mjs';
+import { createCorrectedCopFixture, verifyCrossFormat } from './browser-cross-format.mjs';
 
 const root = process.cwd();
 const { version } = JSON.parse(await readFile('package.json', 'utf8'));
@@ -32,6 +33,7 @@ const currentH5 = JSON.parse(await readFile('tests/fixtures/current-h5.json', 'u
 await writeFile('.local/current-browser.h5', Buffer.from(currentH5.base64, 'base64'));
 // Synthetic metadata exercises all curated sections without participant data.
 await h5.ready;
+createCorrectedCopFixture();
 // Large, wholly synthetic recording for bounded table DOM/scroll checks.
 const largeFile = new h5.File(resolve('.local/explorer-large.h5'), 'w');
 try {
@@ -73,6 +75,23 @@ try {
 }
 const syntheticInfoPath = 'C:\\synthetic\\' + 'long-folder-name-'.repeat(12) + '\\recording.c3d';
 const populatedFile = new h5.File(resolve('.local/populated.h5'), 'a');
+const incompatible = new h5.File(resolve('.local/cross-incompatible.h5'), 'w');
+try {
+  const trajectories = incompatible.create_group('Trajectories');
+  trajectories.create_attribute('SamplingFrequency', 100);
+  const labeled = trajectories.create_group('Labeled');
+  labeled.create_attribute('Labels', ['Synthetic marker']);
+  labeled.create_attribute('Unit', 'mm');
+  labeled.create_dataset({ name: 'Data', data: new Float64Array(8).fill(1), shape: [1, 4, 2] });
+  const analog = incompatible.create_group('Analog');
+  analog.create_attribute('Labels', ['Independent analog']);
+  analog.create_attribute('Units', ['V']);
+  analog.create_attribute('SamplingFrequency', 100);
+  analog.create_dataset({ name: 'Data', data: new Float64Array([1, 2, 3]), shape: [1, 3] });
+  incompatible.create_group('MetaData').create_group('Project');
+} finally {
+  incompatible.close();
+}
 try {
   const metadata = populatedFile.get('MetaData');
   for (const [key, value] of Object.entries({
@@ -1109,6 +1128,7 @@ try {
   await page.getByLabel('Open motion file').setInputFiles(resolve('.local/synthetic.c3d'));
   await page.waitForFunction(() => !document.body.textContent.includes('Reading your recording'));
   await verifyExplorer(page, 'C3D');
+  await verifyCrossFormat(page, analyticsEvents);
   await page.getByLabel('Open motion file').setInputFiles(resolve('.local/explorer-large.h5'));
   await page.waitForFunction(() => !document.body.textContent.includes('Reading your recording'));
   await verifyLargeExplorer(page);

@@ -1,13 +1,7 @@
-import {
-  applyCrop,
-  restoreOriginal,
-  saveAs,
-  setFrame,
-  togglePlay,
-  useSession,
-} from '../state/session';
+import { applyCrop, restoreOriginal, setFrame, togglePlay, useSession } from '../state/session';
 import type { MotionData } from '../motion/types';
 import { EventEditor } from './EventEditor';
+import { ExportControl } from './ExportControl';
 export function Timeline({ data }: { data: MotionData }) {
   const frame = useSession((s) => s.frame),
     playing = useSession((s) => s.playing),
@@ -113,9 +107,7 @@ export function Timeline({ data }: { data: MotionData }) {
           )}
           {file && (
             <>
-              <button className="primary" onClick={saveAs} disabled={!file || Boolean(selection)}>
-                Export
-              </button>
+              <ExportControl data={data} disabled={!file || Boolean(selection)} />
               {dirty && <button onClick={restoreOriginal}>Restore original</button>}
               {saved && <span role="status">Download prepared</span>}
             </>

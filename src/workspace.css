@@ -969,6 +969,39 @@ footer .privacy-dot {
   margin-left: 18px;
   color: #5d788c;
 }
+.export-dialog {
+  color: #dce7ef;
+  background: #15232f;
+  border: 1px solid #3c655f;
+  border-radius: 9px;
+  padding: 24px;
+  width: min(680px, calc(100vw - 32px));
+  max-height: calc(100dvh - 40px);
+}
+.export-dialog::backdrop {
+  background: #000a;
+}
+.export-dialog h2 {
+  font-size: 20px;
+}
+.export-dialog h3 {
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+.conversion-details {
+  max-height: 55dvh;
+  overflow: auto;
+  line-height: 1.6;
+}
+.conversion-details [role='alert'] {
+  color: #ffc1b4;
+}
+.export-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 18px;
+}
 
 .footer-gh-repo {
   margin-left: 18px;
