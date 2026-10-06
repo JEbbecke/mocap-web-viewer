@@ -9,6 +9,36 @@ import {
 } from '../motion/events';
 import { editSessionEvent, openSessionEvent, useSession } from '../state/session';
 
+export function EventControls({ data }: { data: MotionData }) {
+  const selected = useSession((s) => s.eventEditor?.index ?? null);
+  const busy = useSession((s) => s.busy);
+  const available = eventEditingAvailable(data);
+  return (
+    <div className="event-toolbar">
+      <button disabled={!available || busy} onClick={() => openSessionEvent('new')}>
+        Add Event
+      </button>
+      {data.events.length > 0 && (
+        <select
+          aria-label="Select event"
+          value={typeof selected === 'number' ? selected : ''}
+          onChange={(e) => {
+            if (e.target.value !== '') openSessionEvent(Number(e.target.value));
+          }}
+        >
+          <option value="">Events ({data.events.length})</option>
+          {data.events.map((event, index) => (
+            <option key={index} value={index}>
+              {event.label} · {event.time.toFixed(3)} s
+            </option>
+          ))}
+        </select>
+      )}
+      {!available && <span>Event editing unavailable for this file's event schema.</span>}
+    </div>
+  );
+}
+
 export function EventEditor({ data }: { data: MotionData }) {
   const request = useSession((s) => s.eventEditor);
   const selected = request?.index ?? null;
@@ -21,7 +51,6 @@ export function EventEditor({ data }: { data: MotionData }) {
     [error, setError] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const busy = useSession((s) => s.busy);
-  const available = eventEditingAvailable(data);
   const open = openSessionEvent;
   // Populate the shared request before the editor paints or receives typing.
   useLayoutEffect(() => {
@@ -68,29 +97,6 @@ export function EventEditor({ data }: { data: MotionData }) {
         </div>
       </div>
       <TimelineSlider data={data} />
-      <div className="event-toolbar">
-        <button disabled={!available || busy} onClick={() => open('new')}>
-          Add Event
-        </button>
-
-        {data.events.length > 0 && (
-          <select
-            aria-label="Select event"
-            value={typeof selected === 'number' ? selected : ''}
-            onChange={(e) => {
-              if (e.target.value !== '') open(Number(e.target.value));
-            }}
-          >
-            <option value="">Events ({data.events.length})</option>
-            {data.events.map((event, index) => (
-              <option key={index} value={index}>
-                {event.label} · {event.time.toFixed(3)} s
-              </option>
-            ))}
-          </select>
-        )}
-        {!available && <span>Event editing unavailable for this file's event schema.</span>}
-      </div>
       {selected !== null && (
         <form
           className="event-editor"

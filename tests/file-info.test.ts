@@ -225,6 +225,26 @@ describe('C3D metadata and acquisition summaries', () => {
     p.set('SUBJECTS:NAMES', { dimensions: [1, 2], values: ['A', 'B'] });
     expect(c3dRecordingInfo(p).subject).toEqual({ name: { values: ['A', 'B'] } });
   });
+  it('ignores malformed and future JE_METADATA fields while retaining existing SUBJECT facts', () => {
+    const p = readParameters(new DataView(physicalFixture())).params;
+    const text = (key: string, value: string) =>
+      p.set(key, { dimensions: [value.length, 1], values: [value] });
+    text('SUBJECT:SUBJECTID', 'SYN-1');
+    text('JE_METADATA:VERSION', '2');
+    text('JE_METADATA:SUBJECT_ID', '{"values":["SYN-2"]}');
+    expect(c3dRecordingInfo(p).subject?.id).toEqual({ values: ['SYN-1'] });
+    text('JE_METADATA:VERSION', '1');
+    expect(c3dRecordingInfo(p).subject?.id).toEqual({ values: ['SYN-2'] });
+    text('JE_METADATA:SUBJECT_ID', '{"values":[123]}');
+    text('JE_METADATA:SUBJECT_MASS', '{"values":["75"],"unit":123}');
+    text('JE_METADATA:PROJECT', '{"values":');
+    text('JE_METADATA:COORDINATES', '{"values":["XYZ"]}');
+    const info = c3dRecordingInfo(p);
+    expect(info.subject?.id).toEqual({ values: ['SYN-1'] });
+    expect(info.subject?.mass).toBeUndefined();
+    expect(info.provenance).toBeUndefined();
+    expect(info.coordinateSystem).toBeUndefined();
+  });
   it('reports different analog and per-platform force rates and aggregates declared types', () => {
     const data = parseC3D(physicalFixture(), 'rates.c3d');
     data.analogs.forEach((a) => (a.signal.rate = 960));

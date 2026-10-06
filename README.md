@@ -2,7 +2,7 @@
 
 **MoCap Viewer & Editor**
 
-A browser-based, privacy-first motion capture viewer and editor for biomechanics researchers and technically interested users. Inspect recordings in 3D, compare synchronized signals, rename data labels, edit events, crop trials, and download results as C3D or institute H5 with a preview of conversion losses.
+A browser-based motion capture viewer and editor for biomechanics researchers and technically interested users. Inspect recordings in 3D, compare synchronized signals, rename data labels, edit events, crop trials, and export results as C3D or the institute-specific H5 schema with a compatibility review before conversion.
 
 Visit the [SEO-optimized static landing page](https://jemolab.com/) or [open the JE Motion Lab web application](https://app.jemolab.com/). The web app is still hosted by GitHub Pages, using `app.jemolab.com` as its custom domain. The landing page is maintained separately from this application repository.
 
@@ -17,9 +17,9 @@ The screenshot shows the current viewer with generated synthetic test data, not 
 1. Open the application and choose **Open file** or drop a recording anywhere. One recording is loaded at a time; imports can be cancelled, and a failed import leaves the previous trial available.
 2. Orbit, pan and zoom the 3D view. Select a marker to inspect coordinates, or use the inspector to adjust visibility and force display. Review import warnings before interpreting data.
 3. Play, step or scrub the timeline. Select a signal in the signal inspector; use **Split plots** for two independent selections sharing the playback cursor.
-4. Click a timeline event to edit it, or choose **Add Event** at the current playback position. Supported fields depend on the source format.
+4. Click a timeline event to edit it, or use **Add Event** and the Events selector beside Crop at the right of the timeline. New events use the current playback position. Supported fields depend on the source format.
 5. In **Data**, double-click any marker, analog, force-platform, rigid-body, EMG, IK or ID label (or use its pencil) to rename it. Clicking an event seeks to its frame and opens the timeline event editor. Header **Undo / Redo** covers all label renames and committed event edits; text inputs keep native undo.
-6. Drag the timeline's start/end handles, preview the interval and choose **Crop**. Choose an **Export format** and **Export** to download a local copy. The source format is the default; cross-format export shows a compatibility report before download. **Restore original** discards crops, label renames and event edits; the source file remains unchanged. Cropping clears undo/redo history.
+6. Drag the timeline's start/end handles, preview the interval and choose **Crop**. Open **Export** next to **Open file** and choose **Export C3D** or **Export H5**. The source format is listed first; conversion to the other format shows **Will export**, **Changed or omitted** (changes first) and any blocking errors. **Restore original** discards crops, label renames and event edits; the source file remains unchanged. Cropping clears undo/redo history.
 7. Use the header's **Data Explorer** button to inspect numerical tables and metadata. **Data Viewer** switches back to the 3D workspace. Select cells, rows or columns to copy exact values, or copy the full selected dataset.
 
 ## Development setup
@@ -47,7 +47,7 @@ Open the local URL printed by Vite, normally http://127.0.0.1:5173. On Windows P
 - Force types 2, 3 and 4, including 6×6 calibration and type-3 COP polynomial correction.
 - Orbit, pan, zoom, reset, front, side and top camera presets; Z-up lab axes and ground grid.
 - True-rate playback, scrubbing, stepping, beginning/end, speed and loop controls.
-- Non-destructive timeline cropping, range preview, restoration and local **Export** as C3D or institute H5. Source-format exports preserve the original representation; [cross-format export](docs/CROSS_FORMAT_EXPORT.md) reports incompatible clocks, omitted data and precision changes before download. See [crop conventions and export limits](docs/CROPPING_EXPORT.md).
+- Non-destructive timeline cropping, range preview, restoration and local **Export** as C3D or institute H5. Source-format exports preserve the original representation; [cross-format export](docs/CROSS_FORMAT_EXPORT.md) reports incompatible clocks, omitted data and precision changes before exporting. See [crop conventions and export limits](docs/CROPPING_EXPORT.md).
 - Synchronized marker XYZ, force, moment, COP, optional free moment and analog plots, plus institute H5 EMG and rigid-body position signals when present. Scroll up/down over the plot to zoom in/out around the pointer, or drag horizontally to select a zoom range. Click to scrub; double-click or use **Reset zoom** to restore the full time range.
 - Arrow toggles in the plot and sidebar headers collapse or expand each panel; a compact edge control remains available to reopen it.
 - C3D and versioned institute H5 timeline events with add/edit/delete, format-supported text fields, crop-aware export and restoration. [File Info](docs/FILE_INFO.md) groups recording/acquisition facts, data counts and available subject, project and location metadata; raw source trees stay internal. Import warnings remain visible.
@@ -62,7 +62,7 @@ Keyboard: **Space** play/pause, **← / →** step, **Home / End** first/last fr
 | C3D          | Intel little-endian and MIPS big-endian; integer and IEEE float point records; parameter labels and continuation labels; scaled signed/unsigned analogs and subframes; residual validity; events; force types 2/3/4 |
 | Institute H5 | `Trajectories/Labeled/Data [marker,4,frame]`, Labels and SamplingFrequency; optional analogs/force groups; compressed HDF5; both inspected converter generations                                                    |
 
-DEC/VAX C3D encoding and nonstandard rotation records are explicitly rejected. Unsupported force-platform types are reported and omitted, while marker and analog data remain accessible. Other HDF5 schemas are not supported.
+DEC/VAX C3D encoding and nonstandard rotation records are explicitly rejected. Unsupported force-platform types are reported and omitted, while marker and analog data remain accessible. Other HDF5 schemas are not supported. C3D interoperability is checked against synthetic Intel/MIPS variants, two local representative trials (including validated QTM-style force channels) and independent ezc3d output; this does not establish compatibility with every vendor or reader. The older institute Python reader cannot read the current H5 Corners layout, including the authoritative source itself.
 
 H5 coordinate conventions contain contradictions in the reference exporter. Recognized legacy output keeps its already-global values with a warning. Other unresolved force frames remain available for signal inspection, but require explicit confirmation of stored-global coordinates for spatial force display. Missing legacy marker units assume mm with a warning. Current institute H5 supports nested project/file provenance, expanded event context/subject metadata, explicit clocks, mapped EMG, rigid-body data and quality flags; older supported layouts remain readable. Data lists IKResults and IDResults variables, with counts in File Info; labelled time rows are excluded. Model values are available in Data Explorer through local sample pages, while plots retain their existing supported signals. Their source data remains available for source-format export; cross-format C3D output reports IK/ID omission. Type codes and unprovided coordinate conventions are not guessed. See [H5 format](docs/H5_FORMAT.md) and [open questions](docs/OPEN_QUESTIONS.md).
 
@@ -98,7 +98,7 @@ local File → Worker → C3DImporter / H5Importer → MotionData
 
 See [architecture](docs/ARCHITECTURE.md), [Python audit](docs/PYTHON_REFERENCE.md), [migration map](docs/MIGRATION.md), [parser decisions](docs/PARSERS.md), and [validation](docs/VALIDATION.md).
 
-Cross-format export uses scientifically compatible normalized data and can be lossy. H5-to-C3D requires aligned point/analog grids and supports compatible stationary plates through explicitly derived six-axis channels. Slightly irregular surveyed corners are retained within documented tolerances and reported in the preview. Differing stored COP/free moment is reported and omitted; C3D readers reconstruct it from the exported force/moment while retaining the plate. Rigid bodies, IK/ID and richer H5 metadata have no established C3D mapping. Review the [compatibility matrix and limits](docs/CROSS_FORMAT_EXPORT.md) before conversion.
+Cross-format export creates a fresh file from imported, edited/cropped data and can be lossy. H5→C3D requires aligned point/analog grids and uses float32 storage. Compatible stationary plates reuse validated original TYPE-2/3/4 definitions and existing analog channels when embedded metadata is available; otherwise each plate uses a derived six-axis TYPE-2 fallback. Accepted surveyed corners retain their coordinates/order without a geometry warning. Differing stored COP/free moment is reported and omitted only when the chosen representation cannot reproduce it. Imported subject/project/file/location and coordinate descriptions are retained in documented `JE_METADATA` parameters, which other readers may not display automatically. Rigid bodies, IK/ID, trajectory Type/Virtual/camera fields and unrelated raw trees are omitted. C3D→H5 writes the current institute schema with normalized values and a limited subject/provenance mapping. Review the [four export paths and compatibility matrix](docs/CROSS_FORMAT_EXPORT.md) for exact limits; conversion is not lossless.
 
 ## Tests and production build
 
@@ -132,6 +132,8 @@ npm run validate:reference
 
 This Python script is a development oracle, never a backend or application dependency. It reads the originals without modifying them and writes only ignored local output.
 
+For independent cross-format comparisons of generated synthetic files, run `python scripts/validate-cross-format.py` after the conversion tests in an environment with numpy, h5py and ezc3d. The opt-in authoritative H5 check and other local validators are documented in [validation](docs/VALIDATION.md); these Python tools are not application dependencies.
+
 ## GitHub Pages
 
 The included [workflow](.github/workflows/deploy.yml) runs `npm ci`, tests and the typechecked production build. Pushes to `main` deploy only `dist/`; pull requests run checks without deploying. Manual workflow runs deploy only when run on `main`. In **Settings → Pages**, choose **GitHub Actions** as the deployment source. No custom secrets are needed for Pages. This workflow does not deploy the analytics Worker, configure D1 or run the browser smoke check.
@@ -149,7 +151,7 @@ Outside CI, the default base is relative (`./`). For a deployment under a reposi
 
 The application footer links to [Privacy](https://jemolab.com/privacy.html) and [Imprint](https://jemolab.com/imprint.html). These external pages are the single source of truth for the privacy policy and legal notice. The information below documents the application's technical behavior.
 
-Motion-capture files remain on your computer and are processed locally in browser workers. MoCap files, filenames, labels, source metadata and measurements are never sent to analytics. Imports and edits live in memory, exports are local downloads, and the application does not persist recordings in browser storage.
+Motion-capture files remain on your computer and are processed locally in browser workers. MoCap files, filenames, labels, source metadata and measurements are never sent to analytics. Imports and edits live in memory, file conversion and export happen locally, and the application does not persist recordings in browser storage.
 
 JE Motion Lab sends a JSON body containing only `{"event":"visit"}`, `{"event":"c3d_loaded"}` or `{"event":"h5_loaded"}` to `https://je-motion-analytics.jonasebbecke97.workers.dev/event`. A `sessionStorage` flag (`je-motion-visit-counted=true`) suppresses repeat visit attempts on reload within the same tab session; it is not a unique identifier and is not sent. Each successful C3D or H5/HDF5 import sends a load event, including repeated loads of the same file. Failed or cancelled imports do not send load events. Counts therefore represent activity, not unique people or unique files. Analytics is also enabled during local development and preview. Failed requests are not retried, so counts may be incomplete.
 
@@ -165,11 +167,11 @@ Keep private recordings out of Git and `public/`. The existing ignore rules excl
 
 ## License
 
-JE Motion is licensed under the [Apache License 2.0](LICENSE). [NOTICE](NOTICE) records attribution to Jonas Ebbecke. Redistributions must comply with the license, including providing a copy of it, preserving applicable copyright and NOTICE attribution, and marking modified files as required by Apache-2.0.
+JE Motion Lab is licensed under the [Apache License 2.0](LICENSE). [NOTICE](NOTICE) records attribution to Jonas Ebbecke. Redistributions must comply with the license, including providing a copy of it, preserving applicable copyright and NOTICE attribution, and marking modified files as required by Apache-2.0.
 
 ## Citation
 
-For scientific use, please cite JE Motion using the metadata in [CITATION.cff](CITATION.cff). Scientific citation is requested for scholarly credit and is not a condition of Apache-2.0.
+For scientific use, please cite JE Motion Lab using the metadata in [CITATION.cff](CITATION.cff). Scientific citation is requested for scholarly credit and is not a condition of Apache-2.0.
 
 ## Development status and releases
 

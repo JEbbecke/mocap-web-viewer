@@ -2,16 +2,23 @@ import type { MotionData, Vec3 } from '../motion/types';
 import { inPlateFrame, requireConversion } from './conversion';
 import { mul, uniqueLabels } from '../motion/math';
 import { writeC3DEvents } from './c3dEvents';
+import { c3dMetadataEntries } from '../motion/c3dMetadata';
+import { encodedAnalog } from './reuseForcePlatforms';
 
-/** Fresh Intel/IEEE C3D with physical float32 samples, identity analog scaling,
- * and explicitly derived TYPE-2 plate channels. Never invents hardware calibration. */
+/** Fresh Intel/IEEE C3D with validated original force-platform definitions where
+ * available, otherwise derived TYPE-2 channels. Never invents hardware calibration. */
 export function exportSemanticC3D(data: MotionData): ArrayBuffer {
   const plan = requireConversion(data, 'C3D');
   const { frameCount: frames, rate, firstFrame } = data.timeline;
   const markerCount = data.markers.labels.length;
   const channels = [...plan.analogs];
-  const mappings: number[] = [];
+  const encodings = [...plan.analogEncoding];
+  const mappings: number[][] = [];
   for (const plate of plan.plates) {
+    if (plate.reused) {
+      mappings.push(plate.reused.channels.map((c) => c + 1));
+      continue;
+    }
     const p = data.forcePlatforms[plate.index];
     const samples = p.force.values.length / 3;
     const values = Array.from({ length: 6 }, () => new Float64Array(samples));
@@ -28,14 +35,17 @@ export function exportSemanticC3D(data: MotionData): ArrayBuffer {
         values[c][i] = v;
       });
     }
+    const mapping: number[] = [];
     for (let c = 0; c < 6; c++) {
-      mappings.push(channels.length + 1);
+      mapping.push(channels.length + 1);
+      encodings.push({ scale: 1, offset: 0 });
       channels.push({
         name: `DerivedPlate${plate.index + 1}_${['Fx', 'Fy', 'Fz', 'Mx', 'My', 'Mz'][c]}`,
         unit: c < 3 ? 'N' : 'Nmm',
         signal: { values: values[c], rate: plan.analogRate, components: 1, startTime: 0 },
       });
     }
+    mappings.push(mapping);
   }
   const names = uniqueLabels(channels.map((a) => a.name));
   const subframes = channels.length ? plan.analogRate / rate : 0;
@@ -52,7 +62,10 @@ export function exportSemanticC3D(data: MotionData): ArrayBuffer {
     records.push(bytes);
     return bytes;
   };
-  const group = (id: number, name: string) => record(-id, name, Uint8Array.of(0));
+  const group = (id: number, name: string, description = '') => {
+    const raw = encoder.encode(description);
+    return record(-id, name, Uint8Array.of(raw.length, ...raw));
+  };
   const parameter = (id: number, name: string, kind: number, dims: number[], raw: Uint8Array) => {
     if (dims.some((d) => !Number.isInteger(d) || d < 0 || d > 255))
       throw new Error('C3D parameter dimensions exceed 255.');
@@ -101,6 +114,7 @@ export function exportSemanticC3D(data: MotionData): ArrayBuffer {
   parameter(1, 'UNITS', -1, [2], encoder.encode('mm'));
   text(1, 'LABELS', data.markers.labels);
   group(2, 'ANALOG');
+  text(2, 'FORMAT', ['SIGNED']);
   numeric(2, 'USED', 2, [], [channels.length]);
   numeric(2, 'RATE', 4, [], [plan.analogRate]);
   numeric(2, 'GEN_SCALE', 4, [], [1]);
@@ -116,14 +130,14 @@ export function exportSemanticC3D(data: MotionData): ArrayBuffer {
       'SCALE',
       4,
       [channels.length],
-      channels.map(() => 1),
+      encodings.map((e) => e.scale),
     );
     numeric(
       2,
       'OFFSET',
       2,
       [channels.length],
-      channels.map(() => 0),
+      encodings.map((e) => e.offset),
     );
     text(2, 'LABELS', names);
     text(
@@ -145,16 +159,43 @@ export function exportSemanticC3D(data: MotionData): ArrayBuffer {
       'TYPE',
       2,
       [plan.plates.length],
-      plan.plates.map(() => 2),
+      plan.plates.map((p) => p.reused?.type ?? 2),
     );
-    numeric(4, 'CHANNEL', 2, [6, plan.plates.length], mappings);
+    const stride = plan.plates.some((p) => p.reused?.type === 3) ? 8 : 6;
+    numeric(
+      4,
+      'CHANNEL',
+      2,
+      [stride, plan.plates.length],
+      mappings.flatMap((m) => [...m, ...Array(stride - m.length).fill(0)]),
+    );
     numeric(
       4,
       'ORIGIN',
       4,
       [3, plan.plates.length],
-      plan.plates.flatMap(() => [0, 0, 0]),
+      plan.plates.flatMap((p) => p.reused?.origin ?? [0, 0, 0]),
     );
+    if (plan.plates.some((p) => p.reused?.type === 3 || p.reused?.type === 4))
+      numeric(
+        4,
+        'CAL_MATRIX',
+        4,
+        [6, 6, plan.plates.length],
+        plan.plates.flatMap((p) =>
+          p.reused?.calibration ? Array.from(p.reused.calibration) : Array(36).fill(0),
+        ),
+      );
+    if (plan.plates.some((p) => p.reused?.copPolynomial))
+      numeric(
+        4,
+        'FPCOPPOLY',
+        4,
+        [6, 2, plan.plates.length],
+        plan.plates.flatMap((p) =>
+          p.reused?.copPolynomial ? Array.from(p.reused.copPolynomial) : Array(12).fill(0),
+        ),
+      );
     numeric(
       4,
       'CORNERS',
@@ -171,7 +212,11 @@ export function exportSemanticC3D(data: MotionData): ArrayBuffer {
     text(
       4,
       'DESCRIPTIONS',
-      plan.plates.map(() => 'Derived six-axis wrench; not original hardware acquisition channels'),
+      plan.plates.map((p) =>
+        p.reused
+          ? 'Original C3D definition; existing analog channels; validated reconstruction'
+          : 'Derived six-axis wrench; not original hardware acquisition channels',
+      ),
     );
   }
   group(5, 'SUBJECT');
@@ -195,6 +240,15 @@ export function exportSemanticC3D(data: MotionData): ArrayBuffer {
       text(5, name, value.values);
       if (value.unit) text(5, `${name}_UNITS`, [value.unit]);
     }
+  }
+  const metadata = c3dMetadataEntries(data.source.info);
+  if (metadata.length) {
+    group(
+      6,
+      'JE_METADATA',
+      'JE Motion Lab metadata v1: concatenate character chunks, then parse JSON.',
+    );
+    for (const { name, chunks } of metadata) text(6, name, chunks);
   }
   const size = 4 + records.reduce((sum, r) => sum + r.length, 0) + 2;
   const blocks = Math.ceil(size / 512);
@@ -248,8 +302,12 @@ export function exportSemanticC3D(data: MotionData): ArrayBuffer {
       at += 4;
     }
     for (let sub = 0; sub < subframes; sub++)
-      for (const channel of channels) {
-        view.setFloat32(at, channel.signal.values[f * subframes + sub], true);
+      for (const [c, channel] of channels.entries()) {
+        view.setFloat32(
+          at,
+          encodedAnalog(channel.signal.values[f * subframes + sub], encodings[c]),
+          true,
+        );
         at += 4;
       }
   }

@@ -270,10 +270,71 @@ describe('semantic cross-format conversion', () => {
     const actual = parseC3D(exportSemanticC3D(hdf), 'subject.c3d');
     expect(actual.source.info?.subject?.mass).toEqual({ values: ['75'], unit: 'kg' });
   });
+  it('embeds imported H5 project, file, location, coordinates and full subject metadata in C3D parameters', () => {
+    const name = 'synthetic-metadata.h5';
+    asH5(source(), name);
+    const file = new h5.File(resolve(folder, name), 'a');
+    let input: MotionData;
+    try {
+      const project = file.get('MetaData/Project') as h5.Group;
+      for (const [key, value] of Object.entries({
+        Project: 'Synthetic motion study',
+        ProjectPI: 'Synthetic investigator',
+        SubjectID: ['SYN-1', 'SYN-2'],
+        SubjectGroup: ['Control', 'Repeat'],
+        Age: ['25', '26'],
+        Sex: ['F', 'M'],
+        BodyHeight: ['175', '180'],
+        BodyHeightUnit: 'cm',
+        BodyMass: ['70', '75'],
+        BodyMassUnit: 'kg',
+        Condition: 'Ä long condition 🧪 '.repeat(80),
+      }))
+        project.create_attribute(key, value);
+      const fileInfo = file.get('MetaData/FileInfo') as h5.Group;
+      for (const [key, value] of Object.entries({
+        PathFile: 'C:\\synthetic\\recording.h5',
+        FileCreationLocal: '2026-10-06 10:00:00',
+        FileCreationUTC: '2026-10-06T08:00:00Z',
+        LastUpdate: '2026-10-06T09:00:00Z',
+      }))
+        fileInfo.create_attribute(key, value);
+      const location = (file.get('MetaData') as h5.Group).create_group('Location');
+      location.create_attribute('Lat', 52.5);
+      location.create_attribute('Lon', 13.4);
+      (file.get('Trajectories') as h5.Group).create_attribute(
+        'GlobalCoordinateSystem',
+        'X anterior, Y left, Z up',
+      );
+      input = parseH5Tree(file, name);
+    } finally {
+      file.close();
+    }
+    const before = structuredClone(input.source.info);
+    const plan = conversionPlan(input, 'C3D');
+    expect(plan.report.warnings.join(' ')).not.toMatch(
+      /Project\/file\/location metadata|Subject group, multi-valued demographics/,
+    );
+    expect(plan.report.included).toContain('Recording and subject metadata in C3D parameters');
+    const bytes = exportSemanticC3D(input);
+    const { params } = readParameters(new DataView(bytes));
+    expect(strings(params, 'JE_METADATA:VERSION')).toEqual(['1']);
+    expect(JSON.parse(strings(params, 'JE_METADATA:PROJECT').join(''))).toEqual(
+      before?.provenance?.project,
+    );
+    const actual = parseC3D(bytes, 'metadata.c3d');
+    for (const key of ['created', 'subject', 'provenance', 'location', 'coordinateSystem'] as const)
+      expect(actual.source.info?.[key]).toEqual(before?.[key]);
+    compareScience(actual, input);
+    expect(input.source.info).toEqual(before);
+    const cropped = parseC3D(exportC3D(bytes, 5, 15, actual.events), 'metadata-crop.c3d');
+    expect(cropped.source.info).toEqual(actual.source.info);
+    writeFileSync(resolve(folder, 'synthetic-metadata.c3d'), new Uint8Array(bytes));
+  });
 });
 
 describe('compatibility and loss guards', () => {
-  it('retains slightly irregular surveyed corners, warns and preserves reconstructed science', () => {
+  it('retains slightly irregular surveyed corners without geometry warnings and preserves reconstructed science', () => {
     const input = source(),
       p = input.forcePlatforms[0];
     // Corner 2 does not define the axes: its perturbation moves the centroid only.
@@ -286,9 +347,7 @@ describe('compatibility and loss guards', () => {
     const originalCorners = hdf.forcePlatforms[0].corners!.values.slice();
     const plan = conversionPlan(hdf, 'C3D');
     expect(plan.plates).toHaveLength(1);
-    expect(plan.report.warnings.join(' ')).toMatch(
-      /measured corners deviate slightly.*Original corner order and coordinates are retained/s,
-    );
+    expect(plan.report.warnings.join(' ')).not.toMatch(/corners|geometry/i);
     const bytes = exportSemanticC3D(hdf);
     const actual = parseC3D(bytes, 'surveyed.c3d');
     compareScience(actual, hdf);
@@ -354,15 +413,30 @@ describe('compatibility and loss guards', () => {
     };
     expect(conversionPlan(moving, 'C3D').report.warnings.join(' ')).toMatch(/moving position/);
   });
-  it('reports and omits subject fields whose units exceed C3D text limits', () => {
+  it('preserves long units, whitespace, Unicode and multi-record metadata without truncation', () => {
     const input = asH5(source());
-    input.source.info!.subject = { mass: { values: ['75'], unit: 'X'.repeat(256) } };
-    expect(conversionPlan(input, 'C3D').report.warnings.join(' ')).toMatch(
-      /overlong subject metadata/,
-    );
-    expect(
-      parseC3D(exportSemanticC3D(input), 'subject.c3d').source.info?.subject?.mass,
-    ).toBeUndefined();
+    input.source.info!.subject = {
+      mass: { values: ['75'], unit: 'X'.repeat(256) },
+      name: { values: ['  Synthetic\t🧪\nname\0  '] },
+      condition: {
+        values: ['X'.repeat(33000), ...Array.from({ length: 260 }, (_, i) => `Value ${i}`)],
+      },
+    };
+    input.source.info!.manufacturer = 'Synthetic instruments';
+    input.source.info!.software = 'Synthetic recorder 1.0';
+    const bytes = exportSemanticC3D(input);
+    const { params } = readParameters(new DataView(bytes));
+    expect(params.has('SUBJECT:BODYMASS')).toBe(false);
+    expect(params.has('JE_METADATA:SUBJECT_CONDITION2')).toBe(true);
+    const actual = parseC3D(bytes, 'subject.c3d');
+    expect(actual.source.info?.subject).toEqual(input.source.info!.subject);
+    expect(actual.source.info?.manufacturer).toBe('Synthetic instruments');
+    expect(actual.source.info?.software).toBe('Synthetic recorder 1.0');
+  });
+  it('rejects metadata exceeding the C3D parameter section capacity instead of truncating it', () => {
+    const input = asH5(source());
+    input.source.info!.subject = { condition: { values: ['X'.repeat(131000)] } };
+    expect(() => exportSemanticC3D(input)).toThrow(/parameter section exceeds 255 blocks/);
   });
   it.each(['offset', 'irregular', 'count', 'ratio', 'different-rate'] as const)(
     'blocks %s analog clocks without resampling',
@@ -488,7 +562,9 @@ describe('compatibility and loss guards', () => {
     ];
     const plan = conversionPlan(input, 'C3D');
     expect(plan.analogs).toHaveLength(input.analogs.length + 1);
-    expect(plan.report.warnings.join(' ')).toMatch(/rigid bodies omitted.*IK results.*ID results/s);
+    expect(plan.report.warnings.join(' ')).toMatch(
+      /rigid bodies omitted.*IK results.*ID results/is,
+    );
     const actual = parseC3D(exportSemanticC3D(input), 'emg.c3d');
     expect(actual.analogs.filter((a) => a.name === 'Dedicated EMG')).toHaveLength(1);
     expect(actual.rigidBodies).toBeUndefined();
@@ -530,7 +606,7 @@ it.skipIf(
   process.env.JE_VALIDATE_REFERENCE !== '1' ||
     !existsSync(resolve('reference-data/authoritative_reference.h5')),
 )(
-  'exports all five authoritative plates read-only with geometry/COP warnings and preserved force/moment',
+  'reuses all five authoritative plate definitions and 56 analogs, preserving corrected COP read-only',
   () => {
     const file = new h5.File(resolve('reference-data/authoritative_reference.h5'), 'r');
     try {
@@ -543,20 +619,24 @@ it.skipIf(
         'plate 1 is retained',
       ).toBe(true);
       expect(
-        plan.report.warnings.some(
-          (w) => w.includes('forceplate_1: stored COP') && w.includes('Stored COP is omitted'),
-        ),
-        'explicit plate 1 COP warning',
+        plan.plates.every((p) => p.reused),
+        'all original definitions are reused',
       ).toBe(true);
+      expect(plan.report.warnings.join(' ')).not.toMatch(
+        /stored COP|stored free moment|derived six-axis|cannot be reused/,
+      );
       for (const name of ['forceplate_3', 'forceplate_4'])
         expect(
-          plan.report.warnings.some(
-            (w) => w.includes(name) && w.includes('measured corners deviate slightly'),
-          ),
-          `${name}: geometry warning`,
-        ).toBe(true);
+          plan.report.warnings.some((w) => w.includes(name) && /corners|geometry/i.test(w)),
+          `${name}: no geometry warning`,
+        ).toBe(false);
       const bytes = exportSemanticC3D(input);
-      const actual = parseC3D(bytes, 'derived.c3d');
+      const actual = parseC3D(bytes, 'reused.c3d');
+      expect(actual.analogs).toHaveLength(56);
+      const { params } = readParameters(new DataView(bytes));
+      expect(nums(params, 'FORCE_PLATFORM:TYPE')).toEqual([3, 3, 4, 3, 3]);
+      expect(params.get('FORCE_PLATFORM:CHANNEL')?.dimensions).toEqual([8, 5]);
+      expect(nums(params, 'FORCE_PLATFORM:FPCOPPOLY').some((v) => v !== 0)).toBe(true);
       for (const original of input.forcePlatforms) {
         const plate = actual.forcePlatforms.find((p) => p.name === original.name);
         expect(Boolean(plate), `${original.name} is retained`).toBe(true);
@@ -573,16 +653,16 @@ it.skipIf(
           plate!.corners!.values.every((v, i) => v === Math.fround(original.corners!.values[i])),
           `${original.name}: original corner coordinates and order`,
         ).toBe(true);
-        if (['forceplate_3', 'forceplate_4'].includes(original.name))
-          for (const key of ['cop', 'freeMoment'] as const)
-            expect(
-              plate![key]!.values.every(
-                (v, i) =>
-                  Math.abs(v - original[key]!.values[i]) <=
-                  1e-3 + Math.abs(original[key]!.values[i]) * 1e-6,
-              ),
-              `${original.name}: ${key} values`,
-            ).toBe(true);
+        for (const key of ['cop', 'freeMoment'] as const)
+          expect(
+            plate![key]!.values.every(
+              (v, i) =>
+                (Number.isNaN(v) && Number.isNaN(original[key]!.values[i])) ||
+                Math.abs(v - original[key]!.values[i]) <=
+                  (key === 'cop' ? 1e-3 : 1e-5) + Math.abs(original[key]!.values[i]) * 1e-6,
+            ),
+            `${original.name}: ${key} values`,
+          ).toBe(true);
       }
       // Contains private measurements; ignored local output only, never a fixture.
       writeFileSync(resolve('.local/authoritative-force-export.c3d'), new Uint8Array(bytes));

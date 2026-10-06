@@ -8,13 +8,14 @@ stable release; pre-1.0 compatibility and supported scientific formats can evolv
 The latest formal GitHub release is [v0.4.0](https://github.com/JEbbecke/mocap-web-viewer/releases/tag/v0.4.0),
 published on 28 September 2026 at commit `efc2189d0d2260781c09cefa6f6b4f8fb9c6a17c`
 and containing the initial application and PRs #1–#4. Its tag was created at
-06:30:11 UTC and the release published at 06:32:12 UTC. PRs #5–#11 merged
+06:30:11 UTC and the release published at 06:32:12 UTC. PRs #5–#12 merged
 afterward and remain under `[Unreleased]`: analytics, mm units and version
 reconciliation, File Info, the Data sidebar, data-label editing and shared
-undo/redo (#9), the custom-domain root base path (#10), and the updated institute
-H5 schema (#11). GitHub releases, merged PRs and the local tag target were checked
-again on 6 October 2026. The current Data Explorer, sidebar fix and JE Motion Lab
-branding changes also remain unreleased; they do not imply a new formal release.
+undo/redo (#9), the custom-domain root base path (#10), the updated institute
+H5 schema (#11), and Data Explorer, the sidebar fix, branding/domains, privacy/imprint
+links and license/citation metadata (#12). GitHub releases, merged PRs and the
+local tag target were checked again on 6 October 2026. Cross-format export and its
+current refinements also remain unreleased; they do not imply a new formal release.
 
 The tagged package files incorrectly retained `0.1.0`. Current development
 corrects them to `0.4.0` without moving the published tag or inventing another
@@ -45,7 +46,7 @@ their contents into the repository.
 
 [README](../README.md) describes capabilities without a duplicated current-version
 label. [CHANGELOG](../CHANGELOG.md) records numbered release entries only when
-formally released. PR #4 belongs under `[0.4.0]`; PRs #5–#11 and subsequent
+formally released. PR #4 belongs under `[0.4.0]`; PRs #5–#12 and subsequent
 changes belong under `[Unreleased]` until released.
 Keep the latest formal version in the package and footer while unreleased work
 accumulates. A version bump happens when intentionally preparing the next release,

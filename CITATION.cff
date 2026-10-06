@@ -1,6 +1,6 @@
 cff-version: 1.2.0
-message: "If you use JE Motion in scientific work, please cite it using this metadata."
-title: "JE Motion"
+message: "If you use JE Motion Lab in scientific work, please cite it using this metadata."
+title: "JE Motion Lab"
 type: software
 authors:
   - family-names: Ebbecke

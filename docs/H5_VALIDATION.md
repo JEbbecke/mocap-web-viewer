@@ -1,15 +1,17 @@
 # Authoritative H5 lifecycle validation
 
-Validated on `feature/h5-schema-update`, 6 October 2026, using the replacement
+The schema audit on 6 October 2026 (merged in PR #11) used the replacement
 read-only reference. The current layout is unversioned, with nested metadata,
 expanded event columns and separate stream frame extents. The older versioned
 layout remains covered by synthetic fixtures and locally available older files.
 
-Final checks passed: 122 tests across 14 suites, TypeScript/production build,
+At that audit, checks passed: 122 tests across 14 suites, TypeScript/production build,
 production browser smoke and `git diff --check`. The browser check exercises both
 current and previous synthetic schemas through actual workers. The reference
 SHA-256 remained unchanged; all six intentional private exports were removed
-after comparison. The reference remains ignored and untracked; nothing is staged.
+after comparison. The reference remains ignored and untracked. These are dated
+schema-audit results, not current suite totals; see [validation](VALIDATION.md)
+for subsequent Data Explorer and cross-format export checks.
 
 ## Current reference results
 
@@ -56,7 +58,7 @@ the source already differs from live Events and they are not rewritten.
    Its JSON report contains structural paths and difference classifications only.
 5. `npm run build` checks TypeScript and produces the static bundle.
    `npm run test:browser` checks actual import/export workers using synthetic
-   current and previous layouts, event CRUD, downloads/re-import, cropping and
+   current and previous layouts, event CRUD, exports/re-import, cropping and
    existing viewer/plot/privacy behavior. Analytics is intercepted locally.
 6. Verify the branch, `git diff --check`, status, and
    `git check-ignore -v reference-data/authoritative_reference.h5`.
@@ -76,7 +78,10 @@ HDF5 itself performs scientific dataset writes; Python is only a development ora
   guessed offset or per-variable units are introduced. The previous supported
   layout retains its documented absolute-time crop behavior.
 - IK inDegrees is retained as a declaration, not assigned as the unit of every
-  variable. Translation/rotation units and ID units remain unspecified.
+  variable. Explicit per-variable units take precedence. Data Explorer can infer
+  deg/rad only for a tested list of standard OpenSim rotation coordinates and
+  identifies that convention; custom coordinates, translations and ID units
+  remain unknown without source units. See [model units](DATA_EXPLORER.md).
 - Body parent frames, marker Type codes, lab handedness and compass directions
   cannot be established from the file. Bodies use the point grid when counts
   agree and no separate clock exists. No anatomical visualization is invented.

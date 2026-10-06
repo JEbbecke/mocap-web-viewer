@@ -16,6 +16,7 @@ import {
 import { handleHistoryShortcut } from './state/shortcuts';
 import { PanelToggle } from './components/PanelToggle';
 import { DataExplorer } from './components/DataExplorer';
+import { ExportControl } from './components/ExportControl';
 import { getAnalyticsStats, trackEvent, type AnalyticsStats } from './analytics';
 class ViewerBoundary extends Component<{ children: ReactNode }, { error: string | null }> {
   state = { error: null as string | null };
@@ -37,6 +38,8 @@ export function App() {
     history = useSession((s) => s.history),
     dirty = useSession((s) => s.dirty),
     busy = useSession((s) => s.busy),
+    cropSelection = useSession((s) => s.cropSelection),
+    sourceFile = useSession((s) => s.sourceFile),
     operation = useSession((s) => s.operation),
     error = useSession((s) => s.error),
     input = useRef<HTMLInputElement>(null),
@@ -161,9 +164,14 @@ export function App() {
             </button>
           </div>
         )}
-        <button className="primary" onClick={open}>
-          ＋ Open file
-        </button>
+        <div className="file-actions">
+          {data && (
+            <ExportControl data={data} disabled={busy || !sourceFile || Boolean(cropSelection)} />
+          )}
+          <button className="primary" onClick={open}>
+            ＋ Open file
+          </button>
+        </div>
         <input
           ref={input}
           className="sr-only"
@@ -315,20 +323,12 @@ export function App() {
             </a>
           </span>
           <span className="footer-gh-repo">
-            <a
-              href="https://jemolab.com/privacy.html"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
+            <a href="https://jemolab.com/privacy.html" target="_blank" rel="noopener noreferrer">
               Privacy
             </a>
           </span>
           <span className="footer-gh-repo">
-            <a
-              href="https://jemolab.com/imprint.html"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
+            <a href="https://jemolab.com/imprint.html" target="_blank" rel="noopener noreferrer">
               Imprint
             </a>
           </span>
@@ -339,7 +339,7 @@ export function App() {
         <div className="loading-overlay" role="status">
           <div className="loading-card">
             <span className="spinner" />
-            <h2>{operation === 'export' ? 'Preparing your download' : 'Reading your recording'}</h2>
+            <h2>{operation === 'export' ? 'Preparing your export' : 'Reading your recording'}</h2>
             <p>Processing locally. Your file stays on this device.</p>
             <button onClick={cancelImport}>Cancel</button>
           </div>

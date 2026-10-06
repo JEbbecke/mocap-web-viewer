@@ -12,6 +12,20 @@ export interface Series {
   /** Explicit seconds relative to recording origin, including irregular clocks. */
   times?: Float64Array;
 }
+/** Original C3D definition embedded in H5, in mm/N/Nmm conventions.
+ * Channel identities are zero-based original analog column IDs. */
+export interface C3DPlateDefinition {
+  type: 2 | 3 | 4;
+  channels: number[];
+  corners: Float64Array;
+  origin: Vec3;
+  calibration?: Float64Array;
+  copPolynomial?: Float64Array;
+}
+export interface C3DAnalogEncoding {
+  scale: Float64Array;
+  offset: Float64Array;
+}
 export interface ForcePlatform {
   name: string;
   sourceIndex?: number;
@@ -27,6 +41,7 @@ export interface ForcePlatform {
   poseFrame?: 'global'; // declared global pose; legacy Position/Rotation may be placeholders
   coordinateFrame: 'global' | 'unresolved';
   provenance: string;
+  c3dSource?: { definition?: C3DPlateDefinition; issue?: string };
 }
 export interface MotionEvent {
   label: string;
@@ -60,6 +75,7 @@ export interface MotionData {
     timeOrigin?: number;
     eventSchema?: 'institute-v1' | 'institute-current';
     h5Layout?: 'legacy' | 'institute-v1' | 'institute-current';
+    c3dAnalogEncoding?: C3DAnalogEncoding;
   };
   timeline: { rate: number; frameCount: number; firstFrame: number; duration: number };
   markers: {

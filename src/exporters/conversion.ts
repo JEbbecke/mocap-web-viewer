@@ -1,5 +1,7 @@
-import type { ForcePlatform, MotionData, Series, Vec3 } from '../motion/types';
+import type { C3DPlateDefinition, ForcePlatform, MotionData, Series, Vec3 } from '../motion/types';
 import { add, cross, mul, plateBasis, rotate, sub, uniqueLabels } from '../motion/math';
+import { hasC3DMetadata } from '../motion/c3dMetadata';
+import { analogEncodings, reuseForcePlatform, type AnalogEncoding } from './reuseForcePlatforms';
 
 export type ExportFormat = 'C3D' | 'H5';
 export interface ConversionReport {
@@ -14,6 +16,8 @@ export interface ConvertedPlate {
   basis: Vec3[];
   center: Vec3;
   warnings: string[];
+  changes: string[];
+  reused?: C3DPlateDefinition;
 }
 export interface ConversionPlan {
   report: ConversionReport;
@@ -21,6 +25,7 @@ export interface ConversionPlan {
   analogRate: number;
   plates: ConvertedPlate[];
   residualStep: number;
+  analogEncoding: AnalogEncoding[];
 }
 
 /** A C3D grid is regular, starts with the first point and contains every subframe.
@@ -60,7 +65,7 @@ const cornerLimits = {
   planeMm: 2,
 };
 
-function assessCorners(corners: Vec3[], basis: Vec3[], center: Vec3): string | undefined {
+function assessCorners(corners: Vec3[], basis: Vec3[], center: Vec3): void {
   if (corners.some((c) => c.some((v) => !Number.isFinite(v))))
     throw new Error('corners contain nonfinite coordinates');
   const local = corners.map((c) => inPlateFrame(basis, sub(c, center)));
@@ -101,8 +106,6 @@ function assessCorners(corners: Vec3[], basis: Vec3[], center: Vec3): string | u
     throw new Error(
       `corner geometry exceeds export tolerances (angle error ${maxAngle.toFixed(3)}° / ${cornerLimits.angleDegrees}°, diagonal midpoints ${midpoint.toFixed(3)} / ${midpointLimit.toFixed(3)} mm, non-planarity ${plane.toFixed(3)} / ${planeLimit.toFixed(3)} mm)`,
     );
-  if (maxAngle > 1e-5 || midpoint > 1e-4 || plane > 1e-4)
-    return `measured corners deviate slightly from a rectangle (maximum angle error ${maxAngle.toFixed(3)}°, diagonal midpoints ${midpoint.toFixed(3)} mm apart, non-planarity ${plane.toFixed(3)} mm). Original corner order and coordinates are retained, subject to C3D float32 precision; plate axes are derived from the corner edges.`;
 }
 
 /** Stationary approximately rectangular plates export their surface-centre wrench. Readers
@@ -112,6 +115,8 @@ function preparePlate(
   index: number,
   data: MotionData,
   rate: number,
+  analogs: MotionData['analogs'],
+  encoding: AnalogEncoding[],
 ): ConvertedPlate {
   if (!p.name || new TextEncoder().encode(p.name).length > 255 || p.name.includes('\0'))
     throw new Error('plate name cannot be represented in C3D');
@@ -136,7 +141,7 @@ function preparePlate(
   for (const pose of [p.position, p.rotation])
     if (pose && pose.values.some((v, i) => !near(v, pose.values[i % pose.components])))
       throw new Error('moving position/orientation has no stationary C3D plate mapping');
-  const geometryWarning = assessCorners(corners, basis, center);
+  assessCorners(corners, basis, center);
   // Encoded geometry must still meet ordering/shape limits after float32 storage.
   assessCorners(roundedCorners, roundedBasis, roundedCenter);
   for (const [name, s] of [
@@ -144,7 +149,7 @@ function preparePlate(
     ['moment', p.moment],
   ] as const) {
     const issue = c3dGridIssue(s, data.timeline.frameCount, data.timeline.rate);
-    if (issue || s.rate !== rate)
+    if (issue || s.rate !== rate || s.components !== 3)
       throw new Error(`${name}: ${issue ?? 'rate differs from the C3D analog grid'}`);
   }
   const derivedIssue = (s: Series, components: number[]) =>
@@ -159,6 +164,21 @@ function preparePlate(
         ? 'scalar free-moment coordinate convention is unverified'
         : undefined))
     : undefined;
+  let reuseIssue: string | undefined;
+  if (p.c3dSource && !copIssue && !freeIssue) {
+    try {
+      return {
+        index,
+        basis,
+        center,
+        warnings: [],
+        changes: [],
+        reused: reuseForcePlatform(p, analogs, encoding, rate),
+      };
+    } catch (error) {
+      reuseIssue = error instanceof Error ? error.message : 'original definition is incompatible';
+    }
+  }
   let copDifferences = 0,
     maxCopDifference = 0,
     freeDiffers = false;
@@ -198,7 +218,11 @@ function preparePlate(
     }
   }
   const warnings: string[] = [];
-  if (geometryWarning) warnings.push(`Force platform ${p.name}: ${geometryWarning}`);
+  const changes: string[] = [];
+  if (reuseIssue)
+    changes.push(
+      `Force platform ${p.name}: original channels cannot be reused (${reuseIssue}); derived TYPE-2 channels are used.`,
+    );
   if (copIssue || copDifferences) {
     const difference = copIssue
       ? `cannot be compared on the force/moment grid (${copIssue})`
@@ -211,7 +235,7 @@ function preparePlate(
     warnings.push(
       `Force platform ${p.name}: stored free moment ${freeIssue ? `cannot be compared reliably (${freeIssue})` : 'differs from the force/moment-based reconstruction'}. Stored free moment is omitted from the exported C3D; readers reconstruct it using the reconstructed COP.`,
     );
-  return { index, basis, center, warnings };
+  return { index, basis, center, warnings, changes };
 }
 
 /** Pure preflight over current edited data. Numerical buffers stay referenced,
@@ -230,8 +254,14 @@ export function conversionPlan(data: MotionData, target: ExportFormat): Conversi
     analogRate: 0,
     plates: [],
     residualStep: 0.001,
+    analogEncoding: [],
   };
   if (report.sameFormat) return plan;
+  const changes: string[] = [];
+  const finish = () => {
+    report.warnings = [...changes, ...report.warnings];
+    return plan;
+  };
   const { rate, frameCount, firstFrame } = data.timeline;
   const markerCount = data.markers.labels.length;
   if (
@@ -249,9 +279,6 @@ export function conversionPlan(data: MotionData, target: ExportFormat): Conversi
   report.included.push(`${markerCount} markers in mm`, `${data.events.length} events`);
   if (data.events.some((e) => !Number.isFinite(e.time)))
     report.errors.push('An event has an invalid time.');
-  report.warnings.push(
-    'Source-specific parameters, unimported datasets and acquisition/calibration provenance are not copied. Use the source format to preserve them.',
-  );
   if (data.warnings.length)
     report.warnings.push(
       'Existing import warnings still apply; uninterpreted source data cannot be converted.',
@@ -267,11 +294,14 @@ export function conversionPlan(data: MotionData, target: ExportFormat): Conversi
       report.warnings.push(
         'Subject names have no established mapping to the institute H5 SubjectID field and are omitted.',
       );
-    report.warnings.push(
+    changes.push(
       'The H5 trajectory fourth component is unspecified and written as NaN; residuals and validity use the separate Residuals dataset.',
     );
-    return plan;
+    return finish();
   }
+  changes.push(
+    'C3D uses float32 coordinates/samples and packed residuals; numerical precision can decrease.',
+  );
   if (Math.fround(rate) !== rate)
     report.errors.push('Point rate is not exactly representable in C3D float32 metadata.');
   if (
@@ -299,7 +329,7 @@ export function conversionPlan(data: MotionData, target: ExportFormat): Conversi
       [e.label, e.context, e.description ?? '', e.subject ?? ''].some((s) => s !== s.trim()),
     )
   )
-    report.warnings.push(
+    changes.push(
       'C3D text readers can trim padding whitespace; leading/trailing event whitespace may not survive re-import.',
     );
   if (data.markers.positions.some((v) => Number.isFinite(v) && !Number.isFinite(Math.fround(v))))
@@ -331,13 +361,22 @@ export function conversionPlan(data: MotionData, target: ExportFormat): Conversi
   }
   if (emg.length)
     report.warnings.push(
-      'The H5 EMG grouping is omitted; compatible underlying scalar channels are retained as analogs.',
+      'EMG grouping is omitted; compatible underlying scalar channels are retained as analogs.',
     );
+  plan.analogEncoding = analogEncodings(data, plan.analogs);
   for (const [index, p] of data.forcePlatforms.entries()) {
     try {
-      const plate = preparePlate(p, index, data, plan.analogRate || p.force.rate);
+      const plate = preparePlate(
+        p,
+        index,
+        data,
+        plan.analogRate || p.force.rate,
+        plan.analogs,
+        plan.analogEncoding,
+      );
       plan.analogRate ||= p.force.rate;
       plan.plates.push(plate);
+      changes.push(...plate.changes);
       report.warnings.push(...plate.warnings);
     } catch (error) {
       report.warnings.push(
@@ -345,7 +384,9 @@ export function conversionPlan(data: MotionData, target: ExportFormat): Conversi
       );
     }
   }
-  const analogCount = plan.analogs.length + plan.plates.length * 6;
+  const derivedCount = plan.plates.filter((p) => !p.reused).length;
+  const reusedCount = plan.plates.length - derivedCount;
+  const analogCount = plan.analogs.length + derivedCount * 6;
   if (
     analogCount > 255 ||
     (analogCount && (analogCount * plan.analogRate) / rate > 65535) ||
@@ -366,30 +407,32 @@ export function conversionPlan(data: MotionData, target: ExportFormat): Conversi
     report.errors.push('Analog names/units or numeric values exceed C3D storage capacity.');
   const names = uniqueLabels(plan.analogs.map((a) => a.name));
   if (names.some((n, i) => n !== plan.analogs[i].name))
-    report.warnings.push('Colliding added EMG channel names receive unique suffixes.');
+    changes.push('Colliding added EMG channel names receive unique suffixes.');
   plan.analogs = plan.analogs.map((a, i) => ({ ...a, name: names[i] }));
-  if (plan.plates.length)
-    report.warnings.push(
-      `${plan.plates.length} force platforms use derived six-axis TYPE-2 channels with zero sensor offset; this is not the original hardware acquisition representation.`,
+  if (derivedCount)
+    changes.push(
+      `${derivedCount} force platforms use derived six-axis TYPE-2 channels with zero sensor offset; this is not the original hardware acquisition representation.`,
     );
-  report.included.push(
-    `${plan.analogs.length} analog/EMG channels`,
-    `${plan.plates.length} derived force platforms (${plan.plates.length * 6} additional analog channels)`,
-  );
+  report.included.push(`${plan.analogs.length} analog/EMG channels`);
+  if (reusedCount)
+    report.included.push(
+      `${reusedCount} force platforms using existing analog channels and original C3D definitions`,
+    );
+  if (derivedCount)
+    report.included.push(
+      `${derivedCount} derived force platforms (${derivedCount * 6} additional analog channels)`,
+    );
   let maxResidual = 0;
   for (const v of data.markers.residuals ?? [])
     if (Number.isFinite(v) && v > maxResidual) maxResidual = v;
   plan.residualStep = Math.fround(Math.max(0.001, maxResidual / 254));
   if (!Number.isFinite(plan.residualStep))
     report.errors.push('Residual magnitudes exceed C3D scaling capacity.');
-  report.warnings.push(
-    `C3D uses float32 coordinates/samples and packed residuals (step ${plan.residualStep} mm); numerical precision can decrease.`,
-  );
   if (
     !data.markers.residuals ||
     data.markers.residuals.some((r, i) => data.markers.valid[i] && !Number.isFinite(r))
   )
-    report.warnings.push('Unknown residual magnitudes become zero; point validity is retained.');
+    changes.push('Unknown residual magnitudes become zero; point validity is retained.');
   if (
     data.markers.quality &&
     [
@@ -399,46 +442,21 @@ export function conversionPlan(data: MotionData, target: ExportFormat): Conversi
       data.markers.quality.cameraMasksKnown,
     ].some((v) => v?.length)
   )
-    report.warnings.push('H5 Type, Virtual and camera-quality fields are omitted.');
-  if (data.rigidBodies?.length)
-    report.warnings.push(
-      `${data.rigidBodies.length} rigid bodies omitted; no synthetic markers are created.`,
-    );
+    report.warnings.push('Trajectory Type, Virtual and camera mask fields are omitted.');
+  if (data.rigidBodies?.length) report.warnings.push(`Rigid bodies omitted.`);
   for (const kind of ['ik', 'id'] as const)
     if (data.source.info?.modelResults?.[kind])
-      report.warnings.push(
-        `${kind.toUpperCase()} results and processing metadata omitted; they are not point data.`,
-      );
-  if (
-    data.source.info?.provenance ||
-    data.source.info?.location ||
-    data.source.info?.coordinateSystem
-  )
-    report.warnings.push(
-      'Project/file/location metadata and coordinate-system descriptions have no established C3D mapping and are omitted; lab XYZ values remain unchanged.',
-    );
-  if (
-    data.source.info?.subject?.group ||
-    Object.values(data.source.info?.subject ?? {}).some(
-      (v) =>
-        v && (v.values.length !== 1 || v.values.some(textIssue) || (v.unit && textIssue(v.unit))),
-    )
-  )
-    report.warnings.push(
-      'Subject group, multi-valued demographics or overlong subject metadata have no supported C3D mapping and are omitted.',
-    );
-  if (data.events.some((e) => e.genericFlag || e.iconId || e.sourceFrame !== undefined))
-    report.warnings.push(
-      'H5 original event-frame provenance, icons and flags are omitted; current event times are preserved.',
-    );
+      report.warnings.push(`${kind.toUpperCase()} results and processing metadata omitted.`);
+  if (hasC3DMetadata(data.source.info))
+    report.included.push('Recording and subject metadata in C3D parameters');
   if (
     data.source.timeOrigin !== undefined &&
     Math.abs(data.source.timeOrigin - firstFrame / rate) > 1e-8
   )
-    report.warnings.push(
+    changes.push(
       'H5 absolute clock origin is replaced by the C3D source-frame origin; relative stream/event timing is preserved.',
     );
-  return plan;
+  return finish();
 }
 
 export function requireConversion(data: MotionData, target: ExportFormat): ConversionPlan {

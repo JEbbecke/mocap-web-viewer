@@ -288,7 +288,7 @@ function moveHistory(direction: 'undo' | 'redo') {
     error: null,
   });
 }
-export function saveAs(target?: ExportFormat) {
+export function exportFile(target?: ExportFormat) {
   const { data, sourceFile, busy } = useSession.getState();
   if (!data || !sourceFile || busy) return;
   useSession.setState({
