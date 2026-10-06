@@ -50,7 +50,10 @@ export function sample(
     index = lo === n - 1 ? lo : lo + (time - times[lo]) / (times[lo + 1] - times[lo]);
   }
   if (index < -1e-8 || index > n - 1 + 1e-8) return NaN;
-  const clamped = Math.max(0, Math.min(n - 1, index));
+  // Subtracting a nonzero trial origin can put an exact sample just below an
+  // integer. Snap floating noise on either side, retaining actual sample values.
+  const nearest = Math.round(index);
+  const clamped = Math.max(0, Math.min(n - 1, Math.abs(index - nearest) < 1e-8 ? nearest : index));
   const lo = Math.floor(clamped),
     fraction = clamped - lo;
   const a = series.values[lo * series.components + component];

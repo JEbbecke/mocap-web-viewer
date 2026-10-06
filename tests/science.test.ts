@@ -193,7 +193,7 @@ describe('institute H5 normalization', () => {
     expect(d.forcePlatforms[0].corners!.values[0]).toBe(100);
   });
   it('rejects generic HDF5 and missing marker dataset', () => {
-    expect(() => parseH5Tree(group({}), 'x')).toThrow('missing Trajectories');
+    expect(() => parseH5Tree(group({}), 'x')).toThrow('Missing Trajectories');
   });
   it('makes the legacy missing-unit assumption visible', () => {
     const root = h5Fixture();

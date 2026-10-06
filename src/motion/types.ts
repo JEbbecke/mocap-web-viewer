@@ -36,6 +36,10 @@ export interface MotionEvent {
   subject?: string;
   /** Original EVENT row, used only to preserve opaque per-event metadata. */
   sourceIndex?: number;
+  /** Original H5 frame; export recomputes it only when event time changes. */
+  sourceFrame?: number;
+  genericFlag?: number;
+  iconId?: number;
 }
 export interface MotionData {
   readonly units: typeof MOTION_UNITS;
@@ -54,7 +58,8 @@ export interface MotionData {
     /** Small label overrides keyed by collection and stable in-memory index. */
     dataLabels?: Record<string, string>;
     timeOrigin?: number;
-    eventSchema?: 'institute-v1';
+    eventSchema?: 'institute-v1' | 'institute-current';
+    h5Layout?: 'legacy' | 'institute-v1' | 'institute-current';
   };
   timeline: { rate: number; frameCount: number; firstFrame: number; duration: number };
   markers: {
@@ -72,7 +77,7 @@ export interface MotionData {
       virtual?: Uint8Array;
     };
   };
-  analogs: { name: string; unit: string; signal: Series }[];
+  analogs: { name: string; unit: string; signal: Series; sourceChannel?: number }[];
   signals?: {
     name: string;
     group: string;
@@ -80,6 +85,9 @@ export interface MotionData {
     signal: Series;
     sourceIndex?: number;
     sourcePath?: string;
+    sourceChannel?: number;
+    /** Dedicated EMG may reference an identical analog signal without duplicating arrays. */
+    analogIndex?: number;
   }[];
   rigidBodies?: {
     name: string;

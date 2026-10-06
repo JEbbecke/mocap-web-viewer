@@ -7,8 +7,21 @@ export function h5LabelUpdates(
   input: H5.File,
   motion: MotionData,
   edits: Record<string, string> = {},
+  markers?: string[],
+  analogs?: string[],
 ) {
   const updates = new Map<string, Record<string, string | string[]>>();
+  for (const [kind, labels] of [
+    ['POINT', markers],
+    ['ANALOG', analogs],
+  ] as const) {
+    if (!labels) continue;
+    const path = `/MetaData/C3DParameters/${kind}/LABELS`;
+    const group = input.get(path) as H5.Group | null;
+    const original = group?.attrs.value?.value;
+    if (Array.isArray(original) && original.length === labels.length)
+      updates.set(path, { value: [...labels] });
+  }
   const setName = (path: string | undefined, name: string) => {
     if (!path || !input.get(path)) throw new Error('Label source group no longer exists.');
     updates.set('/' + path, { Name: name });

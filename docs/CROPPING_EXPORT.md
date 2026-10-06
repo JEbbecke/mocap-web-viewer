@@ -39,16 +39,17 @@ C3D export limits:
 - Nonzero undocumented records beyond the standard padded data section are rejected. Ordinary trailing padding is regenerated.
 - Unknown vendor parameters are preserved byte-for-byte but cannot be interpreted or temporally adjusted. Vendor-specific temporal parameters require manual review. No arbitrary vendor-specific time series are claimed to be supported.
 
-**H5:** the worker copies the existing hierarchy using source values and dtypes. It crops marker trajectories, residuals, Type, camera masks, analog/EMG, force/moment/COP/vector free moment, plate geometry, rigid bodies and IK/ID results with their actual time domains. Static flags, origin offsets, metadata and membership labels remain unchanged. Absolute timestamps and original sample/frame attribute dtypes are retained. Original source attributes are exposed as structured metadata; its hierarchy snapshot describes the original file until export/reimport.
+**H5:** the worker copies the existing hierarchy using source values and dtypes. It crops marker trajectories, residuals, Type, camera masks, analog/EMG, force/moment/COP/vector free moment, plate geometry, rigid bodies and model results with an established trial-clock relationship. Current independent IK/ID results are retained unchanged when their relation to trial time is unspecified. Static flags, origin offsets and provenance remain unchanged; matching membership and label aliases follow marker renames. Absolute timestamps and original sample/frame attribute dtypes are retained. Original source attributes are exposed as structured metadata; its hierarchy snapshot describes the original file until export/reimport.
 
-Label edits update only the selected collection's `Labels` or group `Name` metadata. Source group paths and channel/variable row identities stay fixed; IK/ID time rows are excluded from renaming. String storage can widen or become variable-length to preserve the complete label. Numeric datasets, clocks, calibration and unrelated metadata retain their values during label-only export.
+Label edits update the selected collection's `Labels` or group `Name`, matching rigid-body references and nested POINT/ANALOG label aliases. Source group paths and channel/variable row identities stay fixed; IK/ID time rows are excluded from renaming. String storage can widen or become variable-length to preserve the complete label. Numeric datasets, clocks, calibration and unrelated metadata retain their values during label-only export.
 
 H5 export limits:
 
 - Explicit clocks support nonaligned and irregular signal samples. Legacy streams without clocks require crop boundaries aligned to their sample grids.
-- Model streams outside the selected physical interval become empty; they are never shifted to create overlap. The supplied reference has this condition.
-- Boolean enums are preserved using tiny, empty, synthetic HDF5 templates for the three optional quality fields. h5wasm cannot create enum types itself, but can resize/write the existing types. Templates are independent of participant data, support all optional combinations and arbitrary valid dimensions, and are reproducible with `scripts/create-h5-boolean-seeds.py`.
-- Edited outputs use fresh storage layout. Boolean chunk dimensions and maximum extents change; cropped dataset chunks may shrink. Numeric precision, values, shape conventions, UTF-8 encoding, units and dtypes remain intact for the authoritative schema. Compression is preserved where supported; storage layout is not a scientific value.
+- Current streams with sample frame metadata can retain a fractional offset from the point grid even without Time; their own StartFrame/EndFrame preserve non-integer rate ratios. Body frame metadata remains independent of the marker source first frame.
+- Legacy model streams use the supported absolute-time crop convention and become empty outside the selected interval. Current independent result clocks have no declared trial relationship; Data, Time, NumSamples and opaque processing metadata remain unchanged. No alignment shift is invented.
+- Boolean quality datasets and nested provenance attributes retain their FALSE/TRUE int8 enum type. A small generic synthetic template writer seeds the source's groups/boolean fields; HDF5 itself writes their values. It contains no reference bytes or fixed participant paths, and absent optional fields stay absent.
+- Edited outputs use fresh storage layout. Current boolean chunks/compression/maxshape are retained; cropped primitive chunks/maxshape may shrink. Unused variable-length string padding can change without altering UTF-8 text. Numeric precision, values, shape conventions, UTF-8 encoding, units and dtypes remain intact for the authoritative schema. Compression is preserved where supported; storage layout is not a scientific value.
 - Unknown primitive content survives unchanged, label-only and event-only exports. Unknown nonempty datasets outside MetaData block crop unless timing is classified. Unsupported compound/reference/opaque types, arbitrary enums, null dataspaces, named types and links are not promised for modified export; exports stop when these cannot be copied. Hard-link identity is not guaranteed.
 - Legacy sample-major vectors cropped to exactly three samples use component-major orientation to disambiguate [3,3], with physical components preserved.
 - A full-range export with no label or event edits returns the exact original bytes, including opaque content.
@@ -65,7 +66,7 @@ Current authoritative-file results, independent h5py comparisons, browser worker
 
 Format references: [C3D frame counts](https://www.c3d.org/HTML/Documents/readingtheframecount.htm), [TRIAL fields](https://www.c3d.org/HTML/Documents/thetrialgroup.htm), [force baseline semantics](https://www.c3d.org/HTML/Documents/forceplatformzero.htm), [institute H5 schema](H5_FORMAT.md).
 
-See [event visualization and editing](EVENT_EDITING.md) for immutable event operations, relative-second timing, C3D serialization and the supported versioned institute H5 event schema.
+See [event visualization and editing](EVENT_EDITING.md) for immutable event operations, relative-second timing, C3D serialization and current and previous supported institute H5 event layouts.
 
 ## Unit preservation
 

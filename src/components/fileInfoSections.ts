@@ -107,6 +107,7 @@ export function fileInfoSections(data: MotionData): InfoSection[] {
       title: 'Subject & Trial',
       rows: [
         field('Subject ID', subject?.id),
+        field('Subject group', subject?.group),
         field('Subject name', subject?.name),
         field('Age', subject?.age),
         field('Sex', subject?.sex),

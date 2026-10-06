@@ -16,6 +16,9 @@ export function renameMarkerCommand(
   const oldLabel = data.markers.labels[marker];
   if (label === oldLabel) return null;
   const editedBefore = data.source.labelsEdited;
+  const memberships = data.rigidBodies?.map((body) =>
+    body.markers.flatMap((name, index) => (name === oldLabel ? [index] : [])),
+  );
   const change = (current: MotionData, value: string, edited: boolean | undefined): MotionData => {
     const labels = [...current.markers.labels];
     labels[marker] = value;
@@ -27,6 +30,16 @@ export function renameMarkerCommand(
         labels,
         connectionLabels: current.markers.connectionLabels ?? current.markers.labels,
       },
+      ...(memberships
+        ? {
+            rigidBodies: current.rigidBodies?.map((body, index) => ({
+              ...body,
+              markers: body.markers.map((name, member) =>
+                memberships[index].includes(member) ? value : name,
+              ),
+            })),
+          }
+        : {}),
     };
   };
   return {

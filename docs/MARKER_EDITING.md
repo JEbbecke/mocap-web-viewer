@@ -25,8 +25,8 @@ matching uses imported labels retained once per collection; changing the preset
 still matches those imported labels. A rename neither rewrites presets nor adds
 new links based on the new name. Re-importing an exported recording resolves
 presets afresh against its exported names. There are currently no editable custom
-connections. H5 rigid-body membership text is retained as source metadata; it is
-not used as a live marker reference by the viewer.
+connections. Matching H5 rigid-body membership names follow marker renames and
+undo/redo. The viewer does not infer anatomical connections from those names.
 
 **Undo / Redo** in the header covers all committed Data-tab renames and event
 add/edit/delete. Ctrl/Cmd+Z undoes, Ctrl/Cmd+Shift+Z redoes, and Ctrl+Y also redoes
@@ -52,9 +52,10 @@ import or export is running.
 Export always uses current committed labels and events. C3D rebuilds
 `POINT:LABELS`, `LABELS2`, etc., respecting string dimensions and signed record
 capacity, growing the parameter region when needed and retaining raw scientific
-records and unrelated parameters. For marker renames, institute H5 changes only
-`Trajectories/Labeled@Labels`, using string storage that accommodates the new
-names. Its hierarchy, samples, residuals, clocks and other metadata retain their
+records and unrelated parameters. For marker renames, institute H5 updates
+`Trajectories/Labeled@Labels`, matching rigid-body membership and nested
+`MetaData/C3DParameters/POINT/LABELS@value`, with storage that accommodates new
+names. Untouched raw labels retain their original spelling. Its hierarchy, samples, residuals, clocks and other metadata retain their
 values. Existing [modified-export limits](CROPPING_EXPORT.md) still apply.
 The separate H5 `Unlabeled` group is not exposed as editable trajectories; generated
 names in the imported Labeled collection and C3D points are editable.
@@ -62,7 +63,7 @@ names in the imported Labeled collection and C3D points are editable.
 Analog renames keep the source channel index, both plot selections, signal arrays,
 units, rates and timestamps. Force-channel mappings and derived forces/COP remain
 unchanged. C3D updates `ANALOG:LABELS`, `LABELS2`, etc., with the same byte limits
-as marker labels; H5 updates only `Analog@Labels`. An analog rename leaves separate
+as marker labels; H5 updates `Analog@Labels` and its matching nested ANALOG label alias. An analog rename leaves separate
 H5 `EMG` labels unchanged; those can be renamed independently. Mixed label/event history follows
 the same undo, redo, crop, restore, import and export rules above.
 
