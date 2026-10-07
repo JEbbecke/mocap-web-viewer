@@ -9,6 +9,8 @@ Changes since the latest formal release remain under `[Unreleased]`.
 
 ### Added
 
+- Browser-local 3D video export using native timestamped VP9/VP8 WebM encoding, 30/60 fps, viewport/1080p resolution, 1×/0.5×/0.25× speed, progress/cancellation and the optional JE Motion Lab watermark.
+
 - High-resolution PNG export of the current 3D scene at viewport, 1920 × 1080 or 3840 × 2160 resolution, with an optional JE Motion Lab watermark and entirely browser-local processing.
 
 - Browser-local C3D→H5 and supported H5→C3D export, with a compatibility review showing included data, changed representations, omissions and blocking errors. Same-format C3D/H5 export keeps the existing source-preserving path. Conversion creates a fresh file from imported data; unsupported mappings are reported rather than guessed. ([#13], [#14])
@@ -23,6 +25,8 @@ Changes since the latest formal release remain under `[Unreleased]`.
 - Cloudflare Worker analytics integration for aggregate counts by date, country and event type in D1. Motion-capture files, filenames, measurements and metadata remain local. Backend deployment and verification scope are documented in [docs/ANALYTICS.md](docs/ANALYTICS.md). ([#5])
 
 ### Changed
+
+- Grouped image and video export under one Export media menu with separate configuration dialogs; scientific C3D/H5 export remains in the header.
 
 - Moved Export next to Open file in the header, with C3D/H5 choices inside its button menu. Add Event and the Events selector now share the timeline's right-hand action area beside Crop, reducing its height. ([#14])
 - Standardized local file generation terminology as Export in UI progress/status messages, documentation and application helpers. The conversion review uses **Changed or omitted**, listing changes before omissions; generic raw-tree and event-provenance notices are covered by the format-differences explanation and documented mappings. ([#14])

@@ -1,4 +1,17 @@
 import { useSession } from '../state/session';
+let mediaHolds = 0,
+  resumedAt = 0;
+/** Hold playback without writing frame/playing/session state or catching up after a media job. */
+export function holdPlaybackClock() {
+  mediaHolds++;
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    mediaHolds--;
+    resumedAt = performance.now();
+  };
+}
 export function advanceFrame(
   frame: number,
   elapsed: number,
@@ -21,13 +34,19 @@ export function startClock() {
   const tick = (now: number) => {
     const state = useSession.getState();
     if (state.frame !== lastFrame) position = state.frame;
+    last = Math.max(last, resumedAt);
+    if (mediaHolds) {
+      last = now;
+      id = requestAnimationFrame(tick);
+      return;
+    }
     if (state.playing && state.data) {
       const start = state.cropSelection?.start ?? 0;
       const end = state.cropSelection?.end ?? state.data.timeline.frameCount;
       if (position < start || position >= end) position = start;
       const next = advanceFrame(
         position - start,
-        (now - last) / 1000,
+        Math.max(0, now - last) / 1000,
         state.data.timeline.rate,
         state.speed,
         end - start,

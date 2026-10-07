@@ -2,7 +2,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { createElement } from 'react';
-import { ImageExportControl } from '../src/components/ImageExportControl';
+import { MediaExportControl } from '../src/components/MediaExportControl';
 import {
   DEFAULT_IMAGE_EXPORT,
   IMAGE_RESOLUTIONS,
@@ -66,6 +66,7 @@ let drawing: {
   save: ReturnType<typeof vi.fn>;
   restore: ReturnType<typeof vi.fn>;
   fillText: ReturnType<typeof vi.fn>;
+  measureText: ReturnType<typeof vi.fn>;
   drawImage: ReturnType<typeof vi.fn>;
   font: string;
 };
@@ -100,7 +101,14 @@ beforeEach(() => {
   marker.position.set(1, 2, 3);
   scene.add(marker);
   live = makeRenderer();
-  drawing = { save: vi.fn(), restore: vi.fn(), fillText: vi.fn(), drawImage: vi.fn(), font: '' };
+  drawing = {
+    save: vi.fn(),
+    restore: vi.fn(),
+    fillText: vi.fn(),
+    measureText: vi.fn(() => ({ width: 200 })),
+    drawImage: vi.fn(),
+    font: '',
+  };
   canvases = [];
   vi.stubGlobal('document', {
     createElement: vi.fn(() => {
@@ -208,11 +216,24 @@ it.each([false, true])(
     expect(state.history.past).toHaveLength(modified ? 1 : 0);
   },
 );
-it('composites only enabled watermark text at resolution-scaled bottom-right positions', async () => {
+it('composites a bold JE and light watermark text at resolution-scaled bottom-right positions', async () => {
+  const fonts: string[] = [];
+  drawing.fillText.mockImplementation(() => fonts.push(drawing.font));
+  drawing.measureText.mockImplementation(() => {
+    expect(drawing.font).toBe('300 44px system-ui, sans-serif');
+    return { width: 200 };
+  });
   await exportImage(true);
+  expect(drawing.measureText).toHaveBeenCalledExactlyOnceWith(' Motion Lab');
   expect(drawing.fillText.mock.calls).toEqual([
-    ['JE Motion Lab', 3792, 2070],
+    ['Motion Lab', 3792, 2070],
+    ['JE', 3592, 2070],
     ['jemolab.com', 3792, 2112],
+  ]);
+  expect(fonts).toEqual([
+    '300 44px system-ui, sans-serif',
+    '700 44px system-ui, sans-serif',
+    '300 28px system-ui, sans-serif',
   ]);
   expect(drawing.save).toHaveBeenCalledOnce();
   expect(drawing.restore).toHaveBeenCalledOnce();
@@ -318,11 +339,17 @@ it('offers the PNG locally with a sanitized filename and releases its Blob URL',
   vi.advanceTimersByTime(1000);
   expect(revoke).toHaveBeenCalledWith('blob:local');
 });
-it('exposes the dedicated Export image action and disables it without a dataset', () => {
+it('exposes one Export media entry point and disables it without a dataset', () => {
   const html = renderToStaticMarkup(
-    createElement(ImageExportControl, { data: null, active: true, request: { current: null } }),
+    createElement(MediaExportControl, {
+      data: null,
+      active: true,
+      imageRequest: { current: null },
+      videoRequest: { current: null },
+    }),
   );
-  expect(html).toContain('Export image');
+  expect(html).toContain('Export media');
+  expect(html.match(/<button/g)).toHaveLength(1);
   expect(html).toContain('disabled');
   expect(html).not.toContain('Download');
 });

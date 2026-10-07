@@ -7,6 +7,11 @@ import assert from 'node:assert/strict';
 import * as h5 from 'h5wasm/node';
 import { verifyExplorer, verifyLargeExplorer, verifyCroppedExplorer } from './browser-explorer.mjs';
 import {
+  verifyVideoExport,
+  captureSceneVideo,
+  verifyMovingPlateVideo,
+} from './browser-video-export.mjs';
+import {
   verifyImageExport,
   verifyMovingPlateImages,
   captureSceneImage,
@@ -847,6 +852,7 @@ try {
     await page.getByRole('slider', { name: 'Frame', exact: true }).getAttribute('aria-valuemax'),
     '2',
   );
+  await verifyVideoExport(page, 'synthetic.c3d', 0.02);
   for (const path of [resolve('.local/synthetic.h5')]) {
     await page.getByLabel('Open motion file').setInputFiles(path);
     await page.waitForFunction(() => !document.body.textContent.includes('Reading your recording'));
@@ -1093,6 +1099,14 @@ try {
       'image export preserves the cropped timeline',
     );
     assert(await undoButton.isDisabled(), 'image export adds no crop history');
+    if (extension === 'h5') {
+      await captureSceneVideo(page, 'synthetic.h5', 0.01, { fps: 60 });
+      assert.equal(
+        await playhead.getAttribute('aria-valuenow'),
+        croppedFrame,
+        'video export preserves the cropped timeline',
+      );
+    }
     const exportPromise = page.waitForEvent('download');
     await chooseExportFormat(page, extension === 'c3d' ? 'C3D' : 'H5');
     const exportedFile = await exportPromise;
@@ -1168,6 +1182,7 @@ try {
     assert(!last.equals(empty), 'final plate frame remains in camera bounds');
     assert(!last.equals(middle), 'plate advances to final geometry frame');
     await verifyMovingPlateImages(page, 'moving-plates.h5');
+    await verifyMovingPlateVideo(page);
   }
   // Both HDF5 extensions share one load event, with no filename in the payload.
   const hdf5Load = page.waitForResponse(

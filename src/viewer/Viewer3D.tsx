@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
+import { Canvas, useThree, type ThreeEvent } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
@@ -8,9 +8,12 @@ import { sceneLength, SCENE_UNITS_PER_MM } from './scale';
 import { sample, sample3 } from '../motion/math';
 import { resolveConnections } from '../motion/connections';
 import { setCamera, useSession, type CameraPreset } from '../state/session';
-import { ImageExportControl } from '../components/ImageExportControl';
+import { MediaExportControl } from '../components/MediaExportControl';
 import { ImageExportBridge } from './ImageExportBridge';
 import type { ImageExportRequest } from './imageExport';
+import { markerFrameAt, useScientificFrame } from './scientificScene';
+import { VideoExportBridge } from './VideoExportBridge';
+import type { VideoExportRequest } from './videoExport';
 
 function bounds(data: MotionData) {
   const box = new THREE.Box3(),
@@ -87,10 +90,12 @@ function Markers({ data }: { data: MotionData }) {
     event.stopPropagation();
     useSession.setState({ selected: event.instanceId, plot: 'marker' });
   };
-  useFrame(() => {
+  useScientificFrame(data, (time, state, object) => {
     if (!ref.current) return;
-    const { frame, selected, hidden, display } = useSession.getState();
-    ref.current.visible = display.markers;
+    const mesh = object(ref.current);
+    const frame = markerFrameAt(data, time);
+    const { selected, hidden, display } = state;
+    mesh.visible = display.markers;
     for (let i = 0; i < count; i++) {
       const index = frame * count + i,
         show = data.markers.valid[index] && !hidden.has(i),
@@ -101,8 +106,8 @@ function Markers({ data }: { data: MotionData }) {
         sceneLength(data.markers.positions[index * 3 + 1]) || 0,
         sceneLength(data.markers.positions[index * 3 + 2]) || 0,
       );
-      ref.current.setMatrixAt(i, matrix);
-      ref.current.setColorAt(
+      mesh.setMatrixAt(i, matrix);
+      mesh.setColorAt(
         i,
         color.set(
           i === selected
@@ -113,8 +118,8 @@ function Markers({ data }: { data: MotionData }) {
         ),
       );
     }
-    ref.current.instanceMatrix.needsUpdate = true;
-    if (ref.current.instanceColor) ref.current.instanceColor.needsUpdate = true;
+    mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
   });
   return (
     <instancedMesh
@@ -152,10 +157,12 @@ function Connections({ data }: { data: MotionData }) {
     },
     [object],
   );
-  useFrame(() => {
-    const { frame, hidden, display } = useSession.getState();
-    object.visible = display.connections;
-    const values = object.geometry.attributes.position.array as Float32Array,
+  useScientificFrame(data, (time, state, resolve) => {
+    const { hidden, display } = state;
+    const frame = markerFrameAt(data, time);
+    const target = resolve(object);
+    target.visible = display.connections;
+    const values = target.geometry.attributes.position.array as Float32Array,
       n = data.markers.labels.length;
     let drawn = 0;
     for (const [a, b] of pairs) {
@@ -173,8 +180,8 @@ function Connections({ data }: { data: MotionData }) {
         drawn++;
       }
     }
-    object.geometry.setDrawRange(0, drawn);
-    object.geometry.attributes.position.needsUpdate = true;
+    target.geometry.setDrawRange(0, drawn);
+    target.geometry.attributes.position.needsUpdate = true;
   });
   return <primitive object={object} frustumCulled={false} />;
 }
@@ -211,10 +218,11 @@ function MarkerLabels({ data }: { data: MotionData }) {
     },
     [group],
   );
-  useFrame(() => {
-    const { frame, hidden, display } = useSession.getState(),
+  useScientificFrame(data, (time, state, resolve) => {
+    const { hidden, display } = state,
       n = data.markers.labels.length;
-    group.children.forEach((sprite, i) => {
+    const frame = markerFrameAt(data, time);
+    resolve(group).children.forEach((sprite, i) => {
       const index = frame * n + i;
       sprite.visible = display.markers && !hidden.has(i) && !!data.markers.valid[index];
       sprite.position
@@ -325,11 +333,17 @@ function Plates({ data }: { data: MotionData }) {
     },
     [objects],
   );
-  useFrame(() => {
-    const state = useSession.getState(),
-      time = state.frame / data.timeline.rate;
+  useScientificFrame(data, (time, state, resolve) => {
     data.forcePlatforms.forEach((plate, i) => {
-      const o = objects[i],
+      const original = objects[i];
+      const o = {
+          ...original,
+          mesh: resolve(original.mesh),
+          outline: resolve(original.outline),
+          arrow: resolve(original.arrow),
+          point: resolve(original.point),
+          number: resolve(original.number),
+        },
         global = plate.coordinateFrame === 'global' || state.assumeGlobal;
       o.mesh.visible = o.outline.visible = !!plate.corners && state.display.plates;
       o.number.visible = false;
@@ -467,6 +481,7 @@ function Ground() {
 }
 export function Viewer3D({ data, active = true }: { data: MotionData | null; active?: boolean }) {
   const imageExport = useRef<ImageExportRequest | null>(null);
+  const videoExport = useRef<VideoExportRequest | null>(null);
   return (
     <div className="viewport">
       <Canvas
@@ -485,6 +500,7 @@ export function Viewer3D({ data, active = true }: { data: MotionData | null; act
         <directionalLight position={[3, -2, 5]} intensity={2} />
         <Ground />
         <ImageExportBridge request={imageExport} />
+        <VideoExportBridge request={videoExport} data={data} />
         {data ? (
           <>
             <Camera data={data} />
@@ -511,7 +527,12 @@ export function Viewer3D({ data, active = true }: { data: MotionData | null; act
             {p === 'perspective' ? 'Reset' : p[0].toUpperCase() + p.slice(1)}
           </button>
         ))}
-        <ImageExportControl data={data} active={active} request={imageExport} />
+        <MediaExportControl
+          data={data}
+          active={active}
+          imageRequest={imageExport}
+          videoRequest={videoExport}
+        />
       </div>
       <div className="viewport-footer">
         <span>

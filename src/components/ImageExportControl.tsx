@@ -13,21 +13,23 @@ export function ImageExportControl({
   data,
   active,
   request,
+  open,
+  onClose,
 }: {
   data: MotionData | null;
   active: boolean;
   request: RefObject<ImageExportRequest | null>;
+  open: boolean;
+  onClose: () => void;
 }) {
   const sourceFile = useSession((s) => s.sourceFile);
   const busy = useSession((s) => s.busy);
-  const [open, setOpen] = useState(false);
   const [resolution, setResolution] = useState<ImageResolution>(DEFAULT_IMAGE_EXPORT.resolution);
   const [watermark, setWatermark] = useState(DEFAULT_IMAGE_EXPORT.watermark);
   const [exporting, setExporting] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const dialog = useRef<HTMLDialogElement>(null);
-  const trigger = useRef<HTMLButtonElement>(null);
   const pending = useRef<AbortController | null>(null);
   const id = useId();
   const close = () => {
@@ -35,14 +37,12 @@ export function ImageExportControl({
     pending.current = null;
     dialog.current?.close();
     setExporting(false);
-    setOpen(false);
-    trigger.current?.focus();
+    onClose();
   };
   useEffect(() => {
     pending.current?.abort();
     pending.current = null;
     setExporting(false);
-    setOpen(false);
     setMessage('');
     setError('');
     return () => {
@@ -50,7 +50,11 @@ export function ImageExportControl({
     };
   }, [data, active, busy]);
   useEffect(() => {
-    if (open) dialog.current?.showModal();
+    if (open) {
+      setError('');
+      setMessage('');
+      dialog.current?.showModal();
+    } else pending.current?.abort();
   }, [open]);
   const exportImage = async () => {
     setError('');
@@ -81,19 +85,6 @@ export function ImageExportControl({
   };
   return (
     <>
-      <button
-        ref={trigger}
-        disabled={!data || !active || busy}
-        aria-haspopup="dialog"
-        onClick={(event) => {
-          event.stopPropagation();
-          setError('');
-          setMessage('');
-          setOpen(true);
-        }}
-      >
-        Export image
-      </button>
       {open && (
         <dialog
           ref={dialog}

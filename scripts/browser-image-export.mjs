@@ -1,8 +1,13 @@
 import assert from 'node:assert/strict';
 
+export async function openMediaWorkflow(page, workflow) {
+  await page.getByRole('button', { name: 'Export media', exact: true }).click();
+  await page.getByRole('menuitem', { name: `Export ${workflow}…`, exact: true }).click();
+}
+
 // Consume intercepted files in memory; no generated PNG artifacts are saved.
 export async function captureSceneImage(page, sourceName, resolution, watermark) {
-  await page.getByRole('button', { name: 'Export image', exact: true }).click();
+  await openMediaWorkflow(page, 'image');
   const dialog = page.getByRole('dialog', { name: 'Export image', exact: true });
   await dialog.getByLabel('Image resolution', { exact: true }).selectOption(resolution);
   await dialog.getByLabel('Include JE Motion Lab watermark', { exact: true }).setChecked(watermark);
@@ -53,8 +58,8 @@ async function imagePixels(page, png) {
 }
 
 export async function verifyImageExport(page, sourceName) {
-  const button = page.getByRole('button', { name: 'Export image', exact: true });
-  await button.click();
+  const button = page.getByRole('button', { name: 'Export media', exact: true });
+  await openMediaWorkflow(page, 'image');
   const dialog = page.getByRole('dialog', { name: 'Export image', exact: true });
   assert.equal(
     await dialog.getByLabel('Image resolution', { exact: true }).inputValue(),
@@ -102,7 +107,7 @@ async function verifyImageFailureHandling(page, sourceName) {
       callback(null);
     };
   });
-  await page.getByRole('button', { name: 'Export image', exact: true }).click();
+  await openMediaWorkflow(page, 'image');
   const dialog = page.getByRole('dialog', { name: 'Export image', exact: true });
   await dialog.getByRole('button', { name: 'Export PNG', exact: true }).click();
   await dialog.getByRole('alert').filter({ hasText: 'Image export failed.' }).waitFor();
@@ -123,7 +128,7 @@ async function verifyImageFailureHandling(page, sourceName) {
   const count = () => exports++;
   page.on('download', count);
   try {
-    await page.getByRole('button', { name: 'Export image', exact: true }).click();
+    await openMediaWorkflow(page, 'image');
     await dialog.getByRole('button', { name: 'Export PNG', exact: true }).click();
     await page.waitForFunction(() => window.__imageExportEncodingStarted);
     await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();

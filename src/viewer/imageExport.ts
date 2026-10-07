@@ -37,7 +37,7 @@ export function imageSize(resolution: ImageResolution, viewport: ImageSize): Ima
   return { ...viewport };
 }
 
-export function imageFilename(sourceName: string | undefined, size: ImageSize): string {
+export function mediaBasename(sourceName: string | undefined): string {
   const basename = (sourceName ?? '').split(/[\\/]/).at(-1) ?? '';
   const stem = basename
     .replace(/\.[^.]*$/, '')
@@ -45,9 +45,11 @@ export function imageFilename(sourceName: string | undefined, size: ImageSize): 
     .replace(/[. ]+$/g, '')
     .trim()
     .slice(0, 120);
-  return stem && !/^_+$/.test(stem)
-    ? `${stem}_3d_${size.width}x${size.height}.png`
-    : 'je-motion-lab.png';
+  return stem && !/^_+$/.test(stem) ? stem : '';
+}
+export function imageFilename(sourceName: string | undefined, size: ImageSize): string {
+  const stem = mediaBasename(sourceName);
+  return stem ? `${stem}_3d_${size.width}x${size.height}.png` : 'je-motion-lab.png';
 }
 
 /** Expand one projection axis to retain the complete viewport framing without stretching. */
@@ -86,10 +88,15 @@ export function paintWatermark(context: CanvasRenderingContext2D, size: ImageSiz
   context.fillStyle = 'rgba(235, 244, 249, 0.72)';
   context.shadowColor = 'rgba(0, 0, 0, 0.65)';
   context.shadowBlur = 3 * scale;
-  context.font = `500 ${22 * scale}px system-ui, sans-serif`;
-  context.fillText('JE Motion Lab', size.width - padding, size.height - padding - 21 * scale);
-  context.font = `${14 * scale}px system-ui, sans-serif`;
-  context.fillText('jemolab.com', size.width - padding, size.height - padding);
+  const right = size.width - padding;
+  const titleY = size.height - padding - 21 * scale;
+  context.font = `300 ${22 * scale}px system-ui, sans-serif`;
+  const suffixWidth = context.measureText(' Motion Lab').width;
+  context.fillText('Motion Lab', right, titleY);
+  context.font = `700 ${22 * scale}px system-ui, sans-serif`;
+  context.fillText('JE', right - suffixWidth, titleY);
+  context.font = `300 ${14 * scale}px system-ui, sans-serif`;
+  context.fillText('jemolab.com', right, size.height - padding);
   context.restore();
 }
 
@@ -152,55 +159,88 @@ export async function renderSceneImage(
     width: live.domElement.width,
     height: live.domElement.height,
   });
+  const surface = createSceneImageSurface(live, camera, size);
+  try {
+    surface.render(scene, options.watermark);
+    surface.releaseRenderer();
+    return { ...size, blob: await pngBlob(surface.canvas, signal) };
+  } finally {
+    surface.dispose();
+  }
+}
+
+/** One temporary surface per media job; still images release its renderer before encoding. */
+export function createSceneImageSurface(
+  live: THREE.WebGLRenderer,
+  camera: THREE.Camera,
+  size: ImageSize,
+) {
   checkContext(live, size);
   const renderCanvas = document.createElement('canvas');
   const output = document.createElement('canvas');
   let renderer: THREE.WebGLRenderer | undefined;
+  const releaseRenderer = () => {
+    renderer?.dispose();
+    renderer?.forceContextLoss();
+    renderer = undefined;
+    renderCanvas.width = renderCanvas.height = 1;
+  };
+  const dispose = () => {
+    releaseRenderer();
+    output.width = output.height = 1;
+  };
   try {
     output.width = size.width;
     output.height = size.height;
     const context = output.getContext('2d');
     if (!context) throw new Error('The browser could not create an image canvas.');
-    try {
-      renderer = new THREE.WebGLRenderer({
-        canvas: renderCanvas,
-        antialias: true,
-        alpha: live.getContext().getContextAttributes()?.alpha ?? false,
-      });
-      checkContext(renderer, size);
-      renderer.setPixelRatio(1);
-      renderer.setSize(size.width, size.height, false);
-      renderer.outputColorSpace = live.outputColorSpace;
-      renderer.toneMapping = live.toneMapping;
-      renderer.toneMappingExposure = live.toneMappingExposure;
-      renderer.setClearColor(live.getClearColor(new THREE.Color()), live.getClearAlpha());
-      renderer.shadowMap.enabled = live.shadowMap.enabled;
-      renderer.shadowMap.type = live.shadowMap.type;
-      renderer.localClippingEnabled = live.localClippingEnabled;
-      renderer.clippingPlanes = live.clippingPlanes;
-      renderer.sortObjects = live.sortObjects;
-      renderer.render(scene, imageCamera(camera, size));
-      checkContext(renderer, size);
-      // Copy immediately; no persistent preserveDrawingBuffer or live canvas resize.
-      context.drawImage(renderCanvas, 0, 0);
-    } finally {
-      renderer?.dispose();
-      renderer?.forceContextLoss();
-      renderCanvas.width = renderCanvas.height = 1;
-    }
-    if (options.watermark) paintWatermark(context, size);
-    return { ...size, blob: await pngBlob(output, signal) };
-  } finally {
-    output.width = output.height = 1;
+    renderer = new THREE.WebGLRenderer({
+      canvas: renderCanvas,
+      antialias: true,
+      alpha: live.getContext().getContextAttributes()?.alpha ?? false,
+    });
+    checkContext(renderer, size);
+    renderer.setPixelRatio(1);
+    renderer.setSize(size.width, size.height, false);
+    renderer.outputColorSpace = live.outputColorSpace;
+    renderer.toneMapping = live.toneMapping;
+    renderer.toneMappingExposure = live.toneMappingExposure;
+    renderer.setClearColor(live.getClearColor(new THREE.Color()), live.getClearAlpha());
+    renderer.shadowMap.enabled = live.shadowMap.enabled;
+    renderer.shadowMap.type = live.shadowMap.type;
+    renderer.localClippingEnabled = live.localClippingEnabled;
+    renderer.clippingPlanes = live.clippingPlanes;
+    renderer.sortObjects = live.sortObjects;
+    const exportCamera = imageCamera(camera, size);
+    return {
+      canvas: output,
+      releaseRenderer,
+      dispose,
+      render: (scene: THREE.Scene, watermark: boolean) => {
+        if (!renderer) throw new Error('The export renderer is unavailable.');
+        checkContext(renderer, size);
+        renderer.render(scene, exportCamera);
+        checkContext(renderer, size);
+        // Copy immediately; no persistent preserveDrawingBuffer or live canvas resize.
+        context.drawImage(renderCanvas, 0, 0);
+        if (watermark) paintWatermark(context, size);
+      },
+    };
+  } catch (error) {
+    dispose();
+    throw error;
   }
 }
 
 export function saveSceneImage(image: ExportedImage, sourceName?: string) {
-  const url = URL.createObjectURL(image.blob);
+  saveMediaBlob(image.blob, imageFilename(sourceName, image));
+}
+export function saveMediaBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   try {
     anchor.href = url;
-    anchor.download = imageFilename(sourceName, image);
+    anchor.download = filename;
     document.body.appendChild(anchor);
     anchor.click();
   } finally {
