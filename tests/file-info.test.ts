@@ -94,7 +94,7 @@ function h5Root(meta: Record<string, unknown> = {}, location: Record<string, unk
         },
       ),
       IKResults: group(
-        { Labels: ['opaque'] },
+        { Labels: Array.from({ length: 28 }, (_, i) => `Synthetic IK ${i + 1}`) },
         {
           Data: {
             shape: [28, 95],
@@ -105,7 +105,7 @@ function h5Root(meta: Record<string, unknown> = {}, location: Record<string, unk
         },
       ),
       IDResults: group(
-        {},
+        { Labels: Array.from({ length: 28 }, (_, i) => `Synthetic ID ${i + 1}`) },
         {
           Data: {
             shape: [28, 95],
@@ -194,9 +194,7 @@ describe('curated H5 metadata', () => {
     const data = parseH5Tree(
       {
         get: (path) =>
-          ['EMG', 'EMG/Data', 'IKResults/Data', 'IDResults/Data'].includes(path)
-            ? undefined
-            : root.get?.(path),
+          /^(EMG|IKResults|IDResults)(\/|$)/.test(path) ? undefined : root.get?.(path),
       },
       'missing.h5',
     );

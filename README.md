@@ -66,6 +66,12 @@ Keyboard: **Space** play/pause, **← / →** step, **Home / End** first/last fr
 | C3D          | Intel little-endian and MIPS big-endian; integer and IEEE float point records; parameter labels and continuation labels; scaled signed/unsigned analogs and subframes; residual validity; events; force types 2/3/4 |
 | Institute H5 | `Trajectories/Labeled/Data [marker,4,frame]`, Labels and SamplingFrequency; optional analogs/force groups; compressed HDF5; current unversioned authoritative schema only                                           |
 
+Optional current-H5 data groups such as EMG may be omitted or empty when no data
+were recorded. Available data remain strictly validated for dimensions and
+metadata; empty categories are hidden without placeholder channels or warnings.
+Required trajectories and the current nested metadata layout remain required.
+See [empty H5 semantics](docs/H5_FORMAT.md#absent-and-empty-optional-data).
+
 DEC/VAX C3D encoding and nonstandard rotation records are explicitly rejected. Unsupported force-platform types are reported and omitted, while marker and analog data remain accessible. Other HDF5 schemas are not supported. C3D interoperability is checked against synthetic Intel/MIPS variants, two local representative trials (including validated QTM-style force channels) and independent ezc3d output; this does not establish compatibility with every vendor or reader.
 
 The current H5 declares global force vectors. Unresolved force frames remain available for signal inspection, but require explicit confirmation of stored-global coordinates for spatial force display. Missing marker or rigid-body units fail explicitly. Current institute H5 supports nested project/file provenance, expanded event context/subject metadata, explicit clocks, mapped EMG, rigid-body data and quality flags; obsolete institute H5 layouts are rejected. Data lists IKResults and IDResults variables, with counts in File Info; labelled time rows are excluded. Model values are available in Data Explorer through local sample pages, while plots retain their existing supported signals. Their source data remains available for source-format export; cross-format C3D output reports IK/ID omission. Type codes and unprovided coordinate conventions are not guessed. See [H5 format](docs/H5_FORMAT.md) and [open questions](docs/OPEN_QUESTIONS.md).

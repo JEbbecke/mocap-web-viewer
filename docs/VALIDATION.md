@@ -23,6 +23,10 @@ moving geometry, crop clocks, event edits, all data-label collections, history,
 File Info, Data sidebar, Explorer paging/copying, current H5 preservation, both
 cross-format paths, force-channel reuse/fallback and conversion-loss reporting.
 Malformed structures and unsupported obsolete H5 layouts must fail explicitly.
+Synthetic empty-category tests accept absent/empty optional current-H5 groups
+while rejecting inconsistent populated dimensions, labels, units and clocks.
+Browser smoke opens H5 with empty EMG, checks its absence from Data/Explorer and
+zero File Info count, and exercises viewer interaction, edits, crop and export.
 The small `h5.json` fixture is solely a low-level gzip/WASM regression, not a
 supported application schema.
 

@@ -85,6 +85,41 @@ M = markers, F = point frames, C = channels, S = a stream's own samples, E = eve
 Floating datasets are little-endian float64. Text is variable-length UTF-8.
 Boolean attributes and datasets retain their enum type, not plain integer storage.
 
+### Absent and empty optional data
+
+Optional current-schema categories may be omitted or empty when no corresponding
+data were recorded. They are unavailable in MotionData, Data and Data Explorer;
+no channels, labels or warnings are invented. Required labelled trajectories,
+units, point rate and the nested metadata layout remain required. Populated
+optional data must have consistent dimensions, labels, units and clocks.
+
+| Category                                  | Valid empty representation                                                                                                                                                      | Populated validation                                                                                                                             |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Analog / EMG                              | Missing group/Data with no channel metadata; empty group; Data `[0,0]` or `[0,S]` with zero/missing Labels; `[C,0]` with C matching nonblank Labels                             | Numeric `[C,S]`, C nonblank Labels and Units, valid rate/clock; supplied Channels, Time and counts must match                                    |
+| IK / ID                                   | Same channel-axis rules as Analog/EMG; empty results have no catalog                                                                                                            | Numeric rank-two layout, matching Labels/counts and supplied Units/Time/rate; per-variable units may be undeclared and clocks remain independent |
+| Force platforms                           | Missing/empty collection or child; all Force/Moment/COP `[3,0]`, with other supplied datasets also empty                                                                        | All three `[3,S]` vectors, matching samples, declared position/force/moment units and a valid clock; partial plates fail                         |
+| Plate geometry / free moment              | Missing, or zero-sample Corners `[3,4,0]`, Position `[3,0]`, Rotation `[3,3,0]`, Origin `[3,0]`, Tz `[3,0]`                                                                     | Documented axes and established static/point/force geometry grid; malformed populated arrays fail                                                |
+| Events                                    | Missing/empty group, or all eight columns `[0]`                                                                                                                                 | All eight one-dimensional columns with matching rows; valid times, frames, flags and icons                                                       |
+| Rigid bodies                              | Missing/empty collection or child; Position `[3,0]` and empty/absent Rotation/Markers                                                                                           | Position `[3,F]`, declared Unit, matching marker grid/counts and optional Rotation `[3,3,F]`                                                     |
+| Residuals / quality                       | Missing or zero-length arrays at the documented rank; axes must match their marker/frame dimensions or be zero, e.g. Residuals/Type `[M,0]`, flags `[0]`, CameraMasks `[M,0,F]` | Exact marker/frame/flag/camera axes; malformed arrays fail                                                                                       |
+| Subject / project / provenance / location | Missing attributes/subgroups, empty arrays/text or unavailable values use existing hidden-field conventions                                                                     | Descriptive metadata remain opaque and source-preserved; at least MetaData/Project or MetaData/FileInfo must still exist                         |
+
+For channel matrices, rank-one `[0]` is invalid; rank-two `[0,0]` is empty.
+`[N,0]` still declares N channel identities, so zero/missing Labels is inconsistent
+unless N is zero. Empty-string Labels are not a zero-label array. Missing labels
+are valid only with zero channels. h5wasm 0.10.3 returns zero-length attributes
+as empty typed arrays, including Labels/Units; the importer recognizes these as
+zero entries. A supplied Time grid must match the sample axis even for `[0,S]`.
+An empty Time vector accompanying real samples remains an error.
+
+Fresh C3D-to-H5 export omits unavailable Analog/EMG/ForcePlates/model/body groups
+and writes the complete zero-row Events layout. Source-format H5 export preserves
+valid empty source structures and their metadata. Cropping retains an entire
+empty channel category, including any `[0,S]` acquisition grid, rather than
+slicing Time alone. Empty quality arrays with a retained marker-frame axis, such
+as CameraMasks `[M,0,F]`, resize that axis on crop without inventing samples.
+No EMG category or conversion-loss warning is fabricated.
+
 ### Current attributes and metadata
 
 - Trajectories: NumFrames, StartFrame, EndFrame (inclusive), SamplingFrequency.

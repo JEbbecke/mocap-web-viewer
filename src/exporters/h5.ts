@@ -200,7 +200,22 @@ export function writeCroppedH5(
       shape = ds.shape;
     if (!shape) throw new Error(`${path}: null dataspaces are unsupported.`);
     if (!cropping) return;
-    if (shape.includes(0)) return;
+    if (shape.includes(0)) {
+      // Empty quality can still declare the marker frame axis, e.g. [M,0,F].
+      // Resize that known axis without asking HDF5 to slice a zero-element buffer.
+      if (
+        /^\/Trajectories\/(Labeled|Unlabeled)\/(Type|Residuals|CameraMasks)$/.test(path) &&
+        shape.at(-1) === frames
+      )
+        slices.set(path, { axis: shape.length - 1, start, end });
+      return;
+    }
+    // A zero-channel category may retain an acquisition Time grid. Preserve the
+    // whole empty category; slicing Time alone would disagree with Data [0,S].
+    if (/^\/(Analog|EMG)\/(Data|Time)$/.test(path)) {
+      const data = ds.parent.get('Data');
+      if (data instanceof h5.Dataset && data.shape?.includes(0)) return;
+    }
     if (path.startsWith('/MetaData/')) return;
     if (/^\/Trajectories\/(Labeled|Unlabeled)\/(Virtual|CameraMasksKnown)$/.test(path)) return;
     if (
@@ -328,7 +343,7 @@ export function writeCroppedH5(
         if (selection) {
           const ranges: [number, number][] = shape.map((n) => [0, n]);
           ranges[selection.axis] = [selection.start, selection.end];
-          data = entity.slice(ranges);
+          data = shape.includes(0) ? entity.value : entity.slice(ranges);
           shape[selection.axis] = selection.end - selection.start;
         } else data = entity.value;
         if (data === null) throw new Error(`${entity.path}: unreadable dataset.`);
