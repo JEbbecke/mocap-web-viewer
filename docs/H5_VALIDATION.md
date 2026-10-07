@@ -16,6 +16,14 @@ synthetic lifecycle, unknown-content guards and generic boolean-template checks.
 Moving plates, force-channel reuse, Explorer and both conversions have dedicated
 regressions. `tests/fixtures/current-h5.json` contains invented data only.
 
+`tests/h5-empty-optional.test.ts` creates synthetic current-schema HDF5 in the
+installed WASM library. It covers empty typed Labels/Units, omitted/empty groups,
+zero-channel and zero-sample matrices, strict populated metadata/clock/axis
+errors, empty events/plates/bodies/results/quality, sidebar/Explorer counts,
+edit history, crop/rename H5 round trips and both cross-format directions.
+See [empty semantics](H5_FORMAT.md#absent-and-empty-optional-data) for accepted
+representations. Optional absence is not a scientific error or conversion loss.
+
 The optional reference import opens the source with mode `r` and verifies its
 bytes remain unchanged. Explicit export validation produces six ignored outputs:
 reconstruction, rename, event edit, add, delete and crop. Assertions compare
@@ -69,11 +77,12 @@ HDF5 storage infrastructure, without representing a supported product layout.
   remain unestablished. Bodies follow the marker grid when counts agree.
 - Marker clocks must be regular. Other signal clocks can be irregular. Declared
   counts/extents and all event columns are checked strictly; units are required
-  for markers and rigid-body positions.
+  for markers, rigid-body positions and populated Analog/EMG channels.
 - Unknown temporal datasets/attributes, compound/reference/opaque types,
   arbitrary enums, named types, links and unsupported filters can block modified
-  export. Unsupported optional force data remain warnings/omissions where the
-  current schema is identifiable; obsolete geometry is a schema error.
+  export. Malformed populated H5 force vectors/geometry fail with their structural
+  path; unresolved coordinate conventions remain disclosed warnings. Obsolete
+  geometry is a schema error.
 - Independent h5py comparisons establish current-schema preservation. End-to-end
   compatibility with an external current institute reader remains a manual check;
   no obsolete institute reader is used as a correctness oracle.

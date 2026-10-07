@@ -47,6 +47,7 @@ Changes since the latest formal release remain under `[Unreleased]`.
 
 ### Fixed
 
+- Current-schema H5 files with empty optional groups such as EMG now import without placeholder signals or warnings; populated dimensions, labels, units and clocks remain strictly validated. Empty categories stay hidden and round-trip through H5 export without false cross-format loss warnings.
 - Cross-format C3D retains surveyed corners within documented tolerances without a geometry warning. Derived force plates remain included when stored COP/free moment differs, with a specific omission warning and reconstruction from exported force/moment; excessive geometry deviations still omit the affected plate. ([#13], [#14])
 - Fixed the 3D stage overlapping the right sidebar after hiding and reopening it in Data Viewer. The stage now shrinks to the available workspace width. ([#12])
 - H5 edited/cropped exports preserve nested C3D provenance and boolean types, keep marker label aliases consistent, and update each stream's own sample/frame extents. Mapped EMG shares identical analog signals; independent IK/ID results are retained when their trial-time relationship is unspecified. ([#11])

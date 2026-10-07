@@ -75,6 +75,14 @@ try {
     shape: [1, 6],
     data: new Float64Array([0, 1, 2, 3, 4, 5]),
   });
+  // No EMG was recorded: reproduce h5wasm's empty typed Labels/Units attributes.
+  const emg = smallH5.create_group('EMG');
+  for (const key of ['Labels', 'Units', 'Channels'])
+    emg.create_attribute(key, new Float64Array(0), [0], '<d');
+  emg.create_attribute('NumSamples', 0);
+  emg.create_dataset({ name: 'Data', shape: [0, 0], data: new Float64Array(0) });
+  emg.create_dataset({ name: 'Time', shape: [0], data: new Float64Array(0) });
+  labeled.create_dataset({ name: 'CameraMasks', shape: [1, 0, 3], data: new Uint8Array(0) });
 } finally {
   smallH5.close();
 }
@@ -983,6 +991,50 @@ try {
     assert(await redoButton.isDisabled(), 'new file clears redo');
     await page.getByRole('tab', { name: 'Data', exact: true }).click();
     await page.getByLabel('Search data').fill('');
+    if (extension === 'h5') {
+      assert.equal(
+        await page.locator('.error-banner, .warnings').count(),
+        0,
+        'empty EMG imports without an error or warning',
+      );
+      assert.equal(
+        await page.locator('.scene-wrap canvas').count(),
+        1,
+        'empty EMG keeps the 3D viewer available',
+      );
+      assert.equal(
+        await dataGroup('EMG channels').count(),
+        0,
+        'unrecorded EMG is absent from Data',
+      );
+      await page.getByRole('tab', { name: 'File Info', exact: true }).click();
+      assert.equal(await infoValue('EMG channels').innerText(), '0');
+      await page.getByRole('button', { name: 'Data Explorer', exact: true }).click();
+      const explorer = page.getByRole('region', { name: 'Data Explorer', exact: true });
+      await explorer.getByLabel('Search explorer datasets').fill('EMG');
+      assert.equal(
+        await explorer.locator('nav button').count(),
+        0,
+        'Explorer has no empty EMG table',
+      );
+      await explorer.getByLabel('Search explorer datasets').fill('Trajectories');
+      await explorer.locator('nav button').first().click();
+      assert.equal(
+        await explorer.locator('tbody tr').count(),
+        3,
+        'available marker table still opens',
+      );
+      await page.getByRole('button', { name: 'Data Viewer', exact: true }).click();
+      await page.getByRole('slider', { name: 'Frame', exact: true }).press('End');
+      assert.equal(
+        await page
+          .getByRole('slider', { name: 'Frame', exact: true })
+          .getAttribute('aria-valuenow'),
+        '2',
+        'viewer interaction works without EMG',
+      );
+      await page.getByRole('tab', { name: 'Data', exact: true }).click();
+    }
     const exportMarker = dataBrowser.locator('.marker-row').first();
     const importedLabel = await exportMarker.locator('button').first().getAttribute('title');
     await exportMarker

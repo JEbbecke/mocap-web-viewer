@@ -60,7 +60,7 @@ function h5Fixture() {
       MetaData: group({}, { Project: group({}) }),
       Trajectories: group({ SamplingFrequency: 100, StartFrame: 10 }, { Labeled: labeled }),
       Analog: group(
-        { Labels: ['EMG'], SamplingFrequency: 200 },
+        { Labels: ['EMG'], Units: ['V'], SamplingFrequency: 200 },
         { Data: dataset([1, 6], [0, 1, 2, 3, 4, 5]) },
       ),
       ForcePlates: group({}, { '0': plate }),
@@ -201,13 +201,10 @@ describe('institute H5 normalization', () => {
     delete (root.get!('Trajectories/Labeled') as H5Node).attrs!.Unit;
     expect(() => parseH5Tree(root, 'x')).toThrow('Unsupported position unit');
   });
-  it('omits broken optional platform while retaining markers', () => {
+  it('rejects a populated platform with a broken sampling rate', () => {
     const root = h5Fixture();
     (root.get!('ForcePlates/0') as H5Node).attrs!.SamplingFrequency.value = 0;
-    const d = parseH5Tree(root, 'x');
-    expect(d.forcePlatforms).toHaveLength(0);
-    expect(d.markers.labels).toEqual(['A']);
-    expect(d.warnings[0]).toContain('sampling rate');
+    expect(() => parseH5Tree(root, 'x')).toThrow('ForcePlates/0: sampling rate must be positive.');
   });
   it('does not double-transform unresolved local H5 data', () => {
     const root = h5Fixture();

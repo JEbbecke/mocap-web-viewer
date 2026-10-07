@@ -32,6 +32,7 @@ export function h5RecordingInfo(root: H5Node): RecordingInfo {
     const data = group(`${path}/Data`);
     if (!data) return;
     const shape = data.shape;
+    if (shape?.includes(0)) return;
     if (shape?.length !== 2 || !Number.isSafeInteger(shape[0]) || shape[0] < 0) return {};
     const attrs = group(path)?.attrs;
     // Preserve column indices: filtering empty labels/units would shift associations.
@@ -92,7 +93,7 @@ export function h5RecordingInfo(root: H5Node): RecordingInfo {
           ? createdUTC.values[0]
           : undefined,
     coordinateSystem: coordinates.length === 1 ? coordinates[0] : undefined,
-    emgChannels: emgShape?.length === 2 ? emgShape[0] : undefined,
+    emgChannels: emgShape?.length === 2 ? (emgShape.includes(0) ? 0 : emgShape[0]) : undefined,
     subject: {
       id: field('SubjectID'),
       group: field('SubjectGroup'),
