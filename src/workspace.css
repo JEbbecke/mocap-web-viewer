@@ -228,6 +228,8 @@ header {
   top: 13px;
   display: flex;
   gap: 4px;
+  max-width: calc(100% - 32px);
+  flex-wrap: wrap;
 }
 .camera-tools button {
   font-size: 11px;
@@ -1056,6 +1058,28 @@ footer .privacy-dot {
   gap: 12px;
   margin-top: 18px;
 }
+.image-export-dialog {
+  width: min(430px, calc(100vw - 32px));
+}
+.image-export-dialog p {
+  line-height: 1.5;
+  font-size: 12px;
+}
+.image-resolution {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 18px 0;
+}
+.image-watermark {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+.image-export-dialog [role='alert'] {
+  color: #ffc1b4;
+}
 
 .footer-gh-repo {
   margin-left: 18px;
@@ -1205,6 +1229,9 @@ footer .privacy-dot {
   }
 }
 @media (max-width: 760px) {
+  .camera-tools {
+    top: 46px;
+  }
   .app {
     height: auto;
     min-height: 100dvh;

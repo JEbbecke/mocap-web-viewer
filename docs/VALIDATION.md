@@ -95,6 +95,21 @@ workers, compatibility cancellation/blocking, exports/re-import, responsive
 layouts and synthetic moving plates. Screenshots/reports stay in `.local/`.
 Automated coverage does not establish Firefox, Safari or Samsung coverage.
 
+Image-export regression tests cover defaults, exact dimensions, sanitized
+basenames, projection fitting, watermark composition, unchanged clean/modified
+scientific sessions, renderer/camera safety, device limits, encoding/render
+failures, timeouts, cancellation and resource cleanup. The browser smoke
+intercepts synthetic PNG exports in memory, checks filenames/signatures/IHDR
+dimensions at every resolution, watermark scope, cropped timelines and moving
+plate frames/visibility. Hidden-scene exports must contain only the background,
+without DOM overlays. Tests use broad content checks rather than antialiasing
+snapshots. Generated image exports are deleted after inspection.
+
+Before release, manually check image export in Safari and Samsung Internet,
+including large-resolution errors, Escape/cancellation and repeated exports.
+The existing manual application coverage does not establish support for this
+new feature. See [image export](IMAGE_EXPORT.md).
+
 The application has also been extensively **manually tested** in Google Chrome,
 Microsoft Edge, Safari and Samsung Internet / Samsung Browser. No browser version
 numbers or universal compatibility are claimed. A browser needs WebGL,

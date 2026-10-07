@@ -21,6 +21,7 @@ The screenshot shows the current viewer with generated synthetic test data, not 
 5. In **Data**, double-click any marker, analog, force-platform, rigid-body, EMG, IK or ID label (or use its pencil) to rename it. Clicking an event seeks to its frame and opens the timeline event editor. Header **Undo / Redo** covers all label renames and committed event edits; text inputs keep native undo.
 6. Drag the timeline's start/end handles, preview the interval and choose **Crop**. Open **Export** next to **Open file** and choose **Export C3D** or **Export H5**. The source format is listed first; conversion to the other format shows **Will export**, **Changed or omitted** (changes first) and any blocking errors. **Restore original** discards crops, label renames and event edits; the source file remains unchanged. Cropping clears undo/redo history.
 7. Use the header's **Data Explorer** button to inspect numerical tables and metadata. **Data Viewer** switches back to the 3D workspace. Select cells, rows or columns to copy exact values, or copy the full selected dataset.
+8. Choose **Export image** beside the camera controls to export the current 3D scene as a PNG. Select the current viewport, 1920 × 1080 or 3840 × 2160, and optionally include the JE Motion Lab watermark. See [image export](docs/IMAGE_EXPORT.md) for framing and limits.
 
 ![JE Motion Lab Data Explorer with synthetic current-schema marker values and a selected cell](docs/data-explorer.png)
 
@@ -48,6 +49,7 @@ Open the local URL printed by Vite, normally http://127.0.0.1:5173. On Windows P
 - Static and time-varying force-platform geometry, global ground reaction force (GRF) arrows originating at the centre of pressure (COP), and COP points where coordinate conventions are established.
 - Force types 2, 3 and 4, including 6×6 calibration and type-3 COP polynomial correction.
 - Orbit, pan, zoom, reset, front, side and top camera presets; Z-up lab axes and ground grid.
+- Export the current 3D scene as a high-resolution PNG, with an optional JE Motion Lab watermark. [Image export](docs/IMAGE_EXPORT.md) stays entirely browser-local.
 - True-rate playback, scrubbing, stepping, beginning/end, speed and loop controls.
 - Non-destructive timeline cropping, range preview, restoration and local **Export** as C3D or institute H5. Source-format exports preserve the original representation; [cross-format export](docs/CROSS_FORMAT_EXPORT.md) reports incompatible clocks, omitted data and precision changes before exporting. See [crop conventions and export limits](docs/CROPPING_EXPORT.md).
 - Synchronized marker XYZ, force, moment, COP, optional free moment and analog plots, plus institute H5 EMG and rigid-body position signals when present. Scroll up/down over the plot to zoom in/out around the pointer, or drag horizontally to select a zoom range. Click to scrub; double-click or use **Reset zoom** to restore the full time range.

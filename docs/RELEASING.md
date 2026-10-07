@@ -89,6 +89,13 @@ missing source files causes failures and must be reported separately from the
 synthetic regressions. Do not hide those failures by changing scientific tests or
 committing private data; require passing PR checks before merging.
 
+For image-export changes, also run typecheck, format checks and the browser smoke
+on Chrome and Edge. Verify native PNG dimensions, camera framing, watermark
+toggle, cropped-frame/visibility fidelity and scientific state safety. Check
+Safari and Samsung Internet manually before promoting the release; hardware
+and memory limits should produce a recoverable error. Keep image export under
+Unreleased and leave the version unchanged until intentional release preparation.
+
 ## Prepare an intentional release through a pull request
 
 Develop features and fixes on feature branches and merge through reviewed PRs.
