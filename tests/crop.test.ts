@@ -358,6 +358,10 @@ const localReferences = existsSync('.local/reference.json')
   ? (JSON.parse(await readFile('.local/reference.json', 'utf8')) as { path: string }[])
   : [];
 describe('optional local C3D source round trips (never committed)', () => {
+  if (!localReferences.some((reference) => existsSync(reference.path))) {
+    it.skip('requires local C3D reference files for source round trips', () => {});
+    return;
+  }
   localReferences.forEach((reference, index) => {
     it.skipIf(!existsSync(reference.path))(
       `local C3D reference ${index + 1}: all samples and platforms`,
