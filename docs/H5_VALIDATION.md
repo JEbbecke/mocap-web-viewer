@@ -1,109 +1,81 @@
-# Authoritative H5 lifecycle validation
+# Current institute H5 validation
 
-The schema audit on 6 October 2026 (merged in PR #11) used the replacement
-read-only reference. The current layout is unversioned, with nested metadata,
-expanded event columns and separate stream frame extents. The older versioned
-layout remains covered by synthetic fixtures and locally available older files.
+The ignored, read-only `reference-data/authoritative_reference.h5` defines the
+supported institute schema described in [H5_FORMAT.md](H5_FORMAT.md). It is
+unversioned, with nested metadata, eight event columns and independent stream
+frame extents. Obsolete layouts and explicit collection versions are rejected.
+No participant values are copied into fixtures, documentation or reports.
 
-At that audit, checks passed: 122 tests across 14 suites, TypeScript/production build,
-production browser smoke and `git diff --check`. The browser check exercises both
-current and previous synthetic schemas through actual workers. The reference
-SHA-256 remained unchanged; all six intentional private exports were removed
-after comparison. The reference remains ignored and untracked. These are dated
-schema-audit results, not current suite totals; see [validation](VALIDATION.md)
-for subsequent Data Explorer and cross-format export checks.
+## Method and coverage
 
-## Current reference results
+`tests/current-h5.test.ts` checks imports, unchanged/reconstructed export,
+label aliases, event context/subject CRUD with source flags, undo/redo, unit
+normalization, crop clocks and frame extents, optional collections, malformed
+counts/columns and unsupported layouts. `tests/authoritative-h5.test.ts` retains
+synthetic lifecycle, unknown-content guards and generic boolean-template checks.
+Moving plates, force-channel reuse, Explorer and both conversions have dedicated
+regressions. `tests/fixtures/current-h5.json` contains invented data only.
 
-The independent h5py oracle compared 177 objects (including root) in each of six
-workflows, with zero unexplained hierarchy, dataset, attribute, shape, dtype,
-encoding or value differences. Values use exact equality, with NaNs equal.
-Scientific coordinate and moment unit metadata remain paired with raw values.
+The optional reference import opens the source with mode `r` and verifies its
+bytes remain unchanged. Explicit export validation produces six ignored outputs:
+reconstruction, rename, event edit, add, delete and crop. Assertions compare
+booleans and structural paths so private values cannot appear in failure logs.
+The independent h5py validator compares every object, attribute, dataset, shape,
+scientific dtype, encoding and value. NaNs compare equal. Expected edits and
+storage details are classified separately; unexplained differences fail.
 
-| Workflow                  | Exact comparison result                                                                                                          |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| Full reconstructed export | No semantic or storage differences                                                                                               |
-| Marker rename             | Two intended label attributes changed; all unrelated content exact                                                               |
-| Event edit                | Eight live event columns followed intended edits and chronological ordering; unrelated arrays/provenance exact                   |
-| Event add/delete          | Eight parallel columns remain consistent; source flags/icons retained, new flags/icons zero                                      |
-| Crop                      | Trajectories, quality, analog, EMG, forces/geometry and bodies sliced on their physical clocks; own sample/frame extents updated |
-| Metadata/provenance       | Static nested metadata, C3D parameters and boolean attributes preserved                                                          |
-| IK/ID                     | Independent result data, timestamps, counts and opaque processing metadata preserved unchanged                                   |
+Raw values remain paired with their original units. Crop selects each recognized
+stream on its own physical clock, updates its sample/frame extents and retains
+absolute timestamps. Independent IK/ID data, clocks, counts and opaque processing
+metadata remain intact. Live label aliases and body membership follow renames;
+embedded C3D EVENT parameters remain original provenance.
 
-Changed event row counts alter dataset maximum extents; cropping can shrink
-primitive chunks/maxshape. These are expected storage details, listed separately
-in the local report. The current reference's reconstructed export has no such
-differences. Synthetic h5py-generated fixtures can expose an additional unused
-VLEN string-padding change (NULLTERM to SPACEPAD); UTF-8 encoding, string dtype,
-text and shape remain identical.
+Modified output can change chunk/maxshape details and unused VLEN string padding
+while retaining UTF-8 text, shape and values. Supported booleans keep native enum
+types. Full-range unedited export returns the original bytes.
 
-Marker rename updates live Labels, matching body membership and a matching nested
-POINT label alias. Analog rename similarly updates its ANALOG alias. Original
-nested C3D EVENT parameters are historical provenance, not a live event duplicate;
-the source already differs from live Events and they are not rewritten.
+## Reproduce
 
-## Reproduce safely
+Run the following from the repository; Python needs h5py and numpy.
 
-1. `node scripts/inspect-h5.mjs` prints every group/dataset path, shape, dtype,
-   attribute descriptor, filter and dimension label, with private values redacted.
-   It does not create an extracted metadata dump.
-2. `npm test` exercises synthetic current/previous schemas and optionally checks
-   the ignored reference read-only. No reference values become fixtures/snapshots.
-3. Set `JE_VALIDATE_REFERENCE=1` and run
-   `npm test -- tests/current-h5.test.ts` to intentionally create six reference
-   exports only in ignored `.local/h5-validation/`. No reference is modified.
-4. Run `python scripts/validate-authoritative-h5.py --cleanup` in an existing
-   environment containing h5py/numpy. It independently checks all six outputs,
-   prints aggregate results and removes those explicitly named private exports.
-   Its JSON report contains structural paths and difference classifications only.
-5. `npm run build` checks TypeScript and produces the static bundle.
-   `npm run test:browser` checks actual import/export workers using synthetic
-   current and previous layouts, event CRUD, exports/re-import, cropping and
-   existing viewer/plot/privacy behavior. Analytics is intercepted locally.
-6. Verify the branch, `git diff --check`, status, and
-   `git check-ignore -v reference-data/authoritative_reference.h5`.
-   The reference must remain ignored, untracked and unchanged.
+```powershell
+node scripts/inspect-h5.mjs
+npm.cmd test
+$env:JE_VALIDATE_REFERENCE = '1'
+npm.cmd test -- tests/current-h5.test.ts
+Remove-Item Env:JE_VALIDATE_REFERENCE
+python scripts/validate-authoritative-h5.py --cleanup
+npm.cmd run build
+npm.cmd run test:browser
+git check-ignore -v reference-data/authoritative_reference.h5
+```
 
-`scripts/create-h5-fixture.py --current` generates the new synthetic fixture
-using invented values and names; without the flag it generates the previous
-layout fixture. The boolean template writer generates empty datasets/typed
-attributes from structural descriptions, without copying source file bytes.
-Its encoding follows the [HDF Group file-format specification](https://support.hdfgroup.org/documentation/hdf5/latest/_f_m_t4.html).
-HDF5 itself performs scientific dataset writes; Python is only a development oracle.
+The structural inspector redacts private attributes and never reads scientific
+dataset values. `--cleanup` removes only the six explicitly named generated
+outputs after comparison, never the source. Reports remain under ignored
+`.local/h5-validation/`. Browser checks use synthetic current-schema data and
+intercept analytics locally.
 
-## Scientific limits
+`python scripts/create-h5-fixture.py` regenerates only the current synthetic
+fixture. The boolean seed generator remains separate because it tests generic
+HDF5 storage infrastructure, without representing a supported product layout.
 
-- Current IK/ID timestamps have no declared relationship to trial time zero.
-  They remain independent derived results when cropping. No forced alignment,
-  guessed offset or per-variable units are introduced. The previous supported
-  layout retains its documented absolute-time crop behavior.
-- IK inDegrees is retained as a declaration, not assigned as the unit of every
-  variable. Explicit per-variable units take precedence. Data Explorer can infer
-  deg/rad only for a tested list of standard OpenSim rotation coordinates and
-  identifies that convention; custom coordinates, translations and ID units
-  remain unknown without source units. See [model units](DATA_EXPLORER.md).
+## Scientific and interoperability limits
+
+- IK/ID time zero has no declared relationship to trial time; no crop alignment
+  or guessed model units are introduced. Explicit units take precedence over the
+  limited, disclosed OpenSim rotation-name inference in Data Explorer.
 - Body parent frames, marker Type codes, lab handedness and compass directions
-  cannot be established from the file. Bodies use the point grid when counts
-  agree and no separate clock exists. No anatomical visualization is invented.
-- Regular point clocks are required for playback. Signal timestamps may be
-  irregular, and each recognized stream is cropped independently.
-- Current frame/sample extents are checked strictly. Stale older-file counts
-  produce warnings and use actual dataset dimensions, retaining prior support.
-- Unsupported future explicit schema versions fail clearly. Opaque temporal
-  content, compound/reference types, arbitrary enums, named types, links and
-  unsupported filter pipelines may block modified export. Unchanged export
-  retains all original bytes. Boolean attributes on otherwise unsupported
-  dataset objects are not promised by the group/quality template path.
+  remain unestablished. Bodies follow the marker grid when counts agree.
+- Marker clocks must be regular. Other signal clocks can be irregular. Declared
+  counts/extents and all event columns are checked strictly; units are required
+  for markers and rigid-body positions.
+- Unknown temporal datasets/attributes, compound/reference/opaque types,
+  arbitrary enums, named types, links and unsupported filters can block modified
+  export. Unsupported optional force data remain warnings/omissions where the
+  current schema is identifiable; obsolete geometry is a schema error.
+- Independent h5py comparisons establish current-schema preservation. End-to-end
+  compatibility with an external current institute reader remains a manual check;
+  no obsolete institute reader is used as a correctness oracle.
 
-## Independent institute reader
-
-The installed institute Python reader fails with a missing-Location KeyError on
-the untouched reference, edited output and cropped output alike. It expects the
-old Location/Offset force-plate structure. It was not modified to accept outputs.
-h5py validates all six files, but end-to-end compatibility with a current institute
-reader cannot be claimed until that reader is available.
-
-The existing moving-plate regressions continue to exercise translating/tilting
-global corners and pose, separate point/force rates, sensor offsets, interpolation,
-crop/export/re-import and browser rendering with synthetic data. The full suite
-also retains C3D same-format, force calibration, editing/history and privacy tests.
+See [release validation](VALIDATION.md) and [conversion limits](CROSS_FORMAT_EXPORT.md).

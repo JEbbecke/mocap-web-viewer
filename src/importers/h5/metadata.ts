@@ -6,7 +6,6 @@ import {
   type RecordingInfo,
 } from '../../motion/metadata';
 import type { H5Node } from './schema';
-import { h5Layout } from './layout';
 import { modelCoordinateType } from '../../motion/modelUnits';
 
 /** Reads attributes and dataset shapes only; no IK/ID samples are loaded or interpreted. */
@@ -23,7 +22,7 @@ export function h5RecordingInfo(root: H5Node): RecordingInfo {
     'PathFile',
   ]);
   const attr = (key: string) =>
-    (fileKeys.has(key) ? fileInfo : project)?.attrs?.[key]?.value ?? meta?.attrs?.[key]?.value;
+    (fileKeys.has(key.replace(/Units?$/, '')) ? fileInfo : project)?.attrs?.[key]?.value;
   const field = (key: string) =>
     metadataValue(attr(key), attr(`${key}Unit`) ?? attr(`${key}Units`));
   const createdLocal = field('FileCreationLocal'),
@@ -77,8 +76,7 @@ export function h5RecordingInfo(root: H5Node): RecordingInfo {
       variables: entries.length,
       entries,
       samples: shape[1],
-      timeBasis:
-        h5Layout(root) === 'institute-current' ? ('independent' as const) : ('trial' as const),
+      timeBasis: 'independent' as const,
       metadata: typeof attrs?.Metadata?.value === 'string' ? attrs.Metadata.value : undefined,
       // A literal declaration is metadata, not permission to assign degrees to translations.
       inDegrees,

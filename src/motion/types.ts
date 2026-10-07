@@ -38,7 +38,7 @@ export interface ForcePlatform {
   position?: Series; // plate origin in global XYZ, mm
   rotation?: Series; // row-major local-to-global 3x3 matrices, independent geometry clock
   origin?: Float64Array; // sensor offset in mm below the surface; not a translation of global corners
-  poseFrame?: 'global'; // declared global pose; legacy Position/Rotation may be placeholders
+  poseFrame?: 'global'; // declared global pose
   coordinateFrame: 'global' | 'unresolved';
   provenance: string;
   c3dSource?: { definition?: C3DPlateDefinition; issue?: string };
@@ -73,8 +73,8 @@ export interface MotionData {
     /** Small label overrides keyed by collection and stable in-memory index. */
     dataLabels?: Record<string, string>;
     timeOrigin?: number;
-    eventSchema?: 'institute-v1' | 'institute-current';
-    h5Layout?: 'legacy' | 'institute-v1' | 'institute-current';
+    eventSchema?: 'institute-current';
+    h5Layout?: 'institute-current';
     c3dAnalogEncoding?: C3DAnalogEncoding;
   };
   timeline: { rate: number; frameCount: number; firstFrame: number; duration: number };

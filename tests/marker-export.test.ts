@@ -3,7 +3,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import * as h5 from 'h5wasm/node';
 import fixtures from './fixtures/c3d.json';
-import h5Fixture from './fixtures/institute-h5.json';
+import h5Fixture from './fixtures/current-h5.json';
 import { parseC3D } from '../src/importers/c3d/importer';
 import { parseH5Tree } from '../src/importers/h5/schema';
 import { exportC3D } from '../src/exporters/c3d';
@@ -175,8 +175,11 @@ it.each(['marker', 'analog'] as const)(
             expect(Object.keys(b.attrs)).toEqual(Object.keys(a.attrs));
             for (const [key, attr] of Object.entries(a.attrs)) {
               if (
-                a.path === (kind === 'marker' ? '/Trajectories/Labeled' : '/Analog') &&
-                key === 'Labels'
+                (a.path === (kind === 'marker' ? '/Trajectories/Labeled' : '/Analog') &&
+                  key === 'Labels') ||
+                (a.path ===
+                  `/MetaData/C3DParameters/${kind === 'marker' ? 'POINT' : 'ANALOG'}/LABELS` &&
+                  key === 'value')
               )
                 continue;
               expect(b.attrs[key].value, `${a.path}@${key}`).toEqual(attr.value);

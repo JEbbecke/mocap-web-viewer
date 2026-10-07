@@ -290,9 +290,7 @@ export function explorerDatasets(data: MotionData): Dataset[] {
           ...(entry.rate ? [['Nominal rate', `${entry.rate} Hz`] as [string, string]] : []),
           [
             'Clock',
-            result.timeBasis === 'independent'
-              ? 'Independent model time; no declared playback alignment. Retained unchanged after crop.'
-              : 'Trial time; follows the current crop.',
+            'Independent model time; no declared playback alignment. Retained unchanged after crop.',
           ],
           ...(result.inDegrees !== undefined && kind === 'ik'
             ? [

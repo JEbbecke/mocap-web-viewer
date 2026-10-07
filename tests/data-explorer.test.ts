@@ -303,9 +303,6 @@ it('reads actual independent H5 IK/ID slices and retains them after trial crop',
         kind,
         sourceIndex: 1,
         offset: 0,
-        timeBasis: 'independent',
-        timeOrigin: 2.5,
-        interval: { start: 2.5, end: 3 },
       });
       expect(page.values).toEqual(new Float64Array([4, 5, 6, 7]));
       expect(page.times).toEqual(new Float64Array([0, 0.2, 0.5, 0.75]));
@@ -315,7 +312,7 @@ it('reads actual independent H5 IK/ID slices and retains them after trial crop',
     file.close();
   }
 });
-it('reads only bounded hyperslabs, excludes time as a variable and aligns trial model crops', () => {
+it('reads only bounded independent hyperslabs and excludes time as a variable', () => {
   const calls: number[] = [];
   const group = {
     attrs: { Labels: { value: ['time', 'quantity'] } },
@@ -335,27 +332,21 @@ it('reads only bounded hyperslabs, excludes time as a variable and aligns trial 
   const page = readModelPage(group, {
     kind: 'ik',
     sourceIndex: 1,
-    offset: 0,
-    timeBasis: 'trial',
-    timeOrigin: 2,
-    interval: { start: 2, end: 5 },
+    offset: 200,
   });
-  expect(page.total).toBe(300);
+  expect(page.total).toBe(1_000_000);
   expect(page.sourceOffset).toBe(200);
   expect(page.values.length).toBe(MODEL_PAGE_SIZE);
   expect(page.values[0]).toBe(1200);
-  expect(page.times[0]).toBe(0);
-  expect(page.times[1]).toBeCloseTo(0.01);
+  expect(page.times[0]).toBe(2);
+  expect(page.times[1]).toBeCloseTo(2.01);
   expect(Math.max(...calls)).toBe(MODEL_PAGE_SIZE);
   const next = readModelPage(group, {
     kind: 'ik',
     sourceIndex: 1,
-    offset: 200,
-    timeBasis: 'trial',
-    timeOrigin: 2,
-    interval: { start: 2, end: 5 },
+    offset: 400,
   });
-  expect(next.values.length).toBe(100);
+  expect(next.values.length).toBe(MODEL_PAGE_SIZE);
   expect(next.sourceOffset).toBe(400);
 });
 it('handles empty model arrays, absent clocks and malformed slices explicitly', () => {
@@ -368,8 +359,6 @@ it('handles empty model arrays, absent clocks and malformed slices explicitly', 
       kind: 'id',
       sourceIndex: 0,
       offset: 0,
-      timeBasis: 'independent',
-      timeOrigin: 0,
     }).values.length,
   ).toBe(0);
   const missing = {
@@ -381,55 +370,13 @@ it('handles empty model arrays, absent clocks and malformed slices explicitly', 
       kind: 'id',
       sourceIndex: 0,
       offset: 0,
-      timeBasis: 'independent',
-      timeOrigin: 0,
     }).clockKnown,
   ).toBe(false);
   expect(() =>
     readModelPage(missing, {
       kind: 'id',
-      sourceIndex: 0,
-      offset: 0,
-      timeBasis: 'trial',
-      timeOrigin: 0,
-      interval: { start: 0, end: 1 },
-    }),
-  ).toThrow('declared clock');
-  expect(() =>
-    readModelPage(missing, {
-      kind: 'id',
       sourceIndex: 9,
       offset: 0,
-      timeBasis: 'independent',
-      timeOrigin: 0,
     }),
   ).toThrow('dimensions');
-});
-
-it('keeps rate-only legacy model clocks relative to original recording zero when point source time is nonzero', () => {
-  const group = {
-    attrs: { SamplingFrequency: { value: 10 } },
-    get: (name: string) =>
-      name === 'Data'
-        ? {
-            shape: [1, 20],
-            slice: ([, [a, b]]: number[][]) =>
-              Float64Array.from({ length: b - a }, (_, i) => a + i),
-          }
-        : undefined,
-  };
-  const page = readModelPage(group, {
-    kind: 'id',
-    sourceIndex: 0,
-    offset: 0,
-    timeBasis: 'trial',
-    timeOrigin: 2.5,
-    regularTimeOrigin: 0.5,
-    interval: { start: 2.5, end: 3 },
-  });
-  expect(page.total).toBe(5);
-  expect(page.sourceOffset).toBe(5);
-  expect(page.values[0]).toBe(5);
-  expect(page.times[0]).toBe(0);
-  expect(page.times[1]).toBeCloseTo(0.1);
 });

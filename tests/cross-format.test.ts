@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import * as h5 from 'h5wasm/node';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { isDeepStrictEqual } from 'node:util';
 import { resolve } from 'node:path';
 import { physicalFixture } from './helpers/c3d';
 import { parseC3D } from '../src/importers/c3d/importer';
@@ -605,69 +606,84 @@ describe('compatibility and loss guards', () => {
 it.skipIf(
   process.env.JE_VALIDATE_REFERENCE !== '1' ||
     !existsSync(resolve('reference-data/authoritative_reference.h5')),
-)(
-  'reuses all five authoritative plate definitions and 56 analogs, preserving corrected COP read-only',
-  () => {
-    const file = new h5.File(resolve('reference-data/authoritative_reference.h5'), 'r');
-    try {
-      const input = parseH5Tree(file, 'authoritative_reference.h5');
-      const plan = conversionPlan(input, 'C3D');
-      expect(plan.report.errors.length === 0, 'compatible recording').toBe(true);
-      expect(plan.plates.length === 5, 'all five plates are retained').toBe(true);
-      expect(
-        plan.plates.some((p) => input.forcePlatforms[p.index].name === 'forceplate_1'),
-        'plate 1 is retained',
-      ).toBe(true);
-      expect(
-        plan.plates.every((p) => p.reused),
-        'all original definitions are reused',
-      ).toBe(true);
-      expect(plan.report.warnings.join(' ')).not.toMatch(
-        /stored COP|stored free moment|derived six-axis|cannot be reused/,
-      );
-      for (const name of ['forceplate_3', 'forceplate_4'])
+)('reuses authoritative plate definitions and analogs, preserving corrected COP read-only', () => {
+  const file = new h5.File(resolve('reference-data/authoritative_reference.h5'), 'r');
+  try {
+    const input = parseH5Tree(file, 'authoritative_reference.h5');
+    const plan = conversionPlan(input, 'C3D');
+    expect(plan.report.errors.length === 0, 'compatible recording').toBe(true);
+    expect(
+      plan.plates.length === input.forcePlatforms.length,
+      'all source plates are retained',
+    ).toBe(true);
+    expect(
+      plan.plates.every((p) => p.reused),
+      'all original definitions are reused',
+    ).toBe(true);
+    expect(
+      /stored COP|stored free moment|derived six-axis|cannot be reused|corners|geometry/i.test(
+        plan.report.warnings.join(' '),
+      ),
+      'source plate definitions need no force-loss or geometry warnings',
+    ).toBe(false);
+    const bytes = exportSemanticC3D(input);
+    const actual = parseC3D(bytes, 'reused.c3d');
+    expect(
+      actual.analogs.length === input.analogs.length,
+      'all source analog channels are retained',
+    ).toBe(true);
+    const { params } = readParameters(new DataView(bytes));
+    expect(
+      isDeepStrictEqual(
+        nums(params, 'FORCE_PLATFORM:TYPE'),
+        input.forcePlatforms.map((p) => p.c3dSource!.definition!.type),
+      ),
+      'original plate types are retained',
+    ).toBe(true);
+    expect(
+      isDeepStrictEqual(params.get('FORCE_PLATFORM:CHANNEL')?.dimensions, [
+        Math.max(...input.forcePlatforms.map((p) => p.c3dSource!.definition!.channels.length)),
+        input.forcePlatforms.length,
+      ]),
+      'original channel dimensions are retained',
+    ).toBe(true);
+    const polynomial = input.forcePlatforms.flatMap((p) =>
+      Array.from(p.c3dSource!.definition!.copPolynomial ?? new Float64Array(12)),
+    );
+    expect(
+      isDeepStrictEqual(nums(params, 'FORCE_PLATFORM:FPCOPPOLY'), polynomial.map(Math.fround)),
+      'original COP correction parameters are retained',
+    ).toBe(true);
+    for (const [index, original] of input.forcePlatforms.entries()) {
+      const plate = actual.forcePlatforms.find((p) => p.name === original.name);
+      expect(Boolean(plate), `source plate ${index}: retained`).toBe(true);
+      for (const key of ['force', 'moment'] as const)
         expect(
-          plan.report.warnings.some((w) => w.includes(name) && /corners|geometry/i.test(w)),
-          `${name}: no geometry warning`,
-        ).toBe(false);
-      const bytes = exportSemanticC3D(input);
-      const actual = parseC3D(bytes, 'reused.c3d');
-      expect(actual.analogs).toHaveLength(56);
-      const { params } = readParameters(new DataView(bytes));
-      expect(nums(params, 'FORCE_PLATFORM:TYPE')).toEqual([3, 3, 4, 3, 3]);
-      expect(params.get('FORCE_PLATFORM:CHANNEL')?.dimensions).toEqual([8, 5]);
-      expect(nums(params, 'FORCE_PLATFORM:FPCOPPOLY').some((v) => v !== 0)).toBe(true);
-      for (const original of input.forcePlatforms) {
-        const plate = actual.forcePlatforms.find((p) => p.name === original.name);
-        expect(Boolean(plate), `${original.name} is retained`).toBe(true);
-        for (const key of ['force', 'moment'] as const)
-          expect(
-            plate![key].values.every(
-              (v, i) =>
-                Math.abs(v - original[key].values[i]) <=
-                1e-5 + Math.abs(original[key].values[i]) * 1e-6,
-            ),
-            `${original.name}: ${key} values`,
-          ).toBe(true);
-        expect(
-          plate!.corners!.values.every((v, i) => v === Math.fround(original.corners!.values[i])),
-          `${original.name}: original corner coordinates and order`,
+          plate![key].values.every(
+            (v, i) =>
+              Math.abs(v - original[key].values[i]) <=
+              1e-5 + Math.abs(original[key].values[i]) * 1e-6,
+          ),
+          `source plate ${index}: ${key} values`,
         ).toBe(true);
-        for (const key of ['cop', 'freeMoment'] as const)
-          expect(
-            plate![key]!.values.every(
-              (v, i) =>
-                (Number.isNaN(v) && Number.isNaN(original[key]!.values[i])) ||
-                Math.abs(v - original[key]!.values[i]) <=
-                  (key === 'cop' ? 1e-3 : 1e-5) + Math.abs(original[key]!.values[i]) * 1e-6,
-            ),
-            `${original.name}: ${key} values`,
-          ).toBe(true);
-      }
-      // Contains private measurements; ignored local output only, never a fixture.
-      writeFileSync(resolve('.local/authoritative-force-export.c3d'), new Uint8Array(bytes));
-    } finally {
-      file.close();
+      expect(
+        plate!.corners!.values.every((v, i) => v === Math.fround(original.corners!.values[i])),
+        `source plate ${index}: original corner coordinates and order`,
+      ).toBe(true);
+      for (const key of ['cop', 'freeMoment'] as const)
+        expect(
+          plate![key]!.values.every(
+            (v, i) =>
+              (Number.isNaN(v) && Number.isNaN(original[key]!.values[i])) ||
+              Math.abs(v - original[key]!.values[i]) <=
+                (key === 'cop' ? 1e-3 : 1e-5) + Math.abs(original[key]!.values[i]) * 1e-6,
+          ),
+          `source plate ${index}: ${key} values`,
+        ).toBe(true);
     }
-  },
-);
+    // Contains private measurements; ignored local output only, never a fixture.
+    writeFileSync(resolve('.local/authoritative-force-export.c3d'), new Uint8Array(bytes));
+  } finally {
+    file.close();
+  }
+});

@@ -7,3 +7,6 @@ playwright-report/
 *.h5
 *.hdf5
 *.log
+reference-data/
+__pycache__/
+*-ebbecke-nb.*

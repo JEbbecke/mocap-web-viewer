@@ -1,8 +1,7 @@
 """Independent read-only h5py comparison of intentional local JE Motion Lab exports.
 
 Run JE_VALIDATE_REFERENCE=1 npm test -- tests/current-h5.test.ts first.
-No participant values are printed or persisted in the report. The source and the
-independent institute reader are never modified. Use --cleanup to remove only
+No participant values are printed or persisted in the report. The source recording is never modified. Use --cleanup to remove only
 the explicitly named reference exports after comparison.
 """
 import argparse
@@ -15,7 +14,7 @@ root = Path(__file__).resolve().parents[1]
 source = root / 'reference-data/authoritative_reference.h5'
 folder = root / '.local/h5-validation'
 suffixes = ['reconstructed', 'renamed', 'edited', 'added', 'deleted', 'cropped']
-report = {'comparisons': {}, 'python_reader': {}}
+report = {'comparisons': {}}
 parser = argparse.ArgumentParser()
 parser.add_argument('--cleanup', action='store_true')
 args = parser.parse_args()
@@ -152,22 +151,9 @@ with h5py.File(source, 'r') as original:
         report['comparisons'][suffix] = dict(bugs=bugs, expected_changes=expected_changes,
                                               implementation_details=storage, objects_checked=len(paths)+1)
 
-try:
-    from ibo_biomech.handlers.h5Handler import H5Handler
-    for suffix, path in [('reference', source)] + [(s, folder/f'authoritative-{s}.h5') for s in ['edited', 'cropped']]:
-        try:
-            trial = H5Handler(str(path)).load_data()
-            report['python_reader'][suffix] = dict(loaded=True)
-        except Exception as error:
-            report['python_reader'][suffix] = dict(loaded=False, error_type=type(error).__name__,
-                reason='Installed reader expects legacy Location/Offset.' if 'Location' in str(error) else 'Independent reader failed; no private details logged.')
-except ImportError:
-    report['python_reader']['available'] = False
-
 (folder/'python-report.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
 bugs = sum(len(result['bugs']) for result in report['comparisons'].values())
-print(json.dumps(dict(h5py_comparison_bugs=bugs, comparisons=len(report['comparisons']),
-                      python_reader=report['python_reader'])))
+print(json.dumps(dict(h5py_comparison_bugs=bugs, comparisons=len(report['comparisons']))))
 if args.cleanup:
     for suffix in suffixes:
         path = (folder/f'authoritative-{suffix}.h5').resolve()

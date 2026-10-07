@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import * as h5 from 'h5wasm/node';
-import fixture from './fixtures/institute-h5.json';
+import fixture from './fixtures/current-h5.json';
 import booleanSeeds from '../src/exporters/h5-boolean-seeds.json';
 import { parseH5Tree } from '../src/importers/h5/schema';
 import { writeCroppedH5, createH5Output } from '../src/exporters/h5';
@@ -64,7 +64,7 @@ describe.each([['synthetic', synthetic]])('%s complete H5 lifecycle', (label, pa
           10,
         );
         expect(motion.markers.positions).toBeInstanceOf(Float64Array);
-        if (label === 'synthetic') expect(motion.markers.quality?.cameraCount).toBeGreaterThan(0);
+        expect(motion.markers.quality?.virtual).toEqual(new Uint8Array([0, 1]));
         expect(motion.forcePlatforms).not.toHaveLength(0);
         expect(motion.forcePlatforms[0].freeMoment?.components).toBe(3);
         expect(motion.forcePlatforms[0].corners).toBeDefined();
@@ -184,11 +184,7 @@ describe.each([['synthetic', synthetic]])('%s complete H5 lifecycle', (label, pa
           for (const group of ['IKResults', 'IDResults']) {
             expect(reopened.signals!.filter((s) => s.group === group)).toEqual([]);
             const sourceTimes = ds(input, `${group}/Time`).value as Float64Array;
-            const wanted = sourceTimes.filter(
-              (t) =>
-                t >= motion.source.timeOrigin! + start / motion.timeline.rate - 1e-9 &&
-                t < motion.source.timeOrigin! + end / motion.timeline.rate - 1e-9,
-            );
+            const wanted = sourceTimes; // Independent model results have no declared trial alignment.
             expect(ds(cropped, `${group}/Time`).value).toEqual(wanted);
           }
         } finally {

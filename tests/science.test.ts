@@ -35,7 +35,7 @@ function h5Fixture() {
     { Labels: ['A'], Unit: 'cm' },
     {
       Data: dataset([1, 4, 3], [1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 1, 1]),
-      Residuals: dataset([1, 1, 3], [0.2, -1, 0.4]),
+      Residuals: dataset([1, 3], [0.2, -1, 0.4]),
     },
   );
   const plate = group(
@@ -51,12 +51,13 @@ function h5Fixture() {
       Force: dataset([3, 3], [0, 0, 0, 0, 0, 0, 100, 200, 300]),
       Moment: dataset([3, 3], new Array(9).fill(1000)),
       COP: dataset([3, 3], new Array(9).fill(100)),
-      Location: dataset([3, 4], [100, -100, -100, 100, 100, 100, -100, -100, 0, 0, 0, 0]),
+      Corners: dataset([3, 4], [100, -100, -100, 100, 100, 100, -100, -100, 0, 0, 0, 0]),
     },
   );
   return group(
     {},
     {
+      MetaData: group({}, { Project: group({}) }),
       Trajectories: group({ SamplingFrequency: 100, StartFrame: 10 }, { Labeled: labeled }),
       Analog: group(
         { Labels: ['EMG'], SamplingFrequency: 200 },
@@ -170,7 +171,7 @@ describe('C3D binary import', () => {
 describe('institute H5 normalization', () => {
   it('keeps marker-rate moving corners synchronized independently of force rate', () => {
     const root = h5Fixture();
-    const geometry = root.get!('ForcePlates/0/Location') as H5Node;
+    const geometry = root.get!('ForcePlates/0/Corners') as H5Node;
     geometry.shape = [3, 4, 3];
     geometry.value = Float64Array.from({ length: 36 }, (_, i) => {
       const component = Math.floor(i / 3);
@@ -193,12 +194,12 @@ describe('institute H5 normalization', () => {
     expect(d.forcePlatforms[0].corners!.values[0]).toBe(100);
   });
   it('rejects generic HDF5 and missing marker dataset', () => {
-    expect(() => parseH5Tree(group({}), 'x')).toThrow('Missing Trajectories');
+    expect(() => parseH5Tree(group({}), 'x')).toThrow('Unsupported institute H5 schema');
   });
-  it('makes the legacy missing-unit assumption visible', () => {
+  it('rejects missing marker units instead of assigning a scientific unit', () => {
     const root = h5Fixture();
     delete (root.get!('Trajectories/Labeled') as H5Node).attrs!.Unit;
-    expect(parseH5Tree(root, 'x').warnings[0]).toContain('mm is assumed');
+    expect(() => parseH5Tree(root, 'x')).toThrow('Unsupported position unit');
   });
   it('omits broken optional platform while retaining markers', () => {
     const root = h5Fixture();

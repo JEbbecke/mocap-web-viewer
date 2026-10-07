@@ -9,7 +9,7 @@ pause playback, seek to the event frame and request the same editor. Drafts rema
 local to React; closing, seeking and opening events do not enter edit history.
 Loading/restoring data, cropping and committed edits clear stale editor selection.
 
-MotionData.events is authoritative. Immutable operations in motion/events.ts add, update, delete and sort by time, preserving equal-time order. Each committed edit participates in shared [undo/redo history](MARKER_EDITING.md), retaining only the affected row and its positions. The session retains originalData, tracks a clean revision and restores source.eventsEdited on undo. sourceIndex identifies the original source event row for opaque metadata preservation; it is not editable. React holds only the editor draft. Event editing is local and in memory; event labels, times and other recording metadata are never sent to [usage analytics](ANALYTICS.md).
+MotionData.events is authoritative. Immutable operations in motion/events.ts add, update, delete and sort by time, preserving equal-time order. Each committed edit participates in shared [undo/redo history](DATA_EDITING.md), retaining only the affected row and its positions. The session retains originalData, tracks a clean revision and restores source.eventsEdited on undo. sourceIndex identifies the original source event row for opaque metadata preservation; it is not editable. React holds only the editor draft. Event editing is local and in memory; event labels, times and other recording metadata are never sent to [usage analytics](ANALYTICS.md).
 
 MotionEvent.time is unrounded relative seconds from the current recording's first sample. No independent frame value is stored. The editor derives C3D source frame as firstFrame + time * rate + 1, matching one-based header numbering. Fractional frames represent subframe timing. Playback uses zero-based array indices; new events default to frame / rate. Valid editing times are in [0, frameCount / rate), including the last sample interval. The event track shares the crop/playback boundary axis.
 
@@ -29,15 +29,15 @@ The unversioned current reference has parallel Name, Description, Context, Subje
 Time, Frame, GenericFlag and IconID datasets. Context/Subject controls are available.
 Frame is an absolute zero-based source point frame; Time is absolute trial seconds.
 Flags/icons follow source rows through sorting/deletion; new rows default to zero.
-Absent Events can be created in a known current layout. Explicit future versions
+Absent Events can be created in a known current layout. Explicit collection versions
 fail clearly; unknown columns cannot be fabricated. Nested C3D EVENT parameters
 are original provenance and remain unchanged.
 
-## Previous H5 schema version 1
-
-The previous reference established `/Events/{Name,Description,Frame,Time}`, with parallel rows, SchemaVersion=1 and a Scope identifying trial-clock seconds and zero-based source frames. H5 events now use the same immutable editor and timeline as C3D. Context and Subject controls are omitted because this format has no such columns; Description is preserved exactly, including Unicode and whitespace.
-
-Import subtracts the marker clock origin from Time. Export adds the current source origin back, retaining untouched Time/Frame values exactly and recomputing Frame only after a time edit. Crop filters rows by physical time, preserves source frame numbering and adjusts relative UI time. Original row identity carries unknown one-dimensional event columns through sorting and deletion; adding an event with unknown columns fails explicitly because their values cannot be invented. Unknown event schemas remain read-only and block cropping when populated.
+Import subtracts the marker clock origin from Time. Export restores absolute
+source time and retains untouched Time/Frame values exactly, recomputing Frame
+only after a time edit. Crop filters all event rows and preserves source frames.
+Extra current-schema columns follow original row identity; additions cannot
+fabricate unknown values. Missing required event columns fail import clearly.
 
 See [H5 schema](H5_FORMAT.md) and [lifecycle validation](H5_VALIDATION.md) for reference-file coverage and limits.
 

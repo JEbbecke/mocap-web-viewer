@@ -2,9 +2,7 @@ import { it, expect } from 'vitest';
 import { mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { parseH5Tree } from '../src/importers/h5/schema';
 import fixture from './fixtures/h5.json';
-import { addEvent, updateEvent, deleteEvent, eventEditingAvailable } from '../src/motion/events';
 it('reads a real compressed HDF5 fixture with bundled HDF5 WASM', async () => {
   const folder = await mkdtemp(join(tmpdir(), 'ibo-hdf5-test-'));
   try {
@@ -14,29 +12,16 @@ it('reads a real compressed HDF5 fixture with bundled HDF5 WASM', async () => {
     await h5.ready;
     const file = new h5.File(path, 'r');
     try {
-      const data = parseH5Tree(file, 'synthetic.h5');
-      expect(eventEditingAvailable(data)).toBe(false);
-      const event = { label: 'Unsupported', context: '', time: 0.01 };
-      expect(() => addEvent(data, event)).toThrow('H5');
-      expect(() => updateEvent({ ...data, events: [event] }, 0, event)).toThrow('H5');
-      expect(() => deleteEvent({ ...data, events: [event] }, 0)).toThrow('H5');
-      const opaque = parseH5Tree(
-        {
-          get: (path) =>
-            path === 'Events'
-              ? { attrs: { UnknownTiming: { value: 1 } }, keys: () => [] }
-              : file.get(path),
-        },
-        'opaque.h5',
+      const dataset = file.get('Trajectories/Labeled/Data') as InstanceType<typeof h5.Dataset>;
+      expect(dataset.shape).toEqual([1, 4, 3]);
+      expect(dataset.filters.some((filter) => filter.id === 1)).toBe(true);
+      expect(dataset.value).toBeInstanceOf(Float64Array);
+      expect((file.get('Analog/Data') as InstanceType<typeof h5.Dataset>).value).toEqual(
+        new Float64Array([0, 1, 2, 3, 4, 5]),
       );
-      expect(opaque.warnings.some((w) => w.includes('Events is nonempty'))).toBe(true);
-      expect(opaque.events).toEqual([]);
-      expect(data.timeline).toEqual({ rate: 100, frameCount: 3, firstFrame: 10, duration: 0.02 });
-      expect(data.markers.positions[0]).toBeCloseTo(10);
-      expect(data.markers.positions[8]).toBeCloseTo(90);
-      expect(Array.from(data.markers.valid)).toEqual([1, 0, 1]);
-      expect(data.analogs[0].signal.values).toEqual(new Float64Array([0, 1, 2, 3, 4, 5]));
-      expect(data.forcePlatforms[0].force.values[2]).toBe(100);
+      expect(
+        (file.get('Trajectories/Labeled') as InstanceType<typeof h5.Group>).attrs.Unit.value,
+      ).toBe('cm');
     } finally {
       file.close();
     }

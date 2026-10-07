@@ -26,7 +26,6 @@ platforms still produce their existing import warnings.
 - Current `MetaData/Project`: SubjectID, SubjectGroup, Age, Sex, BodyHeight,
   BodyMass, Condition, Project and ProjectPI. Current `MetaData/FileInfo`:
   OriginalFiles, PathFile, FileCreationLocal, FileCreationUTC and LastUpdate.
-  Flat MetaData attributes remain the fallback for older layouts.
 - `MetaData/Location`: Lat and Lon, including valid zero coordinates.
 - `Trajectories@GlobalCoordinateSystem`: displayed only when supplied; the
   renderer's Z-up convention is not treated as an embedded coordinate system.
@@ -37,12 +36,12 @@ platforms still produce their existing import warnings.
   dedicated EMG group, not analog labels. IK/ID presence and variable counts come
   from `Data` dataset shapes and aligned Labels, excluding labelled time rows;
   no model samples are loaded or plotted. No sample count is shown because those
-  independent clocks can crop differently.
+  independent model clocks are retained unchanged after crop.
 
 Metadata values retain their source units: numeric height/mass/age do not acquire
 assumed cm/kg/years. If a matching `FieldUnit` or `FieldUnits` attribute exists,
 it is carried separately and shown literally. OriginalFiles accepts actual
-string arrays, JSON arrays or flat quoted legacy lists without evaluating code;
+string arrays, JSON arrays or flat quoted lists without evaluating code;
 other strings remain literal. Commas in single filenames are not separators.
 
 ## Conservative C3D mappings

@@ -45,7 +45,39 @@ function h5Root(meta: Record<string, unknown> = {}, location: Record<string, unk
           ),
         },
       ),
-      MetaData: group(meta, { Location: group(location) }),
+      MetaData: group(
+        {},
+        {
+          Project: group(
+            Object.fromEntries(
+              Object.entries(meta).filter(
+                ([key]) =>
+                  ![
+                    'OriginalFiles',
+                    'PathFile',
+                    'FileCreationLocal',
+                    'FileCreationUTC',
+                    'LastUpdate',
+                  ].includes(key),
+              ),
+            ),
+          ),
+          FileInfo: group(
+            Object.fromEntries(
+              Object.entries(meta).filter(([key]) =>
+                [
+                  'OriginalFiles',
+                  'PathFile',
+                  'FileCreationLocal',
+                  'FileCreationUTC',
+                  'LastUpdate',
+                ].includes(key),
+              ),
+            ),
+          ),
+          Location: group(location),
+        },
+      ),
       Analog: group(
         { SamplingFrequency: 960, Labels: ['EMG-like analog label'], Units: ['V'] },
         { Data: dataset([1, 24]) },
@@ -132,8 +164,10 @@ describe('curated H5 metadata', () => {
     expect(data.signals?.some((s) => s.group === 'IKResults' || s.group === 'IDResults')).toBe(
       false,
     );
-    expect(data.source.metadata.FileCreationLocal).toBe('2026-01-02T03:04:05.123456');
-    expect(data.source.metadata.OriginalFiles).toBe(original);
+    expect((root.get!('MetaData/FileInfo') as H5Node).attrs!.FileCreationLocal.value).toBe(
+      '2026-01-02T03:04:05.123456',
+    );
+    expect((root.get!('MetaData/FileInfo') as H5Node).attrs!.OriginalFiles.value).toBe(original);
     expect(data.source.metadata.sourceTree).toBeDefined();
     expect(data.source.metadata.hierarchy).toBeDefined();
     const cut = cropMotionData(data, 1, 3);

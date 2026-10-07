@@ -16,15 +16,15 @@ Each `Series` is cropped using explicit `times` when present, otherwise its own 
 
 Both formats preserve original source frame numbering. `MotionData.timeline.firstFrame` increases by `start`; viewer time starts again at zero. For C3D, `MotionData.firstFrame` is raw C3D `firstFrame - 1`. Header first/last fields and existing `POINT:FRAMES`, `POINT:LONG_FRAMES`, `TRIAL:ACTUAL_START_FIELD` and `TRIAL:ACTUAL_END_FIELD` are updated. Extended TRIAL fields remain authoritative above frame 65535; header fields saturate at 65535. The importer handles unsigned POINT frame counts and extended counts.
 
-H5 `Trajectories.StartFrame` increases by `start`, `EndFrame` is the inclusive last source frame, and `NumFrames` is the new count. Keeping numbering follows the institute converter's existing zero-based C3D origin and avoids losing acquisition provenance. The authoritative H5 stores trial-clock Time datasets. Export slices them without rebasing absolute timestamps. UI time is relative to the current marker origin. Legacy streams lacking Time retain regular-grid behavior; undocumented timing attributes are rejected instead of ignored.
+H5 `Trajectories.StartFrame` increases by `start`, `EndFrame` is the inclusive last source frame, and `NumFrames` is the new count. Keeping numbering follows the institute converter's existing zero-based C3D origin and avoids losing acquisition provenance. The authoritative H5 stores trial-clock Time datasets. Export slices them without rebasing absolute timestamps. UI time is relative to the current marker origin. Current streams without Time use their declared sample-frame origin/rate; undocumented timing attributes are rejected instead of ignored.
 
 C3D events outside the half-open interval are removed. Inside events retain their labels, contexts, auxiliary event arrays and absolute source timestamps in the file. The importer subtracts the new frame origin, yielding relative cropped event times. Standard header events are filtered separately, preserving their display flags and short labels. Filtering snaps float32 timestamp representation noise at crop boundaries (relative tolerance `1e-7`, scaled by absolute source time). `EVENT:USED` is authoritative; allocated event arrays keep their dimensions, retained records are compacted and unused entries cleared.
 
-Versioned H5 Events use absolute Time and source Frame rows. Cropping filters every event column and retains original source frames; imported UI times are relative to the cropped recording. Populated unknown event schemas still block crop export.
+Current H5 Events use absolute Time and source Frame rows. Cropping filters every event column and retains original source frames; imported UI times are relative to the cropped recording. Populated unknown event schemas still block crop export.
 
 ## Source-preserving exporters
 
-The session retains the local immutable `File` and, after the first crop, label edit or event edit, the original `MotionData`. Undo/redo stores up to 100 small reversible label/event commands; it does not retain full recording snapshots per action. Cropping creates independent typed arrays and a cumulative source interval, clears history and establishes a modified baseline. Restore original discards crops and all label/event edits. See [data labels and history](MARKER_EDITING.md) for lifecycle rules.
+The session retains the local immutable `File` and, after the first crop, label edit or event edit, the original `MotionData`. Undo/redo stores up to 100 small reversible label/event commands; it does not retain full recording snapshots per action. Cropping creates independent typed arrays and a cumulative source interval, clears history and establishes a modified baseline. Restore original discards crops and all label/event edits. See [data labels and history](DATA_EDITING.md) for lifecycle rules.
 
 Same-format export sends the `File`, cumulative boundaries, current edited labels and any edited events to a short-lived worker. It does not serialize normalized viewer coordinates back into source values. Export supports source-file cropping, label renaming and event editing; it does not perform arbitrary scientific-data editing. Cross-format export uses separate semantic writers and a compatibility review; see [conversion mappings and limits](CROSS_FORMAT_EXPORT.md). Unchanged export is also available and returns the original bytes. Export filenames use `_cropped` after a crop, `_edited` for label/event edits without a crop, and `_copy` for unchanged data. Export preserves edit history and the Modified indicator; preparing an export does not replace the imported source.
 
@@ -45,16 +45,13 @@ Label edits update the selected collection's `Labels` or group `Name`, matching 
 
 H5 export limits:
 
-- Explicit clocks support nonaligned and irregular signal samples. Legacy streams without clocks require crop boundaries aligned to their sample grids.
+- Explicit clocks support nonaligned and irregular signal samples. Current streams without clocks use their declared frame origin and sampling rate.
 - Current streams with sample frame metadata can retain a fractional offset from the point grid even without Time; their own StartFrame/EndFrame preserve non-integer rate ratios. Body frame metadata remains independent of the marker source first frame.
-- Legacy model streams use the supported absolute-time crop convention and become empty outside the selected interval. Current independent result clocks have no declared trial relationship; Data, Time, NumSamples and opaque processing metadata remain unchanged. No alignment shift is invented.
+- Independent result clocks have no declared trial relationship; Data, Time, NumSamples and opaque processing metadata remain unchanged. No alignment shift is invented.
 - Boolean quality datasets and nested provenance attributes retain their FALSE/TRUE int8 enum type. A small generic synthetic template writer seeds the source's groups/boolean fields; HDF5 itself writes their values. It contains no reference bytes or fixed participant paths, and absent optional fields stay absent.
 - Edited outputs use fresh storage layout. Current boolean chunks/compression/maxshape are retained; cropped primitive chunks/maxshape may shrink. Unused variable-length string padding can change without altering UTF-8 text. Numeric precision, values, shape conventions, UTF-8 encoding, units and dtypes remain intact for the authoritative schema. Compression is preserved where supported; storage layout is not a scientific value.
 - Unknown primitive content survives unchanged, label-only and event-only exports. Unknown nonempty datasets outside MetaData block crop unless timing is classified. Unsupported compound/reference/opaque types, arbitrary enums, null dataspaces, named types and links are not promised for modified export; exports stop when these cannot be copied. Hard-link identity is not guaranteed.
-- Legacy sample-major vectors cropped to exactly three samples use component-major orientation to disambiguate [3,3], with physical components preserved.
 - A full-range export with no label or event edits returns the exact original bytes, including opaque content.
-
-The original Python H5 `save_data` copies a template then replaces owned streams, but leaves Events and unknown time series untouched. Its C3D `slice_c3d` uses an inclusive end and reconstructs selected groups. This implementation deliberately uses one half-open interval throughout and preserves more raw content; it does not reproduce stale temporal metadata or discard vendor groups.
 
 ## Validation and privacy
 
@@ -66,7 +63,7 @@ Current authoritative-file results, independent h5py comparisons, browser worker
 
 Format references: [C3D frame counts](https://www.c3d.org/HTML/Documents/readingtheframecount.htm), [TRIAL fields](https://www.c3d.org/HTML/Documents/thetrialgroup.htm), [force baseline semantics](https://www.c3d.org/HTML/Documents/forceplatformzero.htm), [institute H5 schema](H5_FORMAT.md).
 
-See [event visualization and editing](EVENT_EDITING.md) for immutable event operations, relative-second timing, C3D serialization and current and previous supported institute H5 event layouts.
+See [event visualization and editing](EVENT_EDITING.md) for immutable event operations, relative-second timing, C3D serialization and the current institute H5 event layout.
 
 ## Unit preservation
 

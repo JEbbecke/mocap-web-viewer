@@ -9,7 +9,7 @@ export interface ModelResultInfo {
   samples?: number;
   metadata?: string;
   inDegrees?: boolean;
-  timeBasis?: 'trial' | 'independent';
+  timeBasis?: 'independent';
   entries?: {
     name: string;
     unit?: string;
@@ -73,7 +73,7 @@ export function metadataValue(raw: unknown, rawUnit?: unknown): MetadataValue | 
   return { values, ...(units.length === 1 ? { unit: units[0] } : {}) };
 }
 
-/** OriginalFiles may be an array, JSON, or a legacy quoted Python-style list.
+/** OriginalFiles may be an array, JSON, or a quoted list.
  * Accept only flat quoted strings; never evaluate code or split filenames at commas. */
 export function originalFiles(raw: unknown): MetadataValue | undefined {
   if (typeof raw === 'string' && raw.trim().startsWith('[')) {
@@ -82,7 +82,7 @@ export function originalFiles(raw: unknown): MetadataValue | undefined {
       if (Array.isArray(parsed) && parsed.every((v) => typeof v === 'string'))
         return metadataValue(parsed);
     } catch {
-      /* Legacy files can use single quotes instead of JSON. */
+      /* Flat quoted lists can use single quotes instead of JSON. */
     }
     const text = raw.trim();
     if (text.endsWith(']')) {
