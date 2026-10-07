@@ -170,6 +170,7 @@ describe.each([
     mkdirSync(folder, { recursive: true });
     const input = new h5.File(resolve(folder, `synthetic-${unit}.h5`), 'w');
     try {
+      input.create_group('MetaData').create_group('Project');
       const traj = input.create_group('Trajectories');
       traj.create_attribute('SamplingFrequency', 100);
       traj.create_attribute('StartFrame', 0);

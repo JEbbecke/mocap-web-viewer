@@ -4,11 +4,6 @@ export interface ModelRequest {
   kind: 'ik' | 'id';
   sourceIndex: number;
   offset: number;
-  timeBasis: 'trial' | 'independent';
-  timeOrigin: number;
-  /** Rate-only legacy clocks start at original recording zero, unlike absolute Time. */
-  regularTimeOrigin?: number;
-  interval?: { start: number; end: number };
 }
 export interface ModelPage {
   values: Float64Array;
@@ -70,8 +65,6 @@ export function readModelPage(group: ModelGroup, request: ModelRequest): ModelPa
     throw Error('Model Time sample count mismatch.');
   const rate = Number(group.attrs?.SamplingFrequency?.value);
   const clockKnown = !!time || timeRow >= 0 || (Number.isFinite(rate) && rate > 0);
-  const origin =
-    time || timeRow >= 0 ? request.timeOrigin : (request.regularTimeOrigin ?? request.timeOrigin);
   const readTimes = (a: number, b: number) =>
     time
       ? numbers(time.slice([[a, b]]), b - a)
@@ -84,30 +77,10 @@ export function readModelPage(group: ModelGroup, request: ModelRequest): ModelPa
             b - a,
           )
         : Float64Array.from({ length: b - a }, (_, i) => (clockKnown ? (a + i) / rate : NaN));
-  const boundary = (t: number) => {
-    let a = 0,
-      b = n;
-    while (a < b) {
-      const mid = Math.floor((a + b) / 2);
-      const v = readTimes(mid, mid + 1)[0];
-      if (!Number.isFinite(v)) throw Error('Model clock contains missing timestamps.');
-      if (v < t - 1e-9) a = mid + 1;
-      else b = mid;
-    }
-    return a;
-  };
-  let start = 0,
-    end = n;
-  if (request.timeBasis === 'trial' && request.interval) {
-    if (!clockKnown) throw Error('Cannot align a cropped model result without a declared clock.');
-    const delta = request.timeOrigin - origin;
-    start = boundary(request.interval.start - delta);
-    end = boundary(request.interval.end - delta);
-  }
-  const total = Math.max(0, end - start),
+  const total = n,
     offset = Math.min(request.offset, Math.max(0, total - 1));
-  const a = start + offset,
-    b = Math.min(end, a + MODEL_PAGE_SIZE);
+  const a = offset,
+    b = Math.min(n, a + MODEL_PAGE_SIZE);
   const values =
     b > a
       ? numbers(
@@ -122,7 +95,6 @@ export function readModelPage(group: ModelGroup, request: ModelRequest): ModelPa
   for (let i = 0; i < times.length; i++) {
     if (clockKnown && (!Number.isFinite(times[i]) || (i > 0 && times[i] <= times[i - 1])))
       throw Error('Model clock must be finite and strictly increasing.');
-    if (request.timeBasis === 'trial') times[i] -= origin;
   }
   return { values, times, total, offset, sourceOffset: a, clockKnown };
 }

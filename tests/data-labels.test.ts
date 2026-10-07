@@ -2,7 +2,7 @@ import { expect, it } from 'vitest';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import * as h5 from 'h5wasm/node';
-import fixture from './fixtures/institute-h5.json';
+import fixture from './fixtures/current-h5.json';
 import { parseH5Tree } from '../src/importers/h5/schema';
 import { parseC3D } from '../src/importers/c3d/importer';
 import { physicalFixture } from './helpers/c3d';

@@ -1,4 +1,4 @@
-# Data labels and edit history
+# Data-label editing and undo/redo
 
 In the **Data** tab, double-click a label or choose its pencil, enter the new label,
 and choose **Save** or press Enter. **Cancel** or Escape discards the draft.

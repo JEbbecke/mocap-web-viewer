@@ -10,11 +10,11 @@ import { parseC3D } from '../src/importers/c3d/importer';
 import { readParameters } from '../src/importers/c3d/parameters';
 import { parseH5Tree } from '../src/importers/h5/schema';
 import { exportC3D } from '../src/exporters/c3d';
-import { writeCroppedH5 } from '../src/exporters/h5';
+import { createH5Output, writeCroppedH5 } from '../src/exporters/h5';
 import { croppedFilename } from '../src/exporters';
 import type { MotionData } from '../src/motion/types';
 import c3dFixtures from './fixtures/c3d.json';
-import h5Fixture from './fixtures/h5.json';
+import h5Fixture from './fixtures/current-h5.json';
 
 const buffer = (encoded: string) => Uint8Array.from(Buffer.from(encoded, 'base64')).buffer;
 function compare(actual: MotionData, expected: MotionData) {
@@ -184,13 +184,13 @@ describe('HDF5 actual-file round trips', () => {
       try {
         const original = parseH5Tree(source, 'source.h5');
         for (const [start, end] of [
-          [0, 3],
+          [0, original.timeline.frameCount],
           [0, 1],
           [0, 2],
           [1, 3],
         ]) {
           const dest = join(dir, `crop-${start}-${end}.h5`);
-          const output = new h5.File(dest, 'w');
+          const output = createH5Output(h5, source, dest);
           try {
             writeCroppedH5(h5, source, output, start, end);
           } finally {
@@ -198,12 +198,17 @@ describe('HDF5 actual-file round trips', () => {
           }
           const reopened = new h5.File(dest, 'r');
           try {
-            compare(parseH5Tree(reopened, 'cropped.h5'), cropMotionData(original, start, end));
+            compare(
+              parseH5Tree(reopened, 'cropped.h5'),
+              start === 0 && end === original.timeline.frameCount
+                ? original
+                : cropMotionData(original, start, end),
+            );
             if (start !== 0 || end !== original.timeline.frameCount)
               expect(
                 (reopened.get('Trajectories') as InstanceType<typeof h5.Group>).attrs.EndFrame
                   .value,
-              ).toBe(10 + end - 1);
+              ).toBe(BigInt(original.timeline.firstFrame + end - 1));
           } finally {
             reopened.close();
           }
@@ -225,7 +230,7 @@ it('H5 keeps independent-rate force, Tz, moving geometry, Type, raw units and st
   const input = new h5.File(join(dir, 'input.h5'), 'w');
   try {
     const meta = input.create_group('MetaData');
-    meta.create_attribute('Project', 'Synthetic crop validation');
+    meta.create_group('Project').create_attribute('Project', 'Synthetic crop validation');
     meta.create_dataset({
       name: 'StaticCalibration',
       data: new Float64Array([1, 2, 3]),
@@ -244,7 +249,7 @@ it('H5 keeps independent-rate force, Tz, moving geometry, Type, raw units and st
     });
     labeled.create_dataset({
       name: 'Residuals',
-      shape: [1, 1, 400],
+      shape: [1, 400],
       data: Float64Array.from({ length: 400 }, (_, i) => (i === 123 ? -1 : 0.5)),
     });
     labeled.create_dataset({
@@ -254,6 +259,7 @@ it('H5 keeps independent-rate force, Tz, moving geometry, Type, raw units and st
     });
     const analog = input.create_group('Analog');
     analog.create_attribute('SamplingFrequency', 2000);
+    analog.create_attribute('StartFrame', 360);
     analog.create_attribute('Labels', ['EMG']);
     analog.create_attribute('Units', ['V']);
     analog.create_dataset({
@@ -269,7 +275,8 @@ it('H5 keeps independent-rate force, Tz, moving geometry, Type, raw units and st
       unit_force: 'N',
       unit_moment: 'Nmm',
       unit_position: 'mm',
-      NumSamples: 3,
+      NumSamples: 4000,
+      StartFrame: 360,
     }))
       plate.create_attribute(name, value);
     for (const name of ['Force', 'Moment', 'COP'])
@@ -280,39 +287,25 @@ it('H5 keeps independent-rate force, Tz, moving geometry, Type, raw units and st
       });
     plate.create_dataset({
       name: 'Tz',
-      shape: [4000],
-      data: Float64Array.from({ length: 4000 }, (_, i) => i + 0.5),
+      shape: [3, 4000],
+      data: Float64Array.from({ length: 12000 }, (_, i) => i + 0.5),
     });
     plate.create_dataset({
-      name: 'Location',
+      name: 'Corners',
       shape: [3, 4, 400],
       data: Float64Array.from({ length: 4800 }, (_, i) => i),
     });
     plate.create_dataset({
       name: 'Position',
-      shape: [4, 400],
-      data: Float64Array.from({ length: 1600 }, (_, i) => i),
+      shape: [3, 400],
+      data: Float64Array.from({ length: 1200 }, (_, i) => i),
     });
-    plate.create_dataset({ name: 'Rotation', shape: [3, 3, 3], data: new Float64Array(27) });
-    plate.create_dataset({ name: 'Offset', shape: [3], data: new Float64Array([1, 2, 3]) });
-    const sampleMajor = (input.get('ForcePlates') as InstanceType<typeof h5.Group>).create_group(
-      '1',
-    );
-    for (const [name, value] of Object.entries({
-      Name: 'Sample-major plate',
-      SamplingFrequency: 200,
-      CoordinateSystem: 1,
-      unit_force: 'N',
-      unit_moment: 'Nm',
-      unit_position: 'm',
-    }))
-      sampleMajor.create_attribute(name, value);
-    for (const name of ['Force', 'Moment', 'COP'])
-      sampleMajor.create_dataset({
-        name,
-        shape: [400, 3],
-        data: Float64Array.from({ length: 1200 }, (_, i) => i + 0.01),
-      });
+    plate.create_dataset({
+      name: 'Rotation',
+      shape: [3, 3],
+      data: new Float64Array([1, 0, 0, 0, 1, 0, 0, 0, 1]),
+    });
+    plate.create_dataset({ name: 'Origin', shape: [3, 1], data: new Float64Array([1, 2, 3]) });
     input.create_group('Events');
     input.flush();
     const original = parseH5Tree(input, 'synthetic.h5');
@@ -324,8 +317,8 @@ it('H5 keeps independent-rate force, Tz, moving geometry, Type, raw units and st
       expect([...(dataset('Trajectories/Labeled/Type').value as Int8Array)]).toEqual(
         Array.from({ length: 200 }, (_, i) => (i + 100) % 3),
       );
-      expect(dataset('ForcePlates/0/Position').shape).toEqual([4, 200]);
-      expect(dataset('ForcePlates/0/Rotation').shape).toEqual([3, 3, 3]);
+      expect(dataset('ForcePlates/0/Position').shape).toEqual([3, 200]);
+      expect(dataset('ForcePlates/0/Rotation').shape).toEqual([3, 3]);
       expect(dataset('MetaData/StaticCalibration').value).toEqual(new Float64Array([1, 2, 3]));
       expect(
         (output.get('ForcePlates/0') as InstanceType<typeof h5.Group>).attrs.NumSamples.value,
@@ -342,11 +335,6 @@ it('H5 keeps independent-rate force, Tz, moving geometry, Type, raw units and st
     }
     const unsupported = new h5.File(join(dir, 'unsupported.h5'), 'w');
     try {
-      analog.delete_attribute('SamplingFrequency');
-      analog.create_attribute('SamplingFrequency', 150);
-      expect(() => writeCroppedH5(h5, input, unsupported, 100, 101)).toThrow('sampling grid');
-      analog.delete_attribute('SamplingFrequency');
-      analog.create_attribute('SamplingFrequency', 2000);
       analog.create_attribute('StartTime', 0.05);
       expect(() => writeCroppedH5(h5, input, unsupported, 100, 300)).toThrow('explicit timing');
       analog.delete_attribute('StartTime');
@@ -366,37 +354,23 @@ it('H5 keeps independent-rate force, Tz, moving geometry, Type, raw units and st
   }
 });
 
-describe('optional private source round trips (never committed)', () => {
-  for (const name of ['03_PRE_GANG12_01.c3d', 'P01_pre_gait_16_0001.c3d']) {
-    const path = resolve('../ibo-biomech', name);
-    it.skipIf(!existsSync(path))(`${name}: all samples and platforms`, async () => {
-      const source = Uint8Array.from(await readFile(path)).buffer;
-      const data = parseC3D(source, name);
-      const start = Math.floor(data.timeline.frameCount / 4),
-        end = Math.floor((data.timeline.frameCount * 3) / 4);
-      const result = exportC3D(source, start, end);
-      compare(parseC3D(result, name), cropMotionData(data, start, end));
-    });
-  }
-  for (const name of ['03_PRE_GANG12_01.h5', 'virtual_marker.h5']) {
-    const path = resolve('../ibo-biomech', name);
-    it.skipIf(!existsSync(path))(`${name}: preserves legacy and converter layouts`, async () => {
-      const h5 = await import('h5wasm/node');
-      await h5.ready;
-      const dir = await mkdtemp(join(tmpdir(), 'ibo-private-crop-'));
-      const source = new h5.File(path, 'r');
-      const output = new h5.File(join(dir, 'crop.h5'), 'w');
-      try {
-        const data = parseH5Tree(source, name);
+const localReferences = existsSync('.local/reference.json')
+  ? (JSON.parse(await readFile('.local/reference.json', 'utf8')) as { path: string }[])
+  : [];
+describe('optional local C3D source round trips (never committed)', () => {
+  localReferences.forEach((reference, index) => {
+    it.skipIf(!existsSync(reference.path))(
+      `local C3D reference ${index + 1}: all samples and platforms`,
+      async () => {
+        const source = Uint8Array.from(await readFile(reference.path)).buffer;
+        const data = parseC3D(source, 'local.c3d');
         const start = Math.floor(data.timeline.frameCount / 4),
           end = Math.floor((data.timeline.frameCount * 3) / 4);
-        writeCroppedH5(h5, source, output, start, end);
-        compare(parseH5Tree(output, name), cropMotionData(data, start, end));
-      } finally {
-        output.close();
-        source.close();
-        await rm(dir, { recursive: true, force: true });
-      }
-    });
-  }
+        compare(
+          parseC3D(exportC3D(source, start, end), 'local.c3d'),
+          cropMotionData(data, start, end),
+        );
+      },
+    );
+  });
 });

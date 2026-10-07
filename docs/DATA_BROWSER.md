@@ -12,7 +12,7 @@ Empty collections are omitted.
 Double-clicking any non-event label, or using its pencil, opens an inline label editor with Save/Cancel
 and validation. Committed labels update this catalog and its search immediately;
 visibility and selection retain source-column identity. See
-[data labels and undo/redo](MARKER_EDITING.md).
+[data labels and undo/redo](DATA_EDITING.md).
 
 Search data filters names across all collections, case-insensitively. Matching
 sections expand and show matching/total counts. Clearing search restores the

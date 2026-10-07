@@ -129,25 +129,14 @@ export function writeCroppedH5(
     }
     if (!Number.isFinite(rate) || rate <= 0) throw new Error(`${ds.path}: missing sampling rate.`);
     const streamOrigin =
-      streamClock === undefined &&
-      motion.source.h5Layout === 'institute-current' &&
-      Number.isFinite(scalar(ds.parent, 'StartFrame'))
+      streamClock === undefined && Number.isFinite(scalar(ds.parent, 'StartFrame'))
         ? scalar(ds.parent, 'StartFrame') / rate - origin
         : 0;
     const a = sampleBoundary(time.start, rate, streamOrigin),
       b = sampleBoundary(time.end, rate, streamOrigin);
-    // Legacy streams without Time cannot express a fractional time origin.
-    if (
-      motion.source.h5Layout !== 'institute-current' &&
-      (Math.abs((time.start - streamOrigin) * rate - a) > 1e-7 ||
-        Math.abs((time.end - streamOrigin) * rate - b) > 1e-7)
-    )
-      throw new Error(`${ds.path}: crop boundaries must align with this stream's sampling grid.`);
     const n = ds.shape![axis];
     const from = Math.max(0, Math.min(n, a)),
       to = Math.max(from, Math.min(n, b));
-    if (from === to && motion.source.h5Layout !== 'institute-current')
-      throw new Error(`${ds.path}: crop contains no samples.`);
     slices.set(ds.path, { axis, start: from, end: to });
     return to - from;
   };
@@ -224,8 +213,7 @@ export function writeCroppedH5(
     if (/^\/(Analog|EMG|IKResults|IDResults)\/(Data|Time)$/.test(path)) {
       // The unversioned current layout supplies no relation from model time zero
       // to the trial clock. Retain independent derived results without guessing.
-      if (/^\/(IKResults|IDResults)\//.test(path) && motion.source.h5Layout === 'institute-current')
-        return;
+      if (/^\/(IKResults|IDResults)\//.test(path)) return;
       const n = slice(ds, shape.length - 1, scalar(ds.parent, 'SamplingFrequency'))!;
       updateExtent(ds, n);
       return;
@@ -255,13 +243,13 @@ export function writeCroppedH5(
       const force = plate.get('Force');
       if (!(force instanceof h5.Dataset) || force.shape?.length !== 2)
         throw new Error(`${path}: unknown force layout.`);
-      const forceCount = force.shape[0] === 3 ? force.shape[1] : force.shape[0];
+      const forceCount = force.shape[1];
       if (['Force', 'Moment', 'COP'].includes(name)) {
-        if (shape.length !== 2 || (shape[0] !== 3 && shape[1] !== 3))
+        if (shape.length !== 2 || shape[0] !== 3)
           throw new Error(`${path}: unknown vector layout.`);
-        if ((shape[0] === 3 ? shape[1] : shape[0]) !== forceCount)
+        if (shape[1] !== forceCount)
           throw new Error(`${path}: inconsistent force/moment/COP sample counts.`);
-        const n = slice(ds, shape[0] === 3 ? 1 : 0, rate)!;
+        const n = slice(ds, 1, rate)!;
         if (name === 'Force') updateExtent(ds, n);
         return;
       }
@@ -270,8 +258,7 @@ export function writeCroppedH5(
         return;
       }
       if (name === 'Origin' && ['3', '3,1'].includes(shape.join(','))) return;
-      if (name === 'Offset' && shape.join(',') === '3') return;
-      if (['Corners', 'Location', 'Position', 'Rotation'].includes(name)) {
+      if (['Corners', 'Position', 'Rotation'].includes(name)) {
         const rank = name === 'Position' ? 2 : 3;
         if (shape.length === rank - 1) return;
         if (shape.length !== rank) throw new Error(`${path}: unknown geometry layout.`);
@@ -281,13 +268,6 @@ export function writeCroppedH5(
         let repeated = true;
         for (let i = 0; i < values.length && repeated; i++)
           repeated = Object.is(values[i], values[Math.floor(i / n) * n]);
-        // Legacy converter's all-zero [3,3,3] Rotation is a static placeholder.
-        if (
-          name === 'Rotation' &&
-          shape.join(',') === '3,3,3' &&
-          Array.from(values).every((v) => v === 0)
-        )
-          return;
         if (n === forceCount) {
           slice(ds, rank - 1, rate);
           return;
@@ -370,12 +350,10 @@ export function writeCroppedH5(
             const sameTime = old && Math.abs(old.time - (e.time + time.start)) < 1e-12;
             if (key === 'Name') return e.label;
             if (key === 'Description') return e.description ?? '';
-            if (motion.source.eventSchema === 'institute-current') {
-              if (key === 'Context') return e.context;
-              if (key === 'Subject') return e.subject ?? '';
-              if (key === 'GenericFlag' || key === 'IconID')
-                return e.sourceIndex === undefined ? 0 : original[e.sourceIndex];
-            }
+            if (key === 'Context') return e.context;
+            if (key === 'Subject') return e.subject ?? '';
+            if (key === 'GenericFlag' || key === 'IconID')
+              return e.sourceIndex === undefined ? 0 : original[e.sourceIndex];
             if (key === 'Time')
               return sameTime ? original[e.sourceIndex!] : origin + time.start + e.time;
             if (key === 'Frame')
@@ -395,20 +373,6 @@ export function writeCroppedH5(
                   ? new (data.constructor as typeof Float64Array)(values as number[])
                   : (values as string[]);
           shape[0] = eventRows.length;
-        }
-        // [samples,3] becomes ambiguous when cropped to exactly three samples.
-        // Write that case as [3,samples], the institute reader's preferred layout.
-        if (
-          selection?.axis === 0 &&
-          shape.join(',') === '3,3' &&
-          /^\/ForcePlates\/[^/]+\/(Force|Moment|COP|Tz)$/.test(entity.path)
-        ) {
-          const values = data as Float64Array;
-          const transposed = values.slice();
-          for (let sample = 0; sample < 3; sample++)
-            for (let axis = 0; axis < 3; axis++)
-              transposed[axis * 3 + sample] = values[sample * 3 + axis];
-          data = transposed;
         }
         const ds = copyDataset(h5, entity, target, name, data as Writable, shape, primitive);
         copyAttrs(entity, ds);

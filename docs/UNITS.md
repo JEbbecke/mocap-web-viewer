@@ -19,10 +19,8 @@ force signs and coordinate-frame guards are unchanged.
 
 ## Import boundaries
 
-H5 markers use `Trajectories/Labeled@Unit`; legacy missing units assume mm with
-a warning. Plate geometry and COP use `unit_position`, forces use `unit_force`,
-and moments/Tz independently use `unit_moment`. Body positions use their `Unit`,
-falling back to the marker unit. Supported distances are mm, cm and m.
+H5 markers require `Trajectories/Labeled@Unit`; missing units fail explicitly. Plate geometry and COP use `unit_position`, forces use `unit_force`,
+and moments/Tz independently use `unit_moment`. Body positions require their own `Unit`. Supported distances are mm, cm and m.
 The authoritative reference was checked read-only: its distances are mm, forces N,
 and moments/Tz Nmm. Thus spatial values pass through unchanged and Nmm moments
 are converted to Nm by 0.001. Its measurements are never used as synthetic fixtures.
@@ -89,12 +87,6 @@ a 500 mm arrow (0.5 scene units). Its origin is the scaled COP; its direction an
 the force threshold use unchanged N values. This is not a force-unit conversion.
 
 ## Audit and regression coverage
-
-The previous `metres()` helper converted H5/C3D spatial data to m at import;
-MotionData, inspector, plots and Three.js all shared that convention. H5 moments
-used independent declared-unit normalization; C3D moments used force × source
-length to Nm. Exports already copied raw source values. The fix changes the
-scientific distance convention and isolates rendering scale while retaining Nm.
 
 `tests/units.test.ts` checks 1234.5 mm, residuals, corners/origin, COP, forces,
 moments/Tz, mm/cm/m C3D sources, explicit moment channels, types 3/4, H5 mm/Nmm and

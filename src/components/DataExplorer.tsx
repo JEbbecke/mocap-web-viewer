@@ -398,15 +398,7 @@ function NumericalTable({
   );
 }
 
-function ModelTable({
-  dataset,
-  data,
-  follow,
-}: {
-  dataset: Dataset;
-  data: MotionData;
-  follow: boolean;
-}) {
+function ModelTable({ dataset, data }: { dataset: Dataset; data: MotionData }) {
   const file = useSession((s) => s.sourceFile);
   const buffer = useRef<ModelPage | null>(null);
   const [offset, setOffset] = useState(0),
@@ -414,36 +406,9 @@ function ModelTable({
     [error, setError] = useState(''),
     [loading, setLoading] = useState(true);
   const model = dataset.model!;
-  const result = data.source.info?.modelResults?.[model.kind];
-  const independent = result?.timeBasis === 'independent';
-  const timeOrigin = data.source.timeOrigin ?? (data.source.crop?.start ?? 0) / data.timeline.rate;
   const request = useMemo<ModelRequest>(
-    () => ({
-      kind: model.kind,
-      sourceIndex: model.sourceIndex,
-      offset,
-      timeBasis: independent ? 'independent' : 'trial',
-      timeOrigin,
-      regularTimeOrigin: (data.source.crop?.start ?? 0) / data.timeline.rate,
-      ...(data.source.crop && !independent
-        ? {
-            interval: {
-              start: timeOrigin,
-              end: timeOrigin + data.timeline.frameCount / data.timeline.rate,
-            },
-          }
-        : {}),
-    }),
-    [
-      model.kind,
-      model.sourceIndex,
-      offset,
-      independent,
-      timeOrigin,
-      data.source.crop,
-      data.timeline.frameCount,
-      data.timeline.rate,
-    ],
+    () => ({ kind: model.kind, sourceIndex: model.sourceIndex, offset }),
+    [model.kind, model.sourceIndex, offset],
   );
   const pendingCopy = useRef<{ worker: Worker; reject: (error: Error) => void } | null>(null);
   useEffect(
@@ -490,7 +455,7 @@ function ModelTable({
       columns: [
         { name: 'Sample (0-based)', numeric: true },
         { name: 'Source sample (0-based)', numeric: true },
-        { name: independent ? 'Model time [s]' : 'Time [s]', numeric: true },
+        { name: 'Model time [s]', numeric: true },
         { name: `Value [${model.unit}]`, numeric: true },
       ],
       cell: (r, c) =>
@@ -502,20 +467,8 @@ function ModelTable({
               ? page.times[r]
               : page.values[r],
     };
-    if (!independent && page.clockKnown)
-      d.current = (t) => {
-        let best = -1,
-          distance = Infinity;
-        if (t < page.times[0] - 1e-9 || t > page.times.at(-1)! + 1e-9) return -1;
-        for (let i = 0; i < page.times.length; i++)
-          if (Math.abs(page.times[i] - t) < distance) {
-            best = i;
-            distance = Math.abs(page.times[i] - t);
-          }
-        return best;
-      };
     return d;
-  }, [dataset, page, independent, model.unit, revision]);
+  }, [dataset, page, model.unit, revision]);
   const prepareTableCopy = (columns?: number[]) =>
     new Promise<string>((resolve, reject) => {
       if (!file || !view) {
@@ -585,11 +538,9 @@ function ModelTable({
           />
         </label>
       </div>
-      {independent && (
-        <p className="small muted">
-          Independent model clock · samples remain unchanged by trial crops.
-        </p>
-      )}
+      <p className="small muted">
+        Independent model clock · samples remain unchanged by trial crops.
+      </p>
       {page && !page.clockKnown && (
         <p className="small muted">No declared model clock; time values are unknown.</p>
       )}
@@ -604,9 +555,9 @@ function ModelTable({
       ) : (
         view && (
           <NumericalTable
-            key={`${dataset.id}:${offset}:${timeOrigin}`}
+            key={`${dataset.id}:${offset}`}
             dataset={view}
-            follow={follow && !independent}
+            follow={false}
             pointRate={data.timeline.rate}
             prepareTableCopy={prepareTableCopy}
           />
@@ -669,11 +620,7 @@ export function DataExplorer({ data, onClose }: { data: MotionData; onClose: () 
                     <input
                       type="checkbox"
                       checked={follow}
-                      disabled={
-                        !!dataset.model &&
-                        data.source.info?.modelResults?.[dataset.model.kind]?.timeBasis ===
-                          'independent'
-                      }
+                      disabled={!!dataset.model}
                       onChange={(e) => setFollow(e.target.checked)}
                     />{' '}
                     Follow playback
@@ -694,7 +641,7 @@ export function DataExplorer({ data, onClose }: { data: MotionData; onClose: () 
                 </details>
               )}
               {dataset.model ? (
-                <ModelTable key={dataset.id} dataset={dataset} data={data} follow={follow} />
+                <ModelTable key={dataset.id} dataset={dataset} data={data} />
               ) : (
                 <NumericalTable
                   key={`${dataset.id}:${data.timeline.firstFrame}:${dataset.count}`}

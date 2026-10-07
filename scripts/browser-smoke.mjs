@@ -30,14 +30,44 @@ const statsFixture = {
 await mkdir('.local', { recursive: true });
 const fixtures = JSON.parse(await readFile('tests/fixtures/c3d.json', 'utf8'));
 await writeFile('.local/synthetic.c3d', Buffer.from(fixtures.intelFloat, 'base64'));
-const h5Fixture = JSON.parse(await readFile('tests/fixtures/h5.json', 'utf8'));
+const h5Fixture = JSON.parse(await readFile('tests/fixtures/current-h5.json', 'utf8'));
 await writeFile('.local/synthetic.h5', Buffer.from(h5Fixture.base64, 'base64'));
-const populatedH5 = JSON.parse(await readFile('tests/fixtures/institute-h5.json', 'utf8'));
+const populatedH5 = JSON.parse(await readFile('tests/fixtures/current-h5.json', 'utf8'));
 await writeFile('.local/populated.h5', Buffer.from(populatedH5.base64, 'base64'));
 const currentH5 = JSON.parse(await readFile('tests/fixtures/current-h5.json', 'utf8'));
 await writeFile('.local/current-browser.h5', Buffer.from(currentH5.base64, 'base64'));
 // Synthetic metadata exercises all curated sections without participant data.
 await h5.ready;
+// Three-frame current-schema fixture for the shared C3D/H5 crop interaction checks.
+const smallH5 = new h5.File(resolve('.local/synthetic.h5'), 'w');
+try {
+  const metadata = smallH5.create_group('MetaData');
+  metadata.create_group('Project');
+  metadata.create_group('FileInfo');
+  const trajectories = smallH5.create_group('Trajectories');
+  trajectories.create_attribute('SamplingFrequency', 100);
+  trajectories.create_attribute('StartFrame', 10);
+  const labeled = trajectories.create_group('Labeled');
+  labeled.create_attribute('Labels', ['Synthetic marker']);
+  labeled.create_attribute('Unit', 'mm');
+  labeled.create_dataset({
+    name: 'Data',
+    shape: [1, 4, 3],
+    data: new Float64Array([10, 20, 30, 40, 50, 60, 70, 80, 90, 1, 1, 1]),
+  });
+  const analog = smallH5.create_group('Analog');
+  analog.create_attribute('Labels', ['Synthetic analog']);
+  analog.create_attribute('Units', ['V']);
+  analog.create_attribute('SamplingFrequency', 200);
+  analog.create_attribute('StartFrame', 20);
+  analog.create_dataset({
+    name: 'Data',
+    shape: [1, 6],
+    data: new Float64Array([0, 1, 2, 3, 4, 5]),
+  });
+} finally {
+  smallH5.close();
+}
 createCorrectedCopFixture();
 // Large, wholly synthetic recording for bounded table DOM/scroll checks.
 const largeFile = new h5.File(resolve('.local/explorer-large.h5'), 'w');
@@ -115,8 +145,17 @@ try {
     FileCreationUTC: '2026-01-02T02:04:05.123456Z',
     LastUpdate: '2026-01-03T04:05:06Z',
   })) {
-    if (key in metadata.attrs) metadata.delete_attribute(key);
-    metadata.create_attribute(key, value);
+    const target = [
+      'OriginalFiles',
+      'PathFile',
+      'FileCreationLocal',
+      'FileCreationUTC',
+      'LastUpdate',
+    ].includes(key)
+      ? metadata.get('FileInfo')
+      : metadata.get('Project');
+    if (key in target.attrs) target.delete_attribute(key);
+    target.create_attribute(key, value);
   }
   const location = metadata.get('Location') ?? metadata.create_group('Location');
   for (const [key, value] of Object.entries({ Lat: 0, Lon: 6.1234 })) {
@@ -802,10 +841,7 @@ try {
     await page.getByRole('slider', { name: 'Frame', exact: true }).getAttribute('aria-valuemax'),
     '2',
   );
-  const privatePaths = ['03_PRE_GANG12_01.c3d', '03_PRE_GANG12_01.h5', 'virtual_marker.h5']
-    .map((n) => resolve('../ibo-biomech', n))
-    .filter(existsSync);
-  for (const path of [resolve('.local/synthetic.h5'), ...privatePaths]) {
+  for (const path of [resolve('.local/synthetic.h5')]) {
     await page.getByLabel('Open motion file').setInputFiles(path);
     await page.waitForFunction(() => !document.body.textContent.includes('Reading your recording'));
     assert.equal(await page.getByRole('alert').count(), 0, 'reference file loads without error');
@@ -882,13 +918,11 @@ try {
     await page.getByLabel('Time (s)', { exact: true }).fill('0.1');
     assert.equal(
       await page.getByLabel('Context', { exact: true }).count(),
-      label === 'current' ? 1 : 0,
+      1,
       'context follows the imported event schema',
     );
-    if (label === 'current') {
-      await page.getByLabel('Context', { exact: true }).fill('Left');
-      await page.getByLabel('Subject', { exact: true }).fill('Synthetic browser subject');
-    }
+    await page.getByLabel('Context', { exact: true }).fill('Left');
+    await page.getByLabel('Subject', { exact: true }).fill('Synthetic browser subject');
     await page.getByRole('button', { name: 'Save event', exact: true }).click();
     const edited = await save('edited');
     await open(edited);
@@ -1221,7 +1255,7 @@ try {
         storage,
         analyticsIntercepted: true,
         analyticsEvents: analyticsEvents(),
-        privateFilesChecked: privatePaths.length,
+        syntheticDataOnly: true,
       },
       null,
       2,

@@ -68,8 +68,7 @@ alongside **Valid: No**. Missing values display `—`; NaN displays `NaN`.
 H5 model samples remain backed by the immutable local source File. A short-lived
 worker reads at most **200 samples of one variable and its clock** with hyperslabs.
 The UI exposes no HDF5 tree. Previous/Next and Go to sample navigate the result.
-Trial-aligned results are bounded/rebased to the current crop. Current institute
-H5 results whose trial relationship is undeclared retain their independent model
+Current institute H5 results retain their independent model
 times and all samples after crop; they have no playback highlighting/following.
 Missing model clocks display NaN times, with unknown units kept explicit. Missing
 or unsupported model structures produce a local inspection message.

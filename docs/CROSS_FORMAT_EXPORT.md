@@ -23,12 +23,12 @@ confirm a completed disk save or clear Modified.
 
 ## Four export paths
 
-| Path      | Writer and preservation                                                                                                                                                                                    | Main limits                                                                                                                                                                                                |
-| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| C3D → C3D | Source-preserving: unchanged output is byte-identical; modified output copies raw point/analog records, encoding, units, calibration and unrelated parameters, updating selected frames, labels and events | Supported C3D encodings only; guarded baseline intervals, EVENT dimensions, parameter capacity and unknown trailing records; proprietary temporal parameters need review                                   |
-| H5 → H5   | Source-preserving: unchanged output is byte-identical; modified output copies the institute hierarchy and supported raw dtypes/attributes, slicing known clocks and applying label/event edits             | Unknown temporal datasets or unsupported HDF5 storage/types can block modified export; chunks/maxshape and unused string padding can change                                                                |
-| C3D → H5  | Fresh current institute schema from normalized imported data, with float64 trajectories/analogs, global force quantities, events, explicit clocks and limited subject/provenance metadata                  | Unimported camera bits, raw/vendor parameter trees and acquisition representation are not copied; the fourth trajectory component is NaN; the legacy institute reader does not support this current layout |
-| H5 → C3D  | Fresh Intel/IEEE float32 C3D, current labels/events, compatible analogs, validated original TYPE-2/3/4 plates or a per-plate TYPE-2 fallback, plus JE_METADATA                                             | Aligned regular grids and capacity limits; no moving/unresolved plates; residual quantization, possible COP/free-moment loss, omitted quality/bodies/models and unrelated raw trees                        |
+| Path      | Writer and preservation                                                                                                                                                                                    | Main limits                                                                                                                                                                                                      |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| C3D → C3D | Source-preserving: unchanged output is byte-identical; modified output copies raw point/analog records, encoding, units, calibration and unrelated parameters, updating selected frames, labels and events | Supported C3D encodings only; guarded baseline intervals, EVENT dimensions, parameter capacity and unknown trailing records; proprietary temporal parameters need review                                         |
+| H5 → H5   | Source-preserving: unchanged output is byte-identical; modified output copies the institute hierarchy and supported raw dtypes/attributes, slicing known clocks and applying label/event edits             | Unknown temporal datasets or unsupported HDF5 storage/types can block modified export; chunks/maxshape and unused string padding can change                                                                      |
+| C3D → H5  | Fresh current institute schema from normalized imported data, with float64 trajectories/analogs, global force quantities, events, explicit clocks and limited subject/provenance metadata                  | Unimported camera bits, raw/vendor parameter trees and acquisition representation are not copied; the fourth trajectory component is NaN; external current institute-reader interoperability requires validation |
+| H5 → C3D  | Fresh Intel/IEEE float32 C3D, current labels/events, compatible analogs, validated original TYPE-2/3/4 plates or a per-plate TYPE-2 fallback, plus JE_METADATA                                             | Aligned regular grids and capacity limits; no moving/unresolved plates; residual quantization, possible COP/free-moment loss, omitted quality/bodies/models and unrelated raw trees                              |
 
 Same-format limits are detailed in [cropping/export](CROPPING_EXPORT.md).
 The matrix below describes conversion of supported imported fields; it does not
@@ -166,10 +166,9 @@ If that encoding cannot be verified, physical float32 samples with identity
 scaling are used, and force-platform reuse must still pass the encoded checks.
 No original scaling factor is applied a second time to the H5 values.
 
-The authoritative H5 reuses types `[3,3,4,3,3]` and all existing 56 analog channels.
-Its original COP polynomial restores plate 1's corrected COP/free moment.
-No 30 additional force channels are needed. This recording is checked read-only;
-its data are not committed or deployed as a fixture.
+Read-only authoritative validation checks original plate definitions, analog
+channels and COP corrections without exposing recording-specific values.
+Synthetic mixed TYPE-2/3/4 regressions independently exercise reuse and fallback.
 
 ### Derived force-plate fallback
 
@@ -227,8 +226,7 @@ Nonfinite, degenerate, crossed/nonconvex or incorrectly ordered corners remain
 unsupported; geometry beyond these limits is omitted with measured deviations
 and limits in the report. Encoded float32 corners must also pass. Accepted
 nonideal geometry produces no geometry warning; the float32 COP
-reconstruction check remains active. These limits admit the authoritative plates
-3 and 4 without modifying their corners. Acceptance by ezc3d is validated; other
+reconstruction check remains active. Accepted surveyed corners retain their coordinates. Acceptance by ezc3d is validated; other
 vendor readers may impose stricter assumptions.
 
 ## Architecture, validation and remaining scope
@@ -261,12 +259,11 @@ force/moment-based reconstruction rather than the deliberately omitted stored
 COP/Tz. To check the
 local authoritative recording read-only, run
 `JE_VALIDATE_REFERENCE=1 npm test -- tests/cross-format.test.ts` (in PowerShell,
-set `$env:JE_VALIDATE_REFERENCE = '1'` first). The current check verifies 56 analog channels, original plate definitions and
-force/moment/COP/free moment for all five plates. Its generated C3D stays in ignored
+set `$env:JE_VALIDATE_REFERENCE = '1'` first). The current check verifies available analog channels, original plate definitions and
+force/moment/COP/free moment. Its generated C3D stays in ignored
 `.local/authoritative-force-export.c3d`; no private values enter test assertions.
-The installed older institute Python reader still requires
-legacy `Location`/`Offset` and cannot read the current `Corners` schema; it was
-left unchanged. See [existing reader limitations](H5_VALIDATION.md). ezc3d's known
+End-to-end compatibility with an external current institute reader remains a
+manual check; see [H5 validation limits](H5_VALIDATION.md). ezc3d's known
 positive float-residual decoding discrepancy is documented in
 [VALIDATION.md](VALIDATION.md); JE Motion Lab residual checks follow the C3D standard.
 

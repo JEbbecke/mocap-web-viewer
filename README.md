@@ -22,6 +22,8 @@ The screenshot shows the current viewer with generated synthetic test data, not 
 6. Drag the timeline's start/end handles, preview the interval and choose **Crop**. Open **Export** next to **Open file** and choose **Export C3D** or **Export H5**. The source format is listed first; conversion to the other format shows **Will export**, **Changed or omitted** (changes first) and any blocking errors. **Restore original** discards crops, label renames and event edits; the source file remains unchanged. Cropping clears undo/redo history.
 7. Use the header's **Data Explorer** button to inspect numerical tables and metadata. **Data Viewer** switches back to the 3D workspace. Select cells, rows or columns to copy exact values, or copy the full selected dataset.
 
+![JE Motion Lab Data Explorer with synthetic current-schema marker values and a selected cell](docs/data-explorer.png)
+
 ## Development setup
 
 Use Node.js 22.12+ (Node 24 recommended).
@@ -36,7 +38,7 @@ Open the local URL printed by Vite, normally http://127.0.0.1:5173. On Windows P
 ## Features
 
 - [Data Explorer](docs/DATA_EXPLORER.md): a wide, read-only workspace for numerical marker, analog, force-platform, event, rigid-body, EMG and IK/ID inspection, structured metadata, dataset search and exact-value copying. Tables use bounded row windows; H5 model variables load local sample pages on demand.
-- Inline relabeling for all non-event Data-tab collections, including generated trajectory names, with validation and C3D/H5 round trips. Events use their existing editor. Undo/redo retains up to 100 label/event actions: **Ctrl/Cmd+Z**, **Ctrl/Cmd+Shift+Z**, or **Ctrl+Y** to redo on Windows. See [data labels and history](docs/MARKER_EDITING.md) for identity, connections, format limits and lifecycle rules.
+- Inline relabeling for all non-event Data-tab collections, including generated trajectory names, with validation and C3D/H5 round trips. Events use their existing editor. Undo/redo retains up to 100 label/event actions: **Ctrl/Cmd+Z**, **Ctrl/Cmd+Shift+Z**, or **Ctrl+Y** to redo on Windows. See [data labels and history](docs/DATA_EDITING.md) for identity, connections, format limits and lifecycle rules.
 - Use the **Split plots** icon beside the hide toggle in the signal inspector to switch between one and two plots. Split view shows two side-by-side plots with independent marker/force/analog selection and zoom. Both follow the same playback cursor; clicking either plot scrubs the recording. On narrow windows, the split area scrolls horizontally.
 
 - Local `.c3d`, `.h5`, and `.hdf5` loading in a cancellable Web Worker.
@@ -50,7 +52,7 @@ Open the local URL printed by Vite, normally http://127.0.0.1:5173. On Windows P
 - Non-destructive timeline cropping, range preview, restoration and local **Export** as C3D or institute H5. Source-format exports preserve the original representation; [cross-format export](docs/CROSS_FORMAT_EXPORT.md) reports incompatible clocks, omitted data and precision changes before exporting. See [crop conventions and export limits](docs/CROPPING_EXPORT.md).
 - Synchronized marker XYZ, force, moment, COP, optional free moment and analog plots, plus institute H5 EMG and rigid-body position signals when present. Scroll up/down over the plot to zoom in/out around the pointer, or drag horizontally to select a zoom range. Click to scrub; double-click or use **Reset zoom** to restore the full time range.
 - Arrow toggles in the plot and sidebar headers collapse or expand each panel; a compact edge control remains available to reopen it.
-- C3D and versioned institute H5 timeline events with add/edit/delete, format-supported text fields, crop-aware export and restoration. [File Info](docs/FILE_INFO.md) groups recording/acquisition facts, data counts and available subject, project and location metadata; raw source trees stay internal. Import warnings remain visible.
+- C3D and current institute H5 timeline events with add/edit/delete, format-supported text fields, crop-aware export and restoration. [File Info](docs/FILE_INFO.md) groups recording/acquisition facts, data counts and available subject, project and location metadata; raw source trees stay internal. Import warnings remain visible.
 - Explicit scientific units: positions/residuals/COP in mm, force in N, moments in Nm. See the [unit policy](docs/UNITS.md) for import/export boundaries and rendering scale. Display arrow scale defaults to 1 mm/N; threshold defaults to 10 N and changes display only.
 
 Keyboard: **Space** play/pause, **← / →** step, **Home / End** first/last frame, when focus is outside a form control. The timeline shows ordinal frames starting at 1; the marker inspector also shows the source's zero-based frame number.
@@ -60,17 +62,17 @@ Keyboard: **Space** play/pause, **← / →** step, **Home / End** first/last fr
 | Format       | Supported                                                                                                                                                                                                           |
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | C3D          | Intel little-endian and MIPS big-endian; integer and IEEE float point records; parameter labels and continuation labels; scaled signed/unsigned analogs and subframes; residual validity; events; force types 2/3/4 |
-| Institute H5 | `Trajectories/Labeled/Data [marker,4,frame]`, Labels and SamplingFrequency; optional analogs/force groups; compressed HDF5; both inspected converter generations                                                    |
+| Institute H5 | `Trajectories/Labeled/Data [marker,4,frame]`, Labels and SamplingFrequency; optional analogs/force groups; compressed HDF5; current unversioned authoritative schema only                                           |
 
-DEC/VAX C3D encoding and nonstandard rotation records are explicitly rejected. Unsupported force-platform types are reported and omitted, while marker and analog data remain accessible. Other HDF5 schemas are not supported. C3D interoperability is checked against synthetic Intel/MIPS variants, two local representative trials (including validated QTM-style force channels) and independent ezc3d output; this does not establish compatibility with every vendor or reader. The older institute Python reader cannot read the current H5 Corners layout, including the authoritative source itself.
+DEC/VAX C3D encoding and nonstandard rotation records are explicitly rejected. Unsupported force-platform types are reported and omitted, while marker and analog data remain accessible. Other HDF5 schemas are not supported. C3D interoperability is checked against synthetic Intel/MIPS variants, two local representative trials (including validated QTM-style force channels) and independent ezc3d output; this does not establish compatibility with every vendor or reader.
 
-H5 coordinate conventions contain contradictions in the reference exporter. Recognized legacy output keeps its already-global values with a warning. Other unresolved force frames remain available for signal inspection, but require explicit confirmation of stored-global coordinates for spatial force display. Missing legacy marker units assume mm with a warning. Current institute H5 supports nested project/file provenance, expanded event context/subject metadata, explicit clocks, mapped EMG, rigid-body data and quality flags; older supported layouts remain readable. Data lists IKResults and IDResults variables, with counts in File Info; labelled time rows are excluded. Model values are available in Data Explorer through local sample pages, while plots retain their existing supported signals. Their source data remains available for source-format export; cross-format C3D output reports IK/ID omission. Type codes and unprovided coordinate conventions are not guessed. See [H5 format](docs/H5_FORMAT.md) and [open questions](docs/OPEN_QUESTIONS.md).
+The current H5 declares global force vectors. Unresolved force frames remain available for signal inspection, but require explicit confirmation of stored-global coordinates for spatial force display. Missing marker or rigid-body units fail explicitly. Current institute H5 supports nested project/file provenance, expanded event context/subject metadata, explicit clocks, mapped EMG, rigid-body data and quality flags; obsolete institute H5 layouts are rejected. Data lists IKResults and IDResults variables, with counts in File Info; labelled time rows are excluded. Model values are available in Data Explorer through local sample pages, while plots retain their existing supported signals. Their source data remains available for source-format export; cross-format C3D output reports IK/ID omission. Type codes and unprovided coordinate conventions are not guessed. See [H5 format](docs/H5_FORMAT.md) and [open questions](docs/OPEN_QUESTIONS.md).
 
-No general trajectory editing, scientific filtering, inferred joint centres, gait-event detection, video, or persistent file storage is included. Marker timelines must be present. Mobile is secondary; current Chromium browsers are the runtime validation target. Large file limits depend on browser memory. There is no service worker yet: a cached tab can keep working, but reliable offline reload/PWA installation is not claimed.
+No general trajectory editing, scientific filtering, inferred joint centres, gait-event detection, video, or persistent file storage is included. Marker timelines must be present. Mobile is secondary. Large file limits depend on browser memory. There is no service worker yet: a cached tab can keep working, but reliable offline reload/PWA installation is not claimed.
 
-Use a modern desktop browser with WebGL, WebAssembly and module worker support. Chrome is the default browser smoke-test target, with an Edge option; Firefox and Safari compatibility has not been established by the included checks. Hardware acceleration is recommended for 3D rendering.
+Use a modern browser with WebGL, WebAssembly and module worker support. Google Chrome, Microsoft Edge, Safari and Samsung Internet / Samsung Browser have been extensively **manually tested**. Automated Playwright smoke coverage targets Chromium through Chrome, with an Edge option; it does not cover Safari, Samsung Internet or Firefox. No universal browser compatibility is claimed. Hardware acceleration is recommended for 3D rendering.
 
-Same-format exports preserve source values rather than writing normalized display coordinates. Unchanged exports return the original bytes. Modified exports have format-specific limits: C3D event editing supports up to 255 events, force-baseline intervals must survive cropping, and unknown H5 time-dependent datasets or unsupported storage types may block modified export. H5 marker clocks must be regular; other supported signal clocks may be irregular. Rigid-body rotations are retained as structured data, not rendered as an anatomical skeleton. See [cropping/export limits](docs/CROPPING_EXPORT.md), [event editing](docs/EVENT_EDITING.md) and [H5 validation](docs/H5_VALIDATION.md), including the legacy institute reader incompatibility.
+Same-format exports preserve source values rather than writing normalized display coordinates. Unchanged exports return the original bytes. Modified exports have format-specific limits: C3D event editing supports up to 255 events, force-baseline intervals must survive cropping, and unknown H5 time-dependent datasets or unsupported storage types may block modified export. H5 marker clocks must be regular; other supported signal clocks may be irregular. Rigid-body rotations are retained as structured data, not rendered as an anatomical skeleton. See [cropping/export limits](docs/CROPPING_EXPORT.md), [event editing](docs/EVENT_EDITING.md) and [H5 validation](docs/H5_VALIDATION.md).
 
 C3D data labels support up to 255 UTF-8 bytes; H5 labels have no application-imposed length limit. Force-platform names round-trip in JE Motion Lab through an optional C3D `FORCE_PLATFORM:LABELS` parameter; other readers may still display platform numbers. Renaming markers retains existing preset connections within the session; re-import resolves presets against the exported names. Cropping clears undo/redo; exporting preserves history and the Modified indicator because the original loaded file remains the baseline.
 
@@ -96,7 +98,7 @@ local File → Worker → C3DImporter / H5Importer → MotionData
 | `src/viewer/`, `src/plots/`, `src/components/`     | 3D scene, signal inspector, timeline and editing controls                 |
 | `tests/`, `scripts/`, `docs/`                      | Synthetic fixtures, validation tools and technical documentation          |
 
-See [architecture](docs/ARCHITECTURE.md), [Python audit](docs/PYTHON_REFERENCE.md), [migration map](docs/MIGRATION.md), [parser decisions](docs/PARSERS.md), and [validation](docs/VALIDATION.md).
+See [architecture](docs/ARCHITECTURE.md), [parser decisions](docs/PARSERS.md), and [validation](docs/VALIDATION.md).
 
 Cross-format export creates a fresh file from imported, edited/cropped data and can be lossy. H5→C3D requires aligned point/analog grids and uses float32 storage. Compatible stationary plates reuse validated original TYPE-2/3/4 definitions and existing analog channels when embedded metadata is available; otherwise each plate uses a derived six-axis TYPE-2 fallback. Accepted surveyed corners retain their coordinates/order without a geometry warning. Differing stored COP/free moment is reported and omitted only when the chosen representation cannot reproduce it. Imported subject/project/file/location and coordinate descriptions are retained in documented `JE_METADATA` parameters, which other readers may not display automatically. Rigid bodies, IK/ID, trajectory Type/Virtual/camera fields and unrelated raw trees are omitted. C3D→H5 writes the current institute schema with normalized values and a limited subject/provenance mapping. Review the [four export paths and compatibility matrix](docs/CROSS_FORMAT_EXPORT.md) for exact limits; conversion is not lossless.
 
@@ -106,6 +108,7 @@ Cross-format export creates a fresh file from imported, edited/cropped data and 
 npm test
 npm run typecheck
 npm run build
+npm run format:check
 npm run preview
 ```
 
@@ -113,7 +116,7 @@ npm run preview
 
 Scientific tests cover units, frame/time mapping, gaps, binary C3D variants, compressed HDF5, force transformations/calibration/COP and malformed input. Editing regressions cover all label collections, unchanged scientific arrays, undo/redo, dirty-state transitions, source identity and C3D/H5 round trips. Synthetic fixtures contain no participant data.
 
-Private local reference comparisons skip when `.local/reference.json` is absent. If that manifest exists but points to missing original files, `npm test` reports failures. Regenerate the oracle on a machine with the originals; do not commit it or the recordings. For a separately reported run of the portable suite, use `npm test -- --exclude tests/reference.test.ts`; this does not validate private references or turn a failed full run into a pass.
+Optional local C3D comparisons skip when the ignored `.local/reference.json` oracle or its source recordings are unavailable. Available-input numerical failures remain failures. Regenerate a stale oracle on a machine with the originals and report skipped private comparisons separately; do not commit the oracle or recordings.
 
 With Chrome installed, run the browser and privacy smoke check after building:
 
@@ -121,12 +124,12 @@ With Chrome installed, run the browser and privacy smoke check after building:
 npm run test:browser
 ```
 
-For Microsoft Edge, set `BROWSER_CHANNEL=msedge`. This check exercises viewer controls using synthetic C3D/H5 test fixtures, any available local reference files, error recovery, the footer version, request URLs/methods/bodies and browser storage. Analytics requests are intercepted locally to validate event-only payloads without affecting live counts; the check does not validate the deployed Worker or D1. Reports and screenshots stay under ignored `.local/`.
+For Microsoft Edge, set `BROWSER_CHANNEL=msedge`. This check exercises viewer controls using synthetic C3D/H5 test fixtures, error recovery, the footer version, request URLs/methods/bodies and browser storage. Analytics requests are intercepted locally to validate event-only payloads without affecting live counts; the check does not validate the deployed Worker or D1. Reports and screenshots stay under ignored `.local/`.
 
-Optional local numerical comparison requires Python with ezc3d/numpy and the original sibling `ibo-biomech` files:
+Optional local numerical comparison requires Python with ezc3d/numpy and explicit local C3D paths, supplied directly or as an ignored JSON array in `.local/reference-inputs.json`:
 
 ```sh
-python scripts/reference-export.py
+python scripts/reference-export.py --manifest .local/reference-inputs.json
 npm run validate:reference
 ```
 
@@ -179,4 +182,4 @@ JE Motion Lab is under active pre-1.0 development. Support is limited to the doc
 
 Published GitHub releases and their tags establish release history. [package.json](package.json) supplies the application version, injected at build time and shown in the footer; the lockfile matches it. See [CHANGELOG.md](CHANGELOG.md) for formal releases and unreleased changes, and [the manual release workflow](docs/RELEASING.md) for Semantic Versioning, release PRs, tags and GitHub Releases. An ordinary feature merge does not require a version bump: the package/footer retain the latest formal release version while changes accumulate under `[Unreleased]`. They advance when the next release is intentionally prepared. The Pages application follows `main` and can be ahead of the latest formal release. The historical package-version mismatch in the first GitHub release is documented in the changelog.
 
-See [event visualization and editing](docs/EVENT_EDITING.md) for immutable event operations, relative-second timing, C3D serialization and current and previous supported institute H5 event layouts. See [authoritative H5 validation](docs/H5_VALIDATION.md) for round-trip results and remaining limits.
+See [event visualization and editing](docs/EVENT_EDITING.md) for immutable event operations, relative-second timing, C3D serialization and the current institute H5 event layout. See [authoritative H5 validation](docs/H5_VALIDATION.md) for round-trip results and remaining limits.

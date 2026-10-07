@@ -416,6 +416,86 @@ it('fails with path-specific errors for current count, event and channel corrupt
   }
 });
 
+it('rejects obsolete collection versions, geometry, event columns and flat metadata', async () => {
+  await withSynthetic((file) => {
+    for (const [path, version] of [
+      ['Events', 1],
+      ['RigidBodies', 1],
+      ['ForcePlates/0', 2],
+    ] as const) {
+      const original = file.get(path) as h5.Group;
+      const obsolete = {
+        get: (key: string) => {
+          if (key === path)
+            return {
+              attrs: { ...original.attrs, SchemaVersion: { value: version } },
+              get: original.get.bind(original),
+            };
+          if (path === 'ForcePlates/0' && key === 'ForcePlates')
+            return { keys: () => ['0'], get: () => obsolete.get(path) };
+          return file.get(key);
+        },
+      };
+      expect(() => parseH5Tree(obsolete, 'obsolete.h5')).toThrow('Unsupported institute H5 schema');
+    }
+    const plate = file.get('ForcePlates/0') as h5.Group;
+    for (const field of ['Location', 'Offset']) {
+      const obsolete = {
+        get: (path: string) =>
+          path === 'ForcePlates'
+            ? {
+                keys: () => ['0'],
+                get: () => ({
+                  attrs: plate.attrs,
+                  get: (key: string) => (key === field ? {} : plate.get(key)),
+                }),
+              }
+            : file.get(path),
+      };
+      expect(() => parseH5Tree(obsolete, 'obsolete.h5')).toThrow(
+        'obsolete Location/Offset geometry',
+      );
+    }
+    for (const [field, shape] of [
+      ['Force', [16, 3]],
+      ['Tz', [16]],
+    ] as const) {
+      const obsolete = {
+        get: (path: string) =>
+          path === 'ForcePlates'
+            ? {
+                keys: () => ['0'],
+                get: () => ({
+                  attrs: plate.attrs,
+                  get: (key: string) => (key === field ? { shape } : plate.get(key)),
+                }),
+              }
+            : file.get(path),
+      };
+      expect(() => parseH5Tree(obsolete, 'obsolete.h5')).toThrow('expected [3,samples]');
+    }
+    const events = file.get('Events') as h5.Group;
+    const oldEvents = {
+      get: (path: string) =>
+        path === 'Events'
+          ? {
+              keys: () => ['Name', 'Description', 'Frame', 'Time'],
+              get: (key: string) =>
+                ['Context', 'Subject', 'GenericFlag', 'IconID'].includes(key)
+                  ? null
+                  : events.get(key),
+            }
+          : file.get(path),
+    };
+    expect(() => parseH5Tree(oldEvents, 'obsolete.h5')).toThrow('Missing Context');
+    const flat = {
+      get: (path: string) =>
+        ['MetaData/Project', 'MetaData/FileInfo'].includes(path) ? null : file.get(path),
+    };
+    expect(() => parseH5Tree(flat, 'obsolete.h5')).toThrow('current nested MetaData');
+  });
+});
+
 it('normalizes current spatial/force/moment units independently and exports original values and units', async () => {
   await h5.ready;
   const path = resolve(folder, 'current-units.h5');
@@ -445,36 +525,6 @@ it('normalizes current spatial/force/moment units independently and exports orig
       const reopened = parseH5Tree(exported, 'units.h5');
       expect(reopened.markers.positions).toEqual(motion.markers.positions);
       expect(reopened.forcePlatforms).toEqual(motion.forcePlatforms);
-    } finally {
-      exported.close();
-    }
-  } finally {
-    file.close();
-  }
-});
-
-it('honors collection-level versions in transitional files and preserves opaque v1 event columns', async () => {
-  await h5.ready;
-  const path = resolve(folder, 'current-v1-events.h5');
-  writeFileSync(path, Buffer.from(fixture.base64, 'base64'));
-  const file = new h5.File(path, 'a');
-  try {
-    const group = file.get('Events') as h5.Group;
-    group.create_attribute('SchemaVersion', 1);
-    group.create_attribute('Scope', 'Trial clock; zero-based source point frames; seconds');
-    const motion = parseH5Tree(file, 'transitional.h5');
-    expect(motion.source.h5Layout).toBe('institute-current');
-    expect(motion.source.eventSchema).toBe('institute-v1');
-    expect(eventContextAvailable(motion)).toBe(false);
-    const edited = updateEvent(motion, 0, { ...motion.events[0], description: 'Updated' });
-    const exported = output(file, motion, 'current-v1-edited', 0, 8, edited.events);
-    try {
-      for (const key of ['Context', 'Subject', 'GenericFlag', 'IconID']) {
-        const original = dataset(file, `Events/${key}`).value as ArrayLike<unknown>;
-        expect(Array.from(dataset(exported, `Events/${key}`).value as ArrayLike<unknown>)).toEqual(
-          edited.events.map((event) => original[event.sourceIndex!]),
-        );
-      }
     } finally {
       exported.close();
     }
