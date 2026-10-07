@@ -1,6 +1,8 @@
 # Image export
 
-Choose **Export image** beside the 3D camera controls, then **Export PNG**.
+Choose **Export media → Export image…** beside the 3D camera controls, then **Export PNG**.
+The image configuration is separate from [video export](VIDEO_EXPORT.md), and
+remains available when the browser has no supported video encoder.
 This exports the scientific scene, including visible markers, their colors,
 connections, marker/plate labels, force vectors, COP, plate geometry, grid and
 axes against the current scene background. Sidebars, plots, timeline, viewer
@@ -46,8 +48,7 @@ WebGL and browser memory limits can prevent large exports; choose a smaller
 resolution if an error appears. Closing, Escape or Cancel aborts pending work
 and suppresses the file export. A synchronous GPU render may finish before a
 cancel action can be processed. Text sprites retain their existing scene texture
-resolution. Transparent backgrounds, DOM capture and video export are outside
-this feature's scope.
+resolution. Transparent backgrounds and DOM capture are outside this feature's scope.
 
 Automated Chrome/Edge smoke checks cover actual PNG exports; Safari and Samsung
 Internet need manual image-export checks before release. Native canvas, Blob and

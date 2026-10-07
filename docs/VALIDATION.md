@@ -110,6 +110,21 @@ including large-resolution errors, Escape/cancellation and repeated exports.
 The existing manual application coverage does not establish support for this
 new feature. See [image export](IMAGE_EXPORT.md).
 
+Media/video regressions cover the single menu/separate dialogs, unsupported-video
+image fallback, 30/60 fps, fractional starts, source frame origins, slow motion,
+short/zero spans, endpoint duration, codec preference/fallback, correct extensions
+and unchanged scientific session/camera/clock on success, cancellation and
+startup/render/encoding/memory/timeout failures. A test-only independent EBML
+parser verifies actual dimensions, codec IDs, packet timestamps/durations and seek
+cues. Browser checks intercept short synthetic videos, inspect frame counts and
+timestamps, decode files in a blank local browser page and retain complete PNG
+regressions. The app's CSP still blocks embedded Blob media; validation does not
+loosen it. Generated videos are read in memory and deleted after inspection.
+
+Native offline timestamps are deterministic; compressed bytes need not be.
+Manually check video encoding/cancellation/unsupported fallback and physical
+duration in Safari and Samsung Internet before claiming support. See [video export](VIDEO_EXPORT.md).
+
 The application has also been extensively **manually tested** in Google Chrome,
 Microsoft Edge, Safari and Samsung Internet / Samsung Browser. No browser version
 numbers or universal compatibility are claimed. A browser needs WebGL,

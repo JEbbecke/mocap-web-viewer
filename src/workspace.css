@@ -1058,14 +1058,17 @@ footer .privacy-dot {
   gap: 12px;
   margin-top: 18px;
 }
-.image-export-dialog {
+.image-export-dialog,
+.video-export-dialog {
   width: min(430px, calc(100vw - 32px));
 }
-.image-export-dialog p {
+.image-export-dialog p,
+.video-export-dialog p {
   line-height: 1.5;
   font-size: 12px;
 }
-.image-resolution {
+.image-resolution,
+.media-export-field {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -1077,8 +1080,20 @@ footer .privacy-dot {
   gap: 8px;
   font-size: 12px;
 }
-.image-export-dialog [role='alert'] {
+.image-export-dialog [role='alert'],
+.video-export-dialog [role='alert'] {
   color: #ffc1b4;
+}
+.media-export-control .export-menu p {
+  max-width: 250px;
+  padding: 6px 12px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #a2b6c6;
+}
+.video-export-dialog progress {
+  width: 100%;
+  margin-top: 12px;
 }
 
 .footer-gh-repo {

@@ -29,7 +29,8 @@ Playback uses requestAnimationFrame and elapsed time at the actual point rate. O
 
 Plotting materializes a time column and up to three component columns for the currently selected signal, with nulls for gaps. Those arrays duplicate that selected signal only, are memoized across playback frames, and are released when the selection changes. The implementation does not create copies of every analog/force stream at marker rate. C3D marker positions use Float32; H5 marker positions retain Float64, with Float32 buffers for GPU rendering. Force calculations and original-rate analog signals use Float64. No large-file performance guarantee has been inferred from the smaller reference trials.
 
-`ImageExportControl` is a dedicated viewer action with local dialog/options state.
+`MediaExportControl` owns one viewer menu with separate `ImageExportControl` and
+`VideoExportControl` dialogs. Options/progress remain local UI state.
 `ImageExportBridge` waits for this R3F root's next completed render via an after
 effect, then `viewer/imageExport.ts` renders the existing scene with a temporary
 detached-canvas renderer and cloned camera. This retains the exact frame buffers,
@@ -39,6 +40,17 @@ watermark in a 2D canvas, encoded with `toBlob()` and offered through a local Bl
 URL. Temporary contexts/canvases are released on success, failure or cancellation.
 No scientific worker, session write, history edit or analytics event is involved.
 See [image export](IMAGE_EXPORT.md) for projection fitting and browser limits.
+
+Video reuses the image surface, camera fitting, watermark and basename helpers.
+A short-lived scene snapshot clones mutable geometry/instance buffers; registered
+`useScientificFrame` callbacks update live and export objects with identical
+display math. Explicit physical times drive native WebCodecs VP9/VP8 encoding,
+independent of wall time. `videoTiming.ts` defines the half-open recorded sample
+span and shortened final frame; `webm.ts` writes a narrow video-only container
+with microsecond timestamps, durations and seek cues. The playback clock holds
+without session writes and resumes without catch-up. Four-frame batches, limits,
+cancellation and finally blocks bound resources. There is no stream capture,
+remote encoding, encoder dependency or data mutation. See [video export](VIDEO_EXPORT.md).
 
 MoCap files, filenames, metadata and measurements remain local and never enter analytics. Static assets and browser workers are bundled; there are no remote fonts or runtime CDN imports. A separate Cloudflare Worker receives only `visit`, `c3d_loaded` and `h5_loaded` event types for aggregate daily country/event counts in D1. A non-identifying `sessionStorage` flag suppresses repeated visit attempts in a tab session; every successful file load sends a load event. No recording is put in browser storage, URLs or browser history. See [analytics](ANALYTICS.md) for exact triggers and the limits of verifying the separately managed backend.
 
