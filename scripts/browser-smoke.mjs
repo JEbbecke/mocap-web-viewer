@@ -7,6 +7,11 @@ import assert from 'node:assert/strict';
 import * as h5 from 'h5wasm/node';
 import { verifyExplorer, verifyLargeExplorer, verifyCroppedExplorer } from './browser-explorer.mjs';
 import {
+  verifyImageExport,
+  verifyMovingPlateImages,
+  captureSceneImage,
+} from './browser-image-export.mjs';
+import {
   chooseExportFormat,
   createCorrectedCopFixture,
   verifyCrossFormat,
@@ -697,6 +702,7 @@ try {
   await page.getByLabel('Force plate numbers', { exact: true }).check();
   await page.getByRole('button', { name: 'Top', exact: true }).click();
   await page.screenshot({ path: '.local/plate-numbers-top.png' });
+  await verifyImageExport(page, 'populated.h5');
   await page.getByRole('button', { name: 'Reset', exact: true }).click();
   await page.getByRole('button', { name: 'Split plots', exact: true }).click();
   assert.equal(await page.locator('.u-over').count(), 2, 'split view creates two plots');
@@ -1079,6 +1085,14 @@ try {
       await page.getByRole('slider', { name: 'Frame', exact: true }).getAttribute('aria-valuemax'),
       '1',
     );
+    const croppedFrame = await playhead.getAttribute('aria-valuenow');
+    await captureSceneImage(page, `synthetic.${extension}`, 'viewport', false);
+    assert.equal(
+      await playhead.getAttribute('aria-valuenow'),
+      croppedFrame,
+      'image export preserves the cropped timeline',
+    );
+    assert(await undoButton.isDisabled(), 'image export adds no crop history');
     const exportPromise = page.waitForEvent('download');
     await chooseExportFormat(page, extension === 'c3d' ? 'C3D' : 'H5');
     const exportedFile = await exportPromise;
@@ -1153,6 +1167,7 @@ try {
     const last = await canvas.screenshot({ path: '.local/moving-plate-frame-2.png' });
     assert(!last.equals(empty), 'final plate frame remains in camera bounds');
     assert(!last.equals(middle), 'plate advances to final geometry frame');
+    await verifyMovingPlateImages(page, 'moving-plates.h5');
   }
   // Both HDF5 extensions share one load event, with no filename in the payload.
   const hdf5Load = page.waitForResponse(

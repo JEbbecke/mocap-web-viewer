@@ -9,6 +9,8 @@ Changes since the latest formal release remain under `[Unreleased]`.
 
 ### Added
 
+- High-resolution PNG export of the current 3D scene at viewport, 1920 × 1080 or 3840 × 2160 resolution, with an optional JE Motion Lab watermark and entirely browser-local processing.
+
 - Browser-local C3D→H5 and supported H5→C3D export, with a compatibility review showing included data, changed representations, omissions and blocking errors. Same-format C3D/H5 export keeps the existing source-preserving path. Conversion creates a fresh file from imported data; unsupported mappings are reported rather than guessed. ([#13], [#14])
 - Apache-2.0 licensing, author attribution in `NOTICE`, and scientific citation metadata in `CITATION.cff`, with README guidance distinguishing license obligations from requested scientific citation. ([#12])
 - Footer links to [Privacy](https://jemolab.com/privacy.html) and [Imprint](https://jemolab.com/imprint.html) give access to the current privacy policy and legal notice. ([#12])

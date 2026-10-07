@@ -8,6 +8,9 @@ import { sceneLength, SCENE_UNITS_PER_MM } from './scale';
 import { sample, sample3 } from '../motion/math';
 import { resolveConnections } from '../motion/connections';
 import { setCamera, useSession, type CameraPreset } from '../state/session';
+import { ImageExportControl } from '../components/ImageExportControl';
+import { ImageExportBridge } from './ImageExportBridge';
+import type { ImageExportRequest } from './imageExport';
 
 function bounds(data: MotionData) {
   const box = new THREE.Box3(),
@@ -463,6 +466,7 @@ function Ground() {
   );
 }
 export function Viewer3D({ data, active = true }: { data: MotionData | null; active?: boolean }) {
+  const imageExport = useRef<ImageExportRequest | null>(null);
   return (
     <div className="viewport">
       <Canvas
@@ -480,6 +484,7 @@ export function Viewer3D({ data, active = true }: { data: MotionData | null; act
         <ambientLight intensity={1.3} />
         <directionalLight position={[3, -2, 5]} intensity={2} />
         <Ground />
+        <ImageExportBridge request={imageExport} />
         {data ? (
           <>
             <Camera data={data} />
@@ -506,6 +511,7 @@ export function Viewer3D({ data, active = true }: { data: MotionData | null; act
             {p === 'perspective' ? 'Reset' : p[0].toUpperCase() + p.slice(1)}
           </button>
         ))}
+        <ImageExportControl data={data} active={active} request={imageExport} />
       </div>
       <div className="viewport-footer">
         <span>

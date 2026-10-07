@@ -29,6 +29,17 @@ Playback uses requestAnimationFrame and elapsed time at the actual point rate. O
 
 Plotting materializes a time column and up to three component columns for the currently selected signal, with nulls for gaps. Those arrays duplicate that selected signal only, are memoized across playback frames, and are released when the selection changes. The implementation does not create copies of every analog/force stream at marker rate. C3D marker positions use Float32; H5 marker positions retain Float64, with Float32 buffers for GPU rendering. Force calculations and original-rate analog signals use Float64. No large-file performance guarantee has been inferred from the smaller reference trials.
 
+`ImageExportControl` is a dedicated viewer action with local dialog/options state.
+`ImageExportBridge` waits for this R3F root's next completed render via an after
+effect, then `viewer/imageExport.ts` renders the existing scene with a temporary
+detached-canvas renderer and cloned camera. This retains the exact frame buffers,
+background and live color/tone settings without a second scene, live resize or
+persistent renderer. Native-resolution output is composited with an optional
+watermark in a 2D canvas, encoded with `toBlob()` and offered through a local Blob
+URL. Temporary contexts/canvases are released on success, failure or cancellation.
+No scientific worker, session write, history edit or analytics event is involved.
+See [image export](IMAGE_EXPORT.md) for projection fitting and browser limits.
+
 MoCap files, filenames, metadata and measurements remain local and never enter analytics. Static assets and browser workers are bundled; there are no remote fonts or runtime CDN imports. A separate Cloudflare Worker receives only `visit`, `c3d_loaded` and `h5_loaded` event types for aggregate daily country/event counts in D1. A non-identifying `sessionStorage` flag suppresses repeated visit attempts in a tab session; every successful file load sends a load event. No recording is put in browser storage, URLs or browser history. See [analytics](ANALYTICS.md) for exact triggers and the limits of verifying the separately managed backend.
 
 Production CSP permits connections to `'self'` and `https://je-motion-analytics.jonasebbecke97.workers.dev`; development additionally permits local Vite WebSockets and its inline preamble. Analytics JSON POSTs may require CORS preflights. External scripts, frames, objects and form submissions remain blocked. The event-only payload does not conceal IP addresses or normal request headers from hosting/Cloudflare infrastructure. Offline PWA caching is deferred.
