@@ -28,6 +28,7 @@ export interface C3DAnalogEncoding {
 }
 export interface ForcePlatform {
   name: string;
+  type?: number; // declared C3D FORCE_PLATFORM:TYPE; determines ORIGIN component semantics
   sourceIndex?: number;
   sourcePath?: string;
   force: Series;
@@ -37,7 +38,7 @@ export interface ForcePlatform {
   corners?: Series; // sample-major [corner, xyz], 12 components; one sample = static
   position?: Series; // plate origin in global XYZ, mm
   rotation?: Series; // row-major local-to-global 3x3 matrices, independent geometry clock
-  origin?: Float64Array; // sensor offset in mm below the surface; not a translation of global corners
+  origin?: Float64Array; // C3D-style ORIGIN in mm: sensor-to-surface vector (2/4), sensor spacing and depth (3)
   poseFrame?: 'global'; // declared global pose
   coordinateFrame: 'global' | 'unresolved';
   provenance: string;

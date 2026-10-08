@@ -70,11 +70,11 @@ M = markers, F = point frames, C = channels, S = a stream's own samples, E = eve
 | ForcePlates/<index>/Corners               | float64 [3,4,S]       | Global mm, force or point geometry grid                      | Moving outline; slice own geometry clock; preserve corner order                                       |
 | ForcePlates/<index>/Position              | float64 [3,S]         | Global mm                                                    | Structured/rendering pose; slice own geometry clock                                                   |
 | ForcePlates/<index>/Rotation              | float64 [3,3,S]       | Dimensionless local-to-global matrices                       | Pose; slice own geometry clock; never rotate global vectors again                                     |
-| ForcePlates/<index>/Origin                | float64 [3,1]         | Sensor offset, position unit                                 | Static; never translate already-global corners by this offset                                         |
+| ForcePlates/<index>/Origin                | float64 [3,1]         | C3D ORIGIN components, position unit; meaning follows TYPE   | Static provenance; type-specific helper placement; never translate already-global corners             |
 | ForcePlates/<index>/Time                  | float64 [S]           | Absolute seconds, independent force grid                     | Synchronization; slice                                                                                |
 | RigidBodies/<index>/Markers               | UTF-8 [members]       | Membership names                                             | Static metadata; update matching renamed marker references                                            |
 | RigidBodies/<index>/Position              | float64 [3,F]         | Unit; marker grid by sample count                            | mm position signals; slice point grid while retaining body's own frame origin                         |
-| RigidBodies/<index>/Rotation              | float64 [3,3,F]       | Parent convention unknown                                    | Structured orientation; slice point grid                                                              |
+| RigidBodies/<index>/Rotation              | float64 [3,3,F]       | Stored orientation; source parent convention unverified      | Structured orientation and optional direct local axes; slice point grid                               |
 | {IKResults,IDResults}/Data                | float64 [variables,S] | Labels, optional time row; per-variable units absent         | Catalog/counts and rename; Data Explorer reads local sample pages; retain independent results on crop |
 | {IKResults,IDResults}/Time                | float64 [S]           | Independent processing clock; no declared trial relationship | Preserve without forced alignment; no new plots or invented offset                                    |
 | Events/{Name,Context,Description,Subject} | UTF-8 [E]             | Parallel metadata                                            | Timeline/editor; preserve text/whitespace; CRUD and time-based row crop                               |
@@ -157,6 +157,11 @@ to Nm. Raw H5 export retains source numerical values and matching units; renderi
 scale and lab-to-scene conventions never enter scientific serialization.
 Global plate vectors are not rotated twice. Handedness, compass directions, body
 parent convention and Type codes cannot be established from this file alone.
+Optional [local coordinate systems](LOCAL_COORDINATE_SYSTEMS.md) use declared
+global plate Position/Rotation directly and omit plate helpers when that frame
+is incomplete. Body helpers display stored Position/Rotation directly as lab
+poses; this interpretation does not independently establish a producer's parent
+convention. Both are display aids with unchanged raw data/export semantics.
 
 Point and analog/force clocks have different rates. Half-open crop intervals
 include all high-rate subframes and retain absolute source timestamps and frames.
@@ -185,13 +190,22 @@ Chunk dimensions and maximum extents are storage details, distinguished from val
 `Corners[3,4,frames]` contains global corner coordinates at each geometry frame.
 It can use the point grid independently of the higher-rate force Time dataset.
 `Position` is the origin in global XYZ; `Rotation` maps local axes to the global
-frame. `Origin` gives the sensor offset below the plate plane. Static Position
+frame. `Origin` follows the declared C3D type: sensor spacing/depth for TYPE-3,
+or the sensor-to-surface vector for TYPE-2/4. Static Position
 and Rotation arrays (without a time dimension) are also accepted.
 
 Rendering samples the global corners directly in physical time. Position and
 Rotation orient and place the identifier on the surface; Origin is not applied
 again as a translation of already-global corners. Camera framing includes the
 full plate trajectory. Surface depth bias avoids interference with the ground
-grid. Cropping slices point-rate geometry on the point clock, even when the
+grid. Optional local coordinate-system helpers use `Position - Rotation × d`
+for their origin, with depth-only `d` for TYPE-1/3 and the full ORIGIN vector for
+TYPE-2/4. Embedded C3D TYPE metadata is retained independently of complete
+calibration/channel definitions. Unknown nonzero ORIGIN semantics omit the helper.
+The displacement follows the current pose without projection onto the surface.
+Global corners and scientific values are unchanged. See
+[type-specific origin rules](LOCAL_COORDINATE_SYSTEMS.md).
+
+Cropping slices point-rate geometry on the point clock, even when the
 same plate also has a separate force-rate Time array. Pose data are never used
 to infer that unresolved force vectors are global.

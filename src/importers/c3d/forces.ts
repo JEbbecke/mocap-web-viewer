@@ -137,6 +137,7 @@ export function extractPlatforms(
       });
       result.push({
         name: names[plate] || `Plate ${plate + 1}`,
+        type,
         sourceIndex: plate,
         force: series(force),
         moment: series(moment),

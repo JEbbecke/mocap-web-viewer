@@ -10,7 +10,7 @@ Local File → short-lived module Worker → C3D or institute H5 importer
                     R3F / Three.js  timeline     uPlot / inspector
 ```
 
-MotionData is format-independent: a regular point timeline with source frame origin, frame-major contiguous marker XYZ in millimetres, validity/residuals, original-rate analog channels, original-rate global forces (N), moments (Nm), COP/corners (mm), events in relative seconds and source warnings. Geometry carries its own rate. No renderer chooses behavior from source format. Unknown force frames are a general data quality state, not an H5 rendering branch.
+MotionData is format-independent: a regular point timeline with source frame origin, frame-major contiguous marker XYZ in millimetres, validity/residuals, original-rate analog channels, original-rate global forces (N), moments (Nm), COP/corners (mm), events in relative seconds and source warnings. Geometry carries its own rate. Scene objects share one normalized rendering path; the local-frame resolver additionally requires a declared global pose or an established source corner convention. Unknown force frames are a general data quality state, not an H5 rendering branch.
 
 Importers validate magic, schema, sizes and rates. C3D binary parsing is isolated; unsupported processors/features fail explicitly or omit only the affected force platform with warnings. HDF5 uses bundled h5wasm in a Worker with a local File mounted through WORKERFS. The worker is terminated after completion or cancellation; arrays transfer rather than clone. C3D needs one input ArrayBuffer plus normalized arrays temporarily. HDF5 decompresses each dataset in WASM and copies it to normalized typed arrays, then closes/unmounts and terminates the WASM heap. The session retains an immutable local File reference for source-preserving export, without persistence.
 
@@ -28,6 +28,22 @@ the header and is blocked during busy operations or an unapplied crop selection.
 Playback uses requestAnimationFrame and elapsed time at the actual point rate. Only the small timeline/inspector subscribe to frame changes; scene buffers and plot cursor update imperatively. Markers are instanced, connections use one line buffer. All positions keep lab XYZ; Three's camera uses Z up and grid lies on XY. Display GRF scale defaults to 1 mm/N. Temporary render coordinates use 0.001 scene units/mm; camera bounds, marker/plate buffers, COP and labels share this boundary without mutating MotionData. See [unit policy](UNITS.md) for scientific conversions and export semantics. Display threshold is configurable and never edits data.
 
 Plotting materializes a time column and up to three component columns for the currently selected signal, with nulls for gaps. Those arrays duplicate that selected signal only, are memoized across playback frames, and are released when the selection changes. The implementation does not create copies of every analog/force stream at marker rate. C3D marker positions use Float32; H5 marker positions retain Float64, with Float32 buffers for GPU rendering. Force calculations and original-rate analog signals use Float64. No large-file performance guarantee has been inferred from the smaller reference trials.
+
+Optional [local coordinate systems](LOCAL_COORDINATE_SYSTEMS.md)
+are ordinary scene objects owned by the corresponding object lifecycle. The
+plate-frame resolver uses declared global poses, or C3D's established ordered-corner
+`plateBasis` and surface-centre anchor; arbitrary H5 corner winding is insufficient.
+Importers retain each platform's declared C3D type as provenance. The helper
+subtracts its type-specific sensor-to-surface displacement after rotating it into
+lab space: TYPE-3 X/Y spacing does not move the origin, while TYPE-2/4 use the full
+vector. Unknown nonzero ORIGIN semantics omit the helper. Global corners and
+scientific pose/signal arrays are unchanged.
+Helpers share one physical axis-length constant and the existing render scale,
+and update through `useScientificFrame` for live playback and media snapshots.
+`RigidBodies` renders stored body positions and rotation columns directly, with
+no marker-derived pivots/orientations or parent hierarchy. The source-parent
+convention remains a documented validation limit. Their visibility belongs
+solely to session display state.
 
 `MediaExportControl` owns one viewer menu with separate `ImageExportControl` and
 `VideoExportControl` dialogs. Options/progress remain local UI state.

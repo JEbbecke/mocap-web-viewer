@@ -27,6 +27,29 @@ function numeric(root: H5Node, path: string, shape?: number[]): number[] {
 
 /** HDF5 attribute arrays are row-major, unlike C3D parameter arrays.
  * Never infer the original plate type or channel mapping from signal labels. */
+export function embeddedC3DPlateType(root: H5Node, key: string): number | undefined {
+  if (!group(root, 'FORCE_PLATFORM')) return;
+  try {
+    const used = numeric(root, 'FORCE_PLATFORM/USED')[0],
+      index = Number(key);
+    const types = numeric(root, 'FORCE_PLATFORM/TYPE');
+    if (
+      !Number.isInteger(used) ||
+      used < 1 ||
+      used > 1024 ||
+      !/^\d+$/.test(key) ||
+      index >= used ||
+      types.length !== used
+    )
+      return;
+    const type = types[index];
+    return Number.isSafeInteger(type) && type > 0 ? type : undefined;
+  } catch {
+    // Type provenance can be unavailable even when the current global pose is valid.
+    return;
+  }
+}
+
 export function embeddedC3DPlate(root: H5Node, key: string): ForcePlatform['c3dSource'] {
   if (!group(root, 'FORCE_PLATFORM')) return;
   try {

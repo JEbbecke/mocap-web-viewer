@@ -20,7 +20,7 @@ export async function captureSceneVideo(
   page,
   sourceName,
   physicalDuration,
-  { fps = 30, speed = 1, watermark = false, resolution = '1080p' } = {},
+  { fps = 30, speed = 1, watermark = false, resolution = '1080p', decodedSampleSize = 64 } = {},
 ) {
   await openMediaWorkflow(page, 'video');
   const dialog = page.getByRole('dialog', { name: 'Export video', exact: true });
@@ -59,58 +59,62 @@ export async function captureSceneVideo(
   const playbackPage = await page.context().browser().newPage();
   let playable;
   try {
-    playable = await playbackPage.evaluate(async (base64) => {
-      const data = Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
-      const url = URL.createObjectURL(new Blob([data], { type: 'video/webm' }));
-      const video = document.createElement('video');
-      video.muted = true;
-      video.preload = 'auto';
-      try {
-        await new Promise((resolve, reject) => {
-          const timer = setTimeout(() => reject(new Error('Video decoding timed out')), 10000);
-          video.onloadeddata = () => {
-            clearTimeout(timer);
-            resolve();
+    playable = await playbackPage.evaluate(
+      async ({ base64, sampleSize }) => {
+        const data = Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
+        const url = URL.createObjectURL(new Blob([data], { type: 'video/webm' }));
+        const video = document.createElement('video');
+        video.muted = true;
+        video.preload = 'auto';
+        try {
+          await new Promise((resolve, reject) => {
+            const timer = setTimeout(() => reject(new Error('Video decoding timed out')), 10000);
+            video.onloadeddata = () => {
+              clearTimeout(timer);
+              resolve();
+            };
+            video.onerror = () => {
+              clearTimeout(timer);
+              reject(new Error('Exported WebM cannot play'));
+            };
+            video.src = url;
+          });
+          const canvas = document.createElement('canvas');
+          canvas.width = sampleSize;
+          canvas.height = sampleSize;
+          const context = canvas.getContext('2d');
+          context.drawImage(video, 0, 0, sampleSize, sampleSize);
+          const pixels = Array.from(context.getImageData(0, 0, sampleSize, sampleSize).data);
+          const samples = [];
+          for (const time of [0, video.duration * 0.5, video.duration - 1e-6]) {
+            if (time > 0)
+              await new Promise((resolve, reject) => {
+                const timer = setTimeout(() => reject(new Error('Video seek timed out')), 10000);
+                video.onseeked = () => {
+                  clearTimeout(timer);
+                  resolve();
+                };
+                video.currentTime = time;
+              });
+            context.drawImage(video, 0, 0, sampleSize, sampleSize);
+            samples.push(Array.from(context.getImageData(0, 0, sampleSize, sampleSize).data));
+          }
+          return {
+            width: video.videoWidth,
+            height: video.videoHeight,
+            duration: video.duration,
+            pixels,
+            samples,
+            sampleSize,
           };
-          video.onerror = () => {
-            clearTimeout(timer);
-            reject(new Error('Exported WebM cannot play'));
-          };
-          video.src = url;
-        });
-        const canvas = document.createElement('canvas');
-        canvas.width = 64;
-        canvas.height = 64;
-        const context = canvas.getContext('2d');
-        context.drawImage(video, 0, 0, 64, 64);
-        const pixels = Array.from(context.getImageData(0, 0, 64, 64).data);
-        const samples = [];
-        for (const time of [0, video.duration * 0.5, video.duration - 1e-6]) {
-          if (time > 0)
-            await new Promise((resolve, reject) => {
-              const timer = setTimeout(() => reject(new Error('Video seek timed out')), 10000);
-              video.onseeked = () => {
-                clearTimeout(timer);
-                resolve();
-              };
-              video.currentTime = time;
-            });
-          context.drawImage(video, 0, 0, 64, 64);
-          samples.push(Array.from(context.getImageData(0, 0, 64, 64).data));
+        } finally {
+          video.removeAttribute('src');
+          video.load();
+          URL.revokeObjectURL(url);
         }
-        return {
-          width: video.videoWidth,
-          height: video.videoHeight,
-          duration: video.duration,
-          pixels,
-          samples,
-        };
-      } finally {
-        video.removeAttribute('src');
-        video.load();
-        URL.revokeObjectURL(url);
-      }
-    }, bytes.toString('base64'));
+      },
+      { base64: bytes.toString('base64'), sampleSize: decodedSampleSize },
+    );
   } finally {
     await playbackPage.close();
   }

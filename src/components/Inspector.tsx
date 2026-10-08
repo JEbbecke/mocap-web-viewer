@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import type { MotionData } from '../motion/types';
 import { connectionSets, resolveConnections } from '../motion/connections';
-import { useSession, type DisplayKey } from '../state/session';
+import { useSession } from '../state/session';
+import { displayOptions } from './displayOptions';
 import { PanelToggle } from './PanelToggle';
 import { FileInfo } from './FileInfo';
 import { DataBrowser } from './DataBrowser';
@@ -71,19 +72,7 @@ export function Inspector({
           <>
             <h4>Scene layers</h4>
             <div className="display-options">
-              {(
-                Object.entries({
-                  markers: 'Markers',
-                  connections: 'Marker connections',
-                  plates: 'Force plates',
-                  plateNumbers: 'Force plate numbers',
-                  forces: 'Ground reaction forces',
-                  cop: 'Centre of pressure',
-                  labels: 'Marker labels',
-                  grid: 'Ground grid',
-                  axes: 'Coordinate axes',
-                }) as [DisplayKey, string][]
-              ).map(([key, label]) => (
+              {displayOptions(data).map(([key, label]) => (
                 <label key={key}>
                   <input
                     type="checkbox"
