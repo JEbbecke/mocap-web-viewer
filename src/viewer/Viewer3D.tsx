@@ -14,6 +14,10 @@ import type { ImageExportRequest } from './imageExport';
 import { markerFrameAt, useScientificFrame } from './scientificScene';
 import { VideoExportBridge } from './VideoExportBridge';
 import type { VideoExportRequest } from './videoExport';
+import {
+  createPlatformCoordinateSystem,
+  createRigidBodyCoordinateSystem,
+} from './localCoordinateSystems';
 
 function bounds(data: MotionData) {
   const box = new THREE.Box3(),
@@ -30,6 +34,12 @@ function bounds(data: MotionData) {
         v.fromArray(values, i).multiplyScalar(SCENE_UNITS_PER_MM);
         if ([v.x, v.y, v.z].every(Number.isFinite)) box.expandByPoint(v);
       }
+  }
+  for (const body of data.rigidBodies ?? []) {
+    for (let i = 0; i < body.position.values.length; i += 3) {
+      v.fromArray(body.position.values, i).multiplyScalar(SCENE_UNITS_PER_MM);
+      if ([v.x, v.y, v.z].every(Number.isFinite)) box.expandByPoint(v);
+    }
   }
   if (box.isEmpty()) box.set(new THREE.Vector3(-1, -1, 0), new THREE.Vector3(1, 1, 2));
   return {
@@ -236,7 +246,7 @@ function MarkerLabels({ data }: { data: MotionData }) {
 function Plates({ data }: { data: MotionData }) {
   const objects = useMemo(
     () =>
-      data.forcePlatforms.map((_, index) => {
+      data.forcePlatforms.map((plate, index) => {
         const geometry = new THREE.BufferGeometry();
         geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(12), 3));
         geometry.setIndex([0, 1, 2, 0, 2, 3]);
@@ -307,6 +317,7 @@ function Plates({ data }: { data: MotionData }) {
           arrow,
           point,
           number,
+          coordinateSystem: createPlatformCoordinateSystem(plate, data.source),
           axisX: new THREE.Vector3(),
           axisY: new THREE.Vector3(),
           normal: new THREE.Vector3(),
@@ -329,6 +340,7 @@ function Plates({ data }: { data: MotionData }) {
         o.number.material.map?.dispose();
         o.number.material.dispose();
         o.number.geometry.dispose();
+        o.coordinateSystem.dispose();
       }
     },
     [objects],
@@ -336,6 +348,11 @@ function Plates({ data }: { data: MotionData }) {
   useScientificFrame(data, (time, state, resolve) => {
     data.forcePlatforms.forEach((plate, i) => {
       const original = objects[i];
+      original.coordinateSystem.update(
+        time,
+        state.display.plateCoordinateSystems,
+        resolve(original.coordinateSystem.axes),
+      );
       const o = {
           ...original,
           mesh: resolve(original.mesh),
@@ -464,7 +481,32 @@ function Plates({ data }: { data: MotionData }) {
           <primitive object={o.arrow} />
           <primitive object={o.point} />
           <primitive object={o.number} />
+          <primitive object={o.coordinateSystem.axes} />
         </group>
+      ))}
+    </group>
+  );
+}
+function RigidBodies({ data }: { data: MotionData }) {
+  const objects = useMemo(
+    () => (data.rigidBodies ?? []).map(createRigidBodyCoordinateSystem),
+    [data],
+  );
+  useEffect(
+    () => () => {
+      objects.forEach((object) => object.dispose());
+    },
+    [objects],
+  );
+  useScientificFrame(data, (time, state, resolve) => {
+    objects.forEach((object) => {
+      object.update(time, state.display.rigidBodyCoordinateSystems, resolve(object.axes));
+    });
+  });
+  return (
+    <group>
+      {objects.map((object, i) => (
+        <primitive key={i} object={object.axes} />
       ))}
     </group>
   );
@@ -508,6 +550,7 @@ export function Viewer3D({ data, active = true }: { data: MotionData | null; act
             <Connections data={data} />
             <MarkerLabels data={data} />
             <Plates data={data} />
+            <RigidBodies data={data} />
           </>
         ) : (
           <OrbitControls makeDefault />

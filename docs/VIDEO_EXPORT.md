@@ -5,6 +5,9 @@ have separate dialogs; C3D/H5 data export stays in the header. Video contains on
 the scientific scene with its current camera, background, visibility/colors,
 connections, labels, forces, COP, moving geometry, grid and axes. The toolbar,
 menu, dialog, timeline, plots and sidebar are excluded.
+Enabled [local coordinate-system helpers](LOCAL_COORDINATE_SYSTEMS.md) use the same
+registered pose updates in the existing snapshot, with visibility frozen at export
+start. Disabled helpers are absent; export does not create additional helpers.
 
 ## Options and support
 

@@ -30,6 +30,30 @@ zero File Info count, and exercises viewer interaction, edits, crop and export.
 The small `h5.json` fixture is solely a low-level gzip/WASM regression, not a
 supported application schema.
 
+## Local coordinate-system checks
+
+`tests/local-coordinate-systems.test.ts` checks local-frame origins, all three
+directed axes under asymmetric rotations, moving geometry clocks, fractional
+rotation interpolation, invalid/gapped poses, crop rebasing, independent default-on
+display settings and hidden unavailable categories. It also checks unchanged
+MotionData/history/dirty state and scientific export bytes, type-specific
+sensor-to-surface vector direction, TYPE-3 spacing without lateral translation,
+C3D origin-sign normalization, missing/invalid offsets and repeated
+updates without accumulated translations. Tests cover helper resource reuse
+and disposal, and snapshotted media visibility without updating live helpers.
+
+`scripts/browser-coordinate-systems.mjs` extends smoke validation with synthetic
+moving plate/body poses, timeline changes, independent controls and visible/hidden
+helpers in actual PNG/WebM exports. Broad scene-content checks avoid pixel-perfect
+reference screenshots. See [frame/origin conventions](LOCAL_COORDINATE_SYSTEMS.md).
+
+The moving-plate fixture declares TYPE-3 through H5's embedded C3D metadata, with
+nonzero X/Y transducer spacing, a downward plate normal and moving surface anchors.
+When the local authoritative reference is available, a read-only test verifies
+that its TYPE-3 helpers lie below the surface and have no lateral displacement
+in the plate frame. Only boolean checks enter assertions; private measurements
+are never logged or committed.
+
 ## Independent C3D oracle
 
 `scripts/reference-export.py` reads explicit local C3D paths or an ignored JSON

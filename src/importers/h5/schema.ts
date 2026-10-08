@@ -4,7 +4,11 @@ import { forceScale, millimetres, momentScale, MOTION_UNITS } from '../../motion
 import { validateMotion } from '../../motion/validation';
 import { h5RecordingInfo } from './metadata';
 import { h5Layout } from './layout';
-import { embeddedC3DAnalogEncoding, embeddedC3DPlate } from './c3dForceMetadata';
+import {
+  embeddedC3DAnalogEncoding,
+  embeddedC3DPlate,
+  embeddedC3DPlateType,
+} from './c3dForceMetadata';
 
 /** Structural subset of h5wasm, also usable with an in-memory test tree. */
 export interface H5Node {
@@ -449,6 +453,7 @@ export function parseH5Tree(root: H5Node, name: string): MotionData {
         );
       forcePlatforms.push({
         sourcePath: path,
+        type: embeddedC3DPlateType(root, key),
         name: plateName,
         force,
         moment,

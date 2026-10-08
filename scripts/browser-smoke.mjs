@@ -5,6 +5,10 @@ import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import assert from 'node:assert/strict';
 import * as h5 from 'h5wasm/node';
+import {
+  createCoordinateSystemsFixture,
+  verifyCoordinateSystems,
+} from './browser-coordinate-systems.mjs';
 import { verifyExplorer, verifyLargeExplorer, verifyCroppedExplorer } from './browser-explorer.mjs';
 import {
   verifyVideoExport,
@@ -48,6 +52,7 @@ const currentH5 = JSON.parse(await readFile('tests/fixtures/current-h5.json', 'u
 await writeFile('.local/current-browser.h5', Buffer.from(currentH5.base64, 'base64'));
 // Synthetic metadata exercises all curated sections without participant data.
 await h5.ready;
+createCoordinateSystemsFixture();
 // Three-frame current-schema fixture for the shared C3D/H5 crop interaction checks.
 const smallH5 = new h5.File(resolve('.local/synthetic.h5'), 'w');
 try {
@@ -1035,6 +1040,14 @@ try {
       );
       await page.getByRole('tab', { name: 'Data', exact: true }).click();
     }
+    await page.getByRole('tab', { name: 'Display', exact: true }).click();
+    for (const name of ['Force platform coordinate systems', 'Rigid body coordinate systems'])
+      assert.equal(
+        await page.getByRole('checkbox', { name, exact: true }).count(),
+        0,
+        'unavailable coordinate-system categories are hidden',
+      );
+    await page.getByRole('tab', { name: 'Data', exact: true }).click();
     const exportMarker = dataBrowser.locator('.marker-row').first();
     const importedLabel = await exportMarker.locator('button').first().getAttribute('title');
     await exportMarker
@@ -1205,6 +1218,7 @@ try {
       'Markers',
       'Marker connections',
       'Force plate numbers',
+      'Force platform coordinate systems',
       'Ground reaction forces',
       'Centre of pressure',
       'Marker labels',
@@ -1235,7 +1249,11 @@ try {
     assert(!last.equals(middle), 'plate advances to final geometry frame');
     await verifyMovingPlateImages(page, 'moving-plates.h5');
     await verifyMovingPlateVideo(page);
+    await page
+      .getByRole('checkbox', { name: 'Force platform coordinate systems', exact: true })
+      .check();
   }
+  await verifyCoordinateSystems(page);
   // Both HDF5 extensions share one load event, with no filename in the payload.
   const hdf5Load = page.waitForResponse(
     (response) =>

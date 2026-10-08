@@ -9,6 +9,9 @@ Changes since the latest formal release remain under `[Unreleased]`.
 
 ### Added
 
+- Optional force-platform local coordinate-system visualization in Display, using declared global poses or C3D corner bases with type-specific measurement-origin placement, synchronized with moving geometry and on by default.
+- Optional rigid-body local coordinate-system visualization in Display, using stored position/rotation poses, independently toggled and on by default. Helpers are display-only and follow visible scene elements into image/video exports.
+
 - Browser-local 3D video export using native timestamped VP9/VP8 WebM encoding, 30/60 fps, viewport/1080p resolution, 1×/0.5×/0.25× speed, progress/cancellation and the optional JE Motion Lab watermark.
 
 - High-resolution PNG export of the current 3D scene at viewport, 1920 × 1080 or 3840 × 2160 resolution, with an optional JE Motion Lab watermark and entirely browser-local processing.
@@ -46,6 +49,8 @@ Changes since the latest formal release remain under `[Unreleased]`.
 - Consolidated current scientific validation guidance, renamed the broader label/history guide to Data Editing, and replaced institution-specific optional oracle paths with explicit local inputs.
 
 ### Fixed
+
+- Force-platform coordinate helpers interpret C3D/H5 ORIGIN by the declared platform type: TYPE-3 transducer spacing does not cause X/Y translations, and sensor-to-surface vectors are inverted to locate the measurement origin. Unknown nonzero origin semantics are omitted rather than guessed.
 
 - Current-schema H5 files with empty optional groups such as EMG now import without placeholder signals or warnings; populated dimensions, labels, units and clocks remain strictly validated. Empty categories stay hidden and round-trip through H5 export without false cross-format loss warnings.
 - Cross-format C3D retains surveyed corners within documented tolerances without a geometry warning. Derived force plates remain included when stored COP/free moment differs, with a specific omission warning and reconstruction from exported force/moment; excessive geometry deviations still omit the affected plate. ([#13], [#14])

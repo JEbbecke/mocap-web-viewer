@@ -7,7 +7,8 @@ This exports the scientific scene, including visible markers, their colors,
 connections, marker/plate labels, force vectors, COP, plate geometry, grid and
 axes against the current scene background. Sidebars, plots, timeline, viewer
 buttons, status overlays and the dialog are excluded. This is separate from
-C3D/H5 data export in the header.
+C3D/H5 data export in the header. Enabled [local coordinate-system helpers](LOCAL_COORDINATE_SYSTEMS.md)
+are captured from the same scene; disabled helpers remain absent.
 
 | Image resolution           | Output                                                                       |
 | -------------------------- | ---------------------------------------------------------------------------- |

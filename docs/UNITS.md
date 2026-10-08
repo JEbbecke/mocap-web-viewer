@@ -81,6 +81,10 @@ the rendering boundary: 1000 mm occupies one scene unit. Marker instances, links
 labels, plate buffers/poses, COP and camera bounds all use this same scale. Data
 arrays are never mutated. Existing scene camera distances, clipping, orbit limits,
 marker radii and the 20-unit grid retain their physical sizes (a 20 m grid).
+Optional [local coordinate-system helpers](LOCAL_COORDINATE_SYSTEMS.md) share
+this scale, with one centralized 100 mm axis length and unchanged XYZ rotation
+columns. Their origins follow the established object frame rather than a
+rendering bounding box.
 
 The arrow setting is a visual length in **mm/N**, default 1. A 500 N force draws
 a 500 mm arrow (0.5 scene units). Its origin is the scaled COP; its direction and

@@ -1,20 +1,26 @@
 import { beforeAll, expect, it } from 'vitest';
 import * as h5 from 'h5wasm/node';
-import { mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { parseH5Tree } from '../src/importers/h5/schema';
 import { createH5Output, writeCroppedH5 } from '../src/exporters/h5';
 import { cropMotionData } from '../src/motion/crop';
 import { sample } from '../src/motion/math';
+import { createPlatformCoordinateSystem } from '../src/viewer/localCoordinateSystems';
 
 // Real H5: corners and pose at 100 Hz, force/COP at 200 Hz, nonzero trial origin.
-// Global corners translate and tilt; Position lies 50 mm below the plate surface.
+// Global corners translate and tilt; Position is the surface anchor and the
+// downward TYPE-3 frame has a 50 mm sensor depth plus X/Y transducer spacing.
 beforeAll(async () => {
   await h5.ready;
   mkdirSync('.local', { recursive: true });
   const input = new h5.File(resolve('.local/moving-plates.h5'), 'w');
   try {
-    input.create_group('MetaData').create_group('Project');
+    const metadata = input.create_group('MetaData');
+    metadata.create_group('Project');
+    const definition = metadata.create_group('C3DParameters').create_group('FORCE_PLATFORM');
+    definition.create_group('USED').create_attribute('value', new Int32Array([1]));
+    definition.create_group('TYPE').create_attribute('value', new Int32Array([3]));
     const traj = input.create_group('Trajectories');
     traj.create_attribute('SamplingFrequency', 100);
     traj.create_attribute('StartFrame', 20);
@@ -57,11 +63,9 @@ beforeAll(async () => {
         c = Math.cos(a),
         s = Math.sin(a),
         center = [2000 + f * 1000, 0, 100 + f * 100];
-      const r = [c, 0, s, 0, 1, 0, -s, 0, c];
+      const r = [c, 0, -s, 0, -1, 0, -s, 0, -c];
       r.forEach((value, j) => (rotation[j * 3 + f] = value));
-      [center[0] - s * 50, 0, center[2] - c * 50].forEach(
-        (value, j) => (position[j * 3 + f] = value),
-      );
+      center.forEach((value, j) => (position[j * 3 + f] = value));
       local.forEach(([x, y, z], j) =>
         [c * x + s * z + center[0], y, -s * x + c * z + center[2]].forEach(
           (value, k) => (corners[(k * 4 + j) * 3 + f] = value),
@@ -71,7 +75,11 @@ beforeAll(async () => {
     plate.create_dataset({ name: 'Corners', shape: [3, 4, 3], data: corners });
     plate.create_dataset({ name: 'Position', shape: [3, 3], data: position });
     plate.create_dataset({ name: 'Rotation', shape: [3, 3, 3], data: rotation });
-    plate.create_dataset({ name: 'Origin', shape: [3, 1], data: new Float64Array([0, 0, -50]) });
+    plate.create_dataset({
+      name: 'Origin',
+      shape: [3, 1],
+      data: new Float64Array([220, 180, -50]),
+    });
     input.flush();
   } finally {
     input.close();
@@ -91,7 +99,27 @@ it('animates global marker-rate plate geometry independently of the force clock,
     expect(p.rotation!.rate).toBe(100);
     expect(p.position!.rate).toBe(100);
     expect(p.force.rate).toBe(200);
-    expect(p.origin).toEqual(new Float64Array([0, 0, -50]));
+    expect(p.type).toBe(3);
+    expect(p.origin).toEqual(new Float64Array([220, 180, -50]));
+    const helper = createPlatformCoordinateSystem(p, data.source);
+    for (let f = 0; f < 3; f++) {
+      helper.update(f / 100, true);
+      expect(helper.axes.visible).toBe(true);
+      const angle = (f * Math.PI) / 4;
+      expect(helper.axes.position.x).toBeCloseTo(
+        (2000 + f * 1000 - Math.sin(angle) * 50) * 0.001,
+        10,
+      );
+      expect(helper.axes.position.z).toBeCloseTo(
+        (100 + f * 100 - Math.cos(angle) * 50) * 0.001,
+        10,
+      );
+      const matrix = helper.axes.matrix.makeRotationFromQuaternion(helper.axes.quaternion).elements;
+      expect(matrix[0]).toBeCloseTo(Math.cos(angle), 10);
+      expect(matrix[2]).toBeCloseTo(-Math.sin(angle), 10);
+      expect(matrix[8]).toBeCloseTo(-Math.sin(angle), 10);
+    }
+    helper.dispose();
     for (let f = 0; f < 3; f++)
       for (let j = 0; j < 4; j++)
         for (let a = 0; a < 3; a++)
@@ -150,3 +178,50 @@ it('retains visible corners with static 3x3 Rotation and vector Position', async
     input.close();
   }
 });
+
+it.skipIf(!existsSync('reference-data/authoritative_reference.h5'))(
+  'places authoritative TYPE-3 H5 axes below the surface without X/Y transducer translations (read-only)',
+  async () => {
+    await h5.ready;
+    const input = new h5.File(resolve('reference-data/authoritative_reference.h5'), 'r');
+    try {
+      const data = parseH5Tree(input, 'reference.h5');
+      const plates = data.forcePlatforms.filter((p) => p.type === 3);
+      expect(plates.length > 0, 'reference declares TYPE-3 platforms').toBe(true);
+      for (const p of plates) {
+        const helper = createPlatformCoordinateSystem(p, data.source);
+        try {
+          helper.update(0, true);
+          expect(helper.axes.visible, 'valid reference pose').toBe(true);
+          const anchor = helper.axes.position
+            .clone()
+            .set(
+              sample(p.position!, 0, 0, true),
+              sample(p.position!, 0, 1, true),
+              sample(p.position!, 0, 2, true),
+            );
+          const delta = helper.axes.position
+            .clone()
+            .multiplyScalar(1000)
+            .sub(anchor)
+            .applyQuaternion(helper.axes.quaternion.clone().invert());
+          // Private measurement values never enter assertion output.
+          expect(
+            Math.abs(delta.x) < 1e-5 && Math.abs(delta.y) < 1e-5,
+            'no lateral sensor-spacing translation',
+          ).toBe(true);
+          expect(Math.abs(delta.z + p.origin![2]) < 1e-5, 'inverted sensor-to-surface depth').toBe(
+            true,
+          );
+          expect(helper.axes.position.z * 1000 < anchor.z, 'measurement origin below surface').toBe(
+            true,
+          );
+        } finally {
+          helper.dispose();
+        }
+      }
+    } finally {
+      input.close();
+    }
+  },
+);

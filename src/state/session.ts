@@ -20,6 +20,8 @@ export type DisplayKey =
   | 'connections'
   | 'plates'
   | 'plateNumbers'
+  | 'plateCoordinateSystems'
+  | 'rigidBodyCoordinateSystems'
   | 'forces'
   | 'cop'
   | 'labels'
@@ -77,6 +79,8 @@ export const useSession = create<Session>(() => ({
     connections: true,
     plates: true,
     plateNumbers: true,
+    plateCoordinateSystems: true,
+    rigidBodyCoordinateSystems: true,
     forces: true,
     cop: true,
     labels: false,
