@@ -29,7 +29,7 @@ export async function verifyLicense(page) {
   await dialog.locator('summary', { hasText: 'Full license terms' }).click();
   assert.equal(
     await dialog.locator('details .legal-text').first().textContent(),
-    await readFile('LICENSE', 'utf8'),
+    await readFile('LICENSE.md', 'utf8'),
   );
   await dialog.locator('summary', { hasText: 'Third-party notices' }).click();
   assert.equal(

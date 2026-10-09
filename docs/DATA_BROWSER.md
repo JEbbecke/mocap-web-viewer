@@ -51,3 +51,8 @@ source identities. Rename/history tests verify unchanged samples and C3D/H5
 round trips. Browser checks exercise pencil/double-click editing across all
 non-event collections, shared event-editor navigation, marker visibility,
 plot selection, filtering, keyboard section toggles and the recording lifecycle.
+
+Data Viewer and Data Explorer reuse the same Signal Inspector and chart lifecycle.
+Viewer selects one signal per pane; Explorer plots selected numeric headers from
+one dataset across the full underlying series. IK/ID samples stay source-backed
+and load only for the visible selected plot. See [Explorer selection and plotting](DATA_EXPLORER.md#shared-signal-inspector).

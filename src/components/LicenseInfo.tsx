@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import licenseText from '../../LICENSE?raw';
+import licenseText from '../../LICENSE.md?raw';
 import notice from '../../NOTICE?raw';
 import thirdPartyNotices from '../../THIRD_PARTY_NOTICES.md?raw';
 

@@ -65,13 +65,19 @@ outputs after comparison, never the source. Reports remain under ignored
 intercept analytics locally.
 
 `python scripts/create-h5-fixture.py` regenerates only the current synthetic
-fixture. The boolean seed generator remains separate because it tests generic
-HDF5 storage infrastructure, without representing a supported product layout.
+fixture. `scripts/create-h5-boolean-seeds.py` regenerates the independent synthetic
+enum templates in `src/exporters/h5-boolean-seeds.json`, consumed only by
+`tests/authoritative-h5.test.ts`. Retain this test oracle alongside the production
+generic boolean-template writer; it validates HDF5 storage infrastructure without
+representing another supported product layout.
 
 ## Scientific and interoperability limits
 
-- IK/ID time zero has no declared relationship to trial time; no crop alignment
-  or guessed model units are introduced. Explicit units take precedence over the
+- IK and ID are classified independently: matching sample counts, physical
+  timestamps, declared rates and supplied frame ranges establish trial alignment.
+  Proven aligned results crop with the trial; independent or unknown clocks retain
+  their original samples and times. No alignment shift is guessed.
+  Explicit units take precedence over the
   limited, disclosed OpenSim rotation-name inference in Data Explorer.
 - Body parent frames, marker Type codes, lab handedness and compass directions
   remain unestablished. Bodies follow the marker grid when counts agree.

@@ -183,6 +183,10 @@ it('omits absent/empty categories and renders common IK/ID selection controls', 
   expect(plot).toContain('label="IK Results"');
   expect(plot).toContain('label="ID Results"');
   expect(plot).toContain('ID · adduction');
+  expect(plot).toContain('IK · knee_angle_r ⋅ rad');
+  expect(plot).toContain('ID · adduction ⋅ N·mm');
+  expect(plot).not.toContain('IK · knee_angle_r ⋅ deg');
+  expect(plot).not.toContain('ID · adduction ⋅ Nm');
   data.source.info = { modelResults: { ik: { entries: [] } } };
   expect(modelPlotDescriptors(data)).toMatchObject([]);
   expect(dataSections(data).some((s) => /results/.test(s.name))).toBe(false);

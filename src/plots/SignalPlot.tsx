@@ -190,7 +190,6 @@ function SignalPane({
           {(['ik', 'id'] as const).map((kind) => {
             const descriptors = models.filter((d) => d.kind === kind);
             const group = kind === 'ik' ? 'IKResults' : 'IDResults';
-            const unit = kind === 'ik' ? 'deg' : 'Nm';
             const signals = (data.signals ?? []).flatMap((s, i) =>
               s.group === group ? [{ ...s, index: i }] : [],
             );
@@ -199,12 +198,12 @@ function SignalPane({
                 <optgroup key={kind} label={`${kind.toUpperCase()} Results`}>
                   {descriptors.map((d) => (
                     <option key={d.id} value={d.id}>
-                      {d.label} ⋅ {unit}
+                      {d.label} ⋅ {d.unit}
                     </option>
                   ))}
                   {signals.map((s) => (
                     <option key={`signal:${s.index}`} value={`signal:${s.index}`}>
-                      {kind.toUpperCase()} ⋅ {s.name} ⋅ {unit}
+                      {kind.toUpperCase()} ⋅ {s.name} ⋅ {s.unit}
                     </option>
                   ))}
                 </optgroup>

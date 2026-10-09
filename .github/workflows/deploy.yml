@@ -23,6 +23,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - run: npm run format:check
       - name: Build for custom domain
         run: npm run build
         env:
