@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { MotionData } from '../motion/types';
 import {
+  togglePlot,
   renameSessionAnalog,
   renameSessionMarker,
   renameSessionData,
@@ -156,8 +157,8 @@ export function DataBrowser({ data }: { data: MotionData }) {
                       title={entry.name}
                       aria-label={entry.plot !== undefined ? `Plot ${entry.name}` : entry.name}
                       aria-pressed={entry.plot !== undefined ? plot === entry.plot : undefined}
-                      onClick={() => {
-                        if (entry.plot !== undefined) useSession.setState({ plot: entry.plot });
+                      onClick={(event) => {
+                        if (entry.plot !== undefined && event.detail <= 1) togglePlot(entry.plot);
                       }}
                       onDoubleClick={() => beginRename(entry.id)}
                     >

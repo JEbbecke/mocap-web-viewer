@@ -2,77 +2,14 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import uPlot from 'uplot';
 import 'uplot/dist/uPlot.min.css';
 import type { MotionData, Series } from '../motion/types';
+import { independentModelMessage } from '../motion/modelTiming';
 import { frameAt } from '../motion/math';
-import { setFrame, useSession } from '../state/session';
+import { setFrame, selectPlot, useSession } from '../state/session';
+import { plotSeries } from './series';
+import { modelPlotDescriptors } from './modelSeries';
+import { cropPreviewInterval, outsideCropRegions } from './cropPreview';
+import { SignalSelector } from './SignalSelector';
 import { PanelToggle } from '../components/PanelToggle';
-function plotSeries(
-  data: MotionData,
-  selection: string,
-  marker: number,
-): { values: uPlot.AlignedData; unit: string; labels: string[] } {
-  if (selection.startsWith('marker:')) {
-    const index = Number(selection.split(':')[1]);
-    if (Number.isInteger(index) && index >= 0 && index < data.markers.labels.length) marker = index;
-    selection = 'marker';
-  }
-  if (selection === 'marker') {
-    const n = data.timeline.frameCount,
-      m = data.markers.labels.length;
-    const times = Array.from({ length: n }, (_, i) => i / data.timeline.rate);
-    const components = [0, 1, 2].map((a) =>
-      Array.from({ length: n }, (_, i) =>
-        data.markers.valid[i * m + marker]
-          ? data.markers.positions[(i * m + marker) * 3 + a]
-          : null,
-      ),
-    );
-    return {
-      values: [times, ...components] as uPlot.AlignedData,
-      unit: data.units.position,
-      labels: ['X', 'Y', 'Z'],
-    };
-  }
-  const [kind, index, field] = selection.split(':');
-  let signal: Series, unit: string;
-  if (kind === 'analog' || kind === 'signal') {
-    const a = kind === 'analog' ? data.analogs[Number(index)] : data.signals?.[Number(index)];
-    if (!a) return plotSeries(data, 'marker', marker);
-    signal = a.signal;
-    unit = a.unit;
-  } else {
-    const p = data.forcePlatforms[Number(index)];
-    if (!p) return plotSeries(data, 'marker', marker);
-    signal =
-      field === 'moment'
-        ? p.moment
-        : field === 'freeMoment'
-          ? p.freeMoment!
-          : field === 'cop'
-            ? p.cop
-            : p.force;
-    unit =
-      field === 'moment' || field === 'freeMoment'
-        ? data.units.moment
-        : field === 'cop'
-          ? data.units.position
-          : data.units.force;
-  }
-  const n = signal.values.length / signal.components;
-  return {
-    values: [
-      Array.from({ length: n }, (_, i) => signal.times?.[i] ?? signal.startTime + i / signal.rate),
-      ...Array.from({ length: signal.components }, (_, a) =>
-        Array.from({ length: n }, (_, i) =>
-          Number.isFinite(signal.values[i * signal.components + a])
-            ? signal.values[i * signal.components + a]
-            : null,
-        ),
-      ),
-    ] as uPlot.AlignedData,
-    unit,
-    labels: signal.components === 1 ? ['Signal'] : ['X', 'Y', 'Z'],
-  };
-}
 export function SignalPlot({
   data,
   collapsed,
@@ -112,11 +49,7 @@ export function SignalPlot({
       <div id="signal-panel-content" hidden={collapsed}>
         {!collapsed && (
           <div className={`plot-panes ${split ? 'is-split' : ''}`}>
-            <SignalPane
-              data={data}
-              selection={selection}
-              onSelection={(plot) => useSession.setState({ plot })}
-            />
+            <SignalPane data={data} selection={selection} onSelection={selectPlot} />
             {split && (
               <SignalPane
                 data={data}
@@ -145,8 +78,66 @@ function SignalPane({
   const target = useRef<HTMLDivElement>(null),
     resetZoom = useRef<(() => void) | null>(null),
     selected = useSession((s) => s.selected);
+  const sourceFile = useSession((s) => s.sourceFile);
+  const models = useMemo(() => modelPlotDescriptors(data), [data]);
+  const model = models.find((d) => d.id === requestedSelection);
+  const viewKey = `${model?.range?.start}:${model?.range?.end}:${model?.timeOrigin}`;
+  const sourceGraph = useRef<{
+    selection: string;
+    file: File;
+    viewKey: string;
+    series: Series;
+  } | null>(null);
+  const [loadRevision, setLoadRevision] = useState(0);
+  const [loadError, setLoadError] = useState('');
+  useEffect(() => {
+    sourceGraph.current = null;
+    setLoadError('');
+    if (!model) return;
+    if (!sourceFile) {
+      setLoadError('Original H5 file is unavailable.');
+      return;
+    }
+    const worker = new Worker(new URL('../workers/explorer.worker.ts', import.meta.url), {
+      type: 'module',
+    });
+    worker.onmessage = (event) => {
+      if (event.data.error) setLoadError(event.data.error);
+      else {
+        sourceGraph.current = {
+          selection: requestedSelection,
+          file: sourceFile,
+          viewKey,
+          series: event.data.series,
+        };
+        setLoadRevision((v) => v + 1);
+      }
+      worker.terminate();
+    };
+    worker.onerror = () => {
+      setLoadError('Model plot reader failed.');
+      worker.terminate();
+    };
+    worker.postMessage({
+      file: sourceFile,
+      request: {
+        kind: model.kind,
+        sourceIndex: model.sourceIndex,
+        offset: 0,
+        range: model.range,
+        timeOrigin: model.timeOrigin,
+      },
+      plot: true,
+    });
+    return () => {
+      worker.terminate();
+      sourceGraph.current = null;
+    };
+  }, [model?.id, model?.sourceIndex, sourceFile, viewKey]);
   const [kind, index, field] = requestedSelection.split(':');
   const valid =
+    !!model ||
+    requestedSelection === 'none' ||
     requestedSelection === 'marker' ||
     (Number.isInteger(Number(index)) &&
       Number(index) >= 0 &&
@@ -161,11 +152,35 @@ function SignalPane({
               (['force', 'moment', 'cop'].includes(field) ||
                 (field === 'freeMoment' && !!data.forcePlatforms[Number(index)].freeMoment))));
   const selection = valid ? requestedSelection : 'marker';
-  const graph = useMemo(() => plotSeries(data, selection, selected), [data, selection, selected]);
+  const graph = useMemo(() => {
+    if (selection === 'none') return null;
+    if (!model) return plotSeries(data, selection, selected);
+    const loaded = sourceGraph.current;
+    if (
+      !loaded ||
+      loaded.selection !== selection ||
+      loaded.file !== sourceFile ||
+      loaded.viewKey !== viewKey
+    )
+      return null;
+    return {
+      values: [loaded.series.times!, loaded.series.values] as uPlot.AlignedData,
+      unit: model.unit,
+      labels: [model.label],
+    };
+  }, [data, selection, selected, model, sourceFile, loadRevision, viewKey]);
+  const croppedWithTrial = model ? model.aligned : true;
   useEffect(() => {
     if (!target.current || !graph) return;
     const cursor = document.createElement('div');
     cursor.className = 'playhead';
+    const muted = (['before', 'after'] as const).map((side) => {
+      const region = document.createElement('div');
+      region.className = `plot-crop-muted plot-crop-${side}`;
+      region.setAttribute('aria-hidden', 'true');
+      region.hidden = true;
+      return region;
+    });
     let chart: uPlot;
     const fullStart = Math.min(0, graph.values[0][0] ?? 0);
     const fullDuration = Math.max(0.01, data.timeline.duration, graph.values[0].at(-1) ?? 0);
@@ -174,11 +189,32 @@ function SignalPane({
         const time = useSession.getState().frame / data.timeline.rate;
         cursor.style.left = `${chart.valToPos(time, 'x')}px`;
         cursor.hidden = time < chart.scales.x.min! || time > chart.scales.x.max!;
+        const interval = cropPreviewInterval(
+          data,
+          useSession.getState().cropSelection,
+          croppedWithTrial,
+        );
+        const regions = outsideCropRegions(interval, {
+          start: chart.scales.x.min!,
+          end: chart.scales.x.max!,
+        });
+        [regions.before, regions.after].forEach((range, index) => {
+          const element = muted[index];
+          element.hidden = !range;
+          if (range) {
+            const left = chart.valToPos(range.start, 'x'),
+              right = chart.valToPos(range.end, 'x');
+            element.style.left = `${left}px`;
+            element.style.width = `${Math.max(0, right - left)}px`;
+            element.dataset.start = String(range.start);
+            element.dataset.end = String(range.end);
+          }
+        });
       }
     };
     const options: uPlot.Options = {
-      width: target.current.clientWidth,
-      height: 155,
+      width: Math.max(200, target.current.clientWidth - 20),
+      height: Math.max(80, target.current.clientHeight - 24),
       padding: [12, 14, 0, 0],
       scales: {
         x: {
@@ -221,10 +257,11 @@ function SignalPane({
     };
     chart = new uPlot(options, graph.values, target.current);
     resetZoom.current = () => chart.setScale('x', { min: fullStart, max: fullDuration });
+    chart.over.prepend(...muted);
     chart.over.appendChild(cursor);
     sync();
     const unsub = useSession.subscribe((s, p) => {
-      if (s.frame !== p.frame) sync();
+      if (s.frame !== p.frame || s.cropSelection !== p.cropSelection) sync();
     });
     let pointerStart: { x: number; y: number } | null = null;
     const scrub = (event: PointerEvent) => {
@@ -269,9 +306,11 @@ function SignalPane({
     chart.over.addEventListener('pointercancel', cancel);
     chart.over.addEventListener('pointerleave', cancel);
     const observer = new ResizeObserver((entries) => {
+      const legendHeight =
+        chart.root.querySelector('.u-legend')?.getBoundingClientRect().height ?? 24;
       chart.setSize({
         width: Math.max(200, Math.floor(entries[0].contentRect.width)),
-        height: 155,
+        height: Math.max(80, Math.floor(entries[0].contentRect.height - legendHeight)),
       });
       sync();
     });
@@ -283,15 +322,16 @@ function SignalPane({
       resetZoom.current = null;
       chart.destroy();
     };
-  }, [data, graph]);
+  }, [data, graph, croppedWithTrial]);
   return (
     <div className="signal-pane" role="group" aria-label={secondary ? 'Second plot' : 'First plot'}>
       <div className="plot-pane-heading">
-        <select
-          aria-label={secondary ? 'Second signal to plot' : 'Signal to plot'}
+        <SignalSelector
+          label={secondary ? 'Second signal to plot' : 'Signal to plot'}
           value={selection}
-          onChange={(e) => onSelection(e.target.value)}
+          onChange={onSelection}
         >
+          <option value="none">No signal</option>
           <option value="marker">Marker · {data.markers.labels[selected]}</option>
           <optgroup label="Markers">
             {data.markers.labels.map((label, i) => (
@@ -300,34 +340,71 @@ function SignalPane({
               </option>
             ))}
           </optgroup>
-          {data.forcePlatforms.map((p, i) => (
-            <optgroup key={i} label={p.name}>
-              {['force', 'moment', 'cop', ...(p.freeMoment ? ['freeMoment'] : [])].map((field) => (
-                <option key={field} value={`plate:${i}:${field}`}>
-                  {p.name} · {field === 'cop' ? 'COP' : field}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-          {data.analogs.length > 0 && (
-            <optgroup label="Analog channels">
+          {(data.analogs.length > 0 || data.signals?.some((s) => s.group === 'EMG')) && (
+            <optgroup label="Analogs">
               {data.analogs.map((a, i) => (
-                <option key={i} value={`analog:${i}`}>
-                  {a.name} · {a.unit}
+                <option key={`analog:${i}`} value={`analog:${i}`}>
+                  {a.name} ⋅ {a.unit}
                 </option>
               ))}
+              {data.signals?.map(
+                (s, i) =>
+                  s.group === 'EMG' && (
+                    <option key={`signal:${i}`} value={`signal:${i}`}>
+                      EMG ⋅ {s.name} ⋅ {s.unit}
+                    </option>
+                  ),
+              )}
             </optgroup>
           )}
-          {(data.signals?.length ?? 0) > 0 && (
-            <optgroup label="Additional signals">
-              {data.signals!.map((s, i) => (
-                <option key={i} value={`signal:${i}`}>
-                  {s.group} · {s.name} · {s.unit}
-                </option>
-              ))}
+          {data.forcePlatforms.length > 0 && (
+            <optgroup label="Forces">
+              {data.forcePlatforms.flatMap((p, i) =>
+                ['force', 'moment', 'cop', ...(p.freeMoment ? ['freeMoment'] : [])].map((field) => (
+                  <option key={`plate:${i}:${field}`} value={`plate:${i}:${field}`}>
+                    {p.name} ⋅ {field === 'cop' ? 'COP' : field}
+                  </option>
+                )),
+              )}
             </optgroup>
           )}
-        </select>
+          {data.signals?.some((s) => s.group === 'RigidBodies') && (
+            <optgroup label="Rigid Bodies">
+              {data.signals.map(
+                (s, i) =>
+                  s.group === 'RigidBodies' && (
+                    <option key={i} value={`signal:${i}`}>
+                      {s.name} ⋅ {s.unit}
+                    </option>
+                  ),
+              )}
+            </optgroup>
+          )}
+          {(['ik', 'id'] as const).map((kind) => {
+            const descriptors = models.filter((d) => d.kind === kind);
+            const group = kind === 'ik' ? 'IKResults' : 'IDResults';
+            const unit = kind === 'ik' ? 'deg' : 'Nm';
+            const signals = (data.signals ?? []).flatMap((s, i) =>
+              s.group === group ? [{ ...s, index: i }] : [],
+            );
+            return (
+              (descriptors.length > 0 || signals.length > 0) && (
+                <optgroup key={kind} label={`${kind.toUpperCase()} Results`}>
+                  {descriptors.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.label} ⋅ {unit}
+                    </option>
+                  ))}
+                  {signals.map((s) => (
+                    <option key={`signal:${s.index}`} value={`signal:${s.index}`}>
+                      {kind.toUpperCase()} ⋅ {s.name} ⋅ {unit}
+                    </option>
+                  ))}
+                </optgroup>
+              )
+            );
+          })}
+        </SignalSelector>
         <button
           className="plot-reset"
           aria-label={secondary ? 'Reset second plot zoom' : 'Reset zoom'}
@@ -336,6 +413,16 @@ function SignalPane({
           Reset zoom
         </button>
       </div>
+      <p
+        className="muted small signal-model-note"
+        role={loadError ? 'alert' : undefined}
+        title={loadError || (model && !model.aligned ? independentModelMessage : undefined)}
+      >
+        {loadError || (model && !model.aligned ? independentModelMessage : '')}
+        {model && !graph && !loadError && (
+          <span role="status">{model.aligned ? 'Loading model signal?' : ' ? Loading?'}</span>
+        )}
+      </p>
       <div className="plot-target" ref={target} />
     </div>
   );

@@ -5,6 +5,7 @@ import type { MotionData, MotionEvent } from '../motion/types';
 import { validateEvent } from '../motion/events';
 import { booleanTemplate } from './h5BooleanTemplate';
 import { h5LabelUpdates } from './h5Labels';
+import { modelClock, modelTimeRow } from '../motion/modelTiming';
 
 type Library = typeof H5;
 type Writable = Parameters<H5.Group['create_dataset']>[0]['data'];
@@ -226,9 +227,14 @@ export function writeCroppedH5(
       return;
     }
     if (/^\/(Analog|EMG|IKResults|IDResults)\/(Data|Time)$/.test(path)) {
-      // The unversioned current layout supplies no relation from model time zero
-      // to the trial clock. Retain independent derived results without guessing.
-      if (/^\/(IKResults|IDResults)\//.test(path)) return;
+      if (/^\/(IKResults|IDResults)\//.test(path)) {
+        const kind = path.startsWith('/IKResults/') ? 'ik' : 'id';
+        if (motion.source.info?.modelResults?.[kind]?.timeBasis !== 'trial-aligned') return;
+        // Import proved one-to-one physical and optional frame identity.
+        slices.set(path, { axis: shape.length - 1, start, end });
+        if (path.endsWith('/Data')) updateExtent(ds, end - start);
+        return;
+      }
       const n = slice(ds, shape.length - 1, scalar(ds.parent, 'SamplingFrequency'))!;
       updateExtent(ds, n);
       return;
@@ -391,6 +397,26 @@ export function writeCroppedH5(
         }
         const ds = copyDataset(h5, entity, target, name, data as Writable, shape, primitive);
         copyAttrs(entity, ds);
+      }
+    }
+    const kind =
+      source.path === '/IKResults' ? 'ik' : source.path === '/IDResults' ? 'id' : undefined;
+    if (
+      cropping &&
+      kind &&
+      motion.source.info?.modelResults?.[kind]?.timeBasis === 'trial-aligned' &&
+      !source.get('Time')
+    ) {
+      const data = source.get('Data') as H5.Dataset;
+      // A time row already preserves the physical source origin. Rate-only
+      // clocks need explicit retained times when their implicit zero changes.
+      if (modelTimeRow(source, data.shape![0]) < 0) {
+        target.create_dataset({
+          name: 'Time',
+          data: modelClock(source).read(start, end),
+          shape: [end - start],
+          dtype: '<d',
+        });
       }
     }
   };

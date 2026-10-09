@@ -3,13 +3,16 @@ export interface MetadataValue {
   values: string[];
   unit?: string;
 }
-/** Model variable catalog only: samples and independent clocks remain in the source file. */
+/** Small model catalog and timing facts; numerical samples remain source-backed. */
 export interface ModelResultInfo {
   variables?: number;
   samples?: number;
   metadata?: string;
   inDegrees?: boolean;
-  timeBasis?: 'independent';
+  timeBasis?: 'independent' | 'trial-aligned';
+  /** Retained source sample range and trial origin for lazy aligned column reads. */
+  sourceRange?: { start: number; end: number };
+  timeOrigin?: number;
   entries?: {
     name: string;
     unit?: string;

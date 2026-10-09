@@ -1,6 +1,7 @@
+import { modelClock, type ModelView } from '../motion/modelTiming';
 /** Source-backed model inspection is bounded to a single page, never a whole result matrix. */
 export const MODEL_PAGE_SIZE = 200;
-export interface ModelRequest {
+export interface ModelRequest extends ModelView {
   kind: 'ik' | 'id';
   sourceIndex: number;
   offset: number;
@@ -49,38 +50,22 @@ export function readModelPage(group: ModelGroup, request: ModelRequest): ModelPa
     request.offset < 0
   )
     throw Error('Unsupported model dimensions or variable.');
-  const n = shape[1],
-    time = group.get('Time') as SliceDataset | undefined;
-  const rawLabels = group.attrs?.Labels?.value;
-  const labels = Array.isArray(rawLabels)
-    ? rawLabels
-    : typeof rawLabels === 'string'
-      ? [rawLabels]
-      : [];
-  const timeRow =
-    labels.length === shape[0]
-      ? labels.findIndex((v) => typeof v === 'string' && v.trim().toLowerCase() === 'time')
-      : -1;
-  if (time && (time.shape?.length !== 1 || time.shape[0] !== n))
-    throw Error('Model Time sample count mismatch.');
-  const rate = Number(group.attrs?.SamplingFrequency?.value);
-  const clockKnown = !!time || timeRow >= 0 || (Number.isFinite(rate) && rate > 0);
-  const readTimes = (a: number, b: number) =>
-    time
-      ? numbers(time.slice([[a, b]]), b - a)
-      : timeRow >= 0
-        ? numbers(
-            data.slice([
-              [timeRow, timeRow + 1],
-              [a, b],
-            ]),
-            b - a,
-          )
-        : Float64Array.from({ length: b - a }, (_, i) => (clockKnown ? (a + i) / rate : NaN));
-  const total = n,
+  const clock = modelClock(group);
+  const from = request.range?.start ?? 0,
+    to = request.range?.end ?? shape[1];
+  if (
+    !Number.isSafeInteger(from) ||
+    !Number.isSafeInteger(to) ||
+    from < 0 ||
+    from > to ||
+    to > shape[1]
+  )
+    throw Error('Unsupported model source range.');
+  const total = to - from,
     offset = Math.min(request.offset, Math.max(0, total - 1));
-  const a = offset,
-    b = Math.min(n, a + MODEL_PAGE_SIZE);
+  const a = from + offset,
+    b = Math.min(to, a + MODEL_PAGE_SIZE);
+  const clockKnown = clock.known;
   const values =
     b > a
       ? numbers(
@@ -91,7 +76,8 @@ export function readModelPage(group: ModelGroup, request: ModelRequest): ModelPa
           b - a,
         )
       : new Float64Array(0);
-  const times = b > a ? readTimes(a, b) : new Float64Array(0);
+  const times =
+    b > a ? clock.read(a, b).map((t) => t - (request.timeOrigin ?? 0)) : new Float64Array(0);
   for (let i = 0; i < times.length; i++) {
     if (clockKnown && (!Number.isFinite(times[i]) || (i > 0 && times[i] <= times[i - 1])))
       throw Error('Model clock must be finite and strictly increasing.');

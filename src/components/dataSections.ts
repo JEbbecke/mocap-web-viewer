@@ -1,6 +1,8 @@
+import { independentModelMessage } from '../motion/modelTiming';
 import type { MotionData } from '../motion/types';
 import { metadataText } from '../motion/metadata';
 import type { DataLabelTarget } from '../motion/dataLabels';
+import { modelPlotDescriptors } from '../plots/modelSeries';
 
 export interface DataEntry {
   id: string;
@@ -46,13 +48,19 @@ export function dataSections(data: MotionData): DataSection[] {
     return parsed.length
       ? { entries: parsed }
       : {
-          entries: (data.source.info?.modelResults?.[key]?.entries ?? []).map((s, i) => ({
-            id: `${key}:${i}`,
-            name: s.name,
-            detail: detail(s.unit, s.rate),
-            rename: { kind: key, index: i },
-          })),
-          note: 'Variable metadata only; model signals are not plotted.',
+          entries: modelPlotDescriptors(data)
+            .filter((s) => s.kind === key)
+            .map((s, i) => ({
+              id: s.id,
+              name: s.name,
+              detail: detail(s.unit, data.source.info?.modelResults?.[key]?.entries?.[i].rate),
+              plot: s.id,
+              rename: { kind: key, index: i },
+            })),
+          note:
+            data.source.info?.modelResults?.[key]?.timeBasis === 'trial-aligned'
+              ? undefined
+              : independentModelMessage,
         };
   };
   return [

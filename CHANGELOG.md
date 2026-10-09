@@ -9,6 +9,10 @@ Changes since the latest formal release remain under `[Unreleased]`.
 
 ### Added
 
+- Signal plots now visually de-emphasize data outside the active crop selection.
+
+- IK and ID result time series can now be selected and visualized in the existing plot panes, preserving source variable names, units and model clocks. Results proven aligned with the trajectory timeline crop with the trial; independent results remain intact.
+
 - Optional force-platform local coordinate-system visualization in Display, using declared global poses or C3D corner bases with type-specific measurement-origin placement, synchronized with moving geometry and on by default.
 - Optional rigid-body local coordinate-system visualization in Display, using stored position/rotation poses, independently toggled and on by default. Helpers are display-only and follow visible scene elements into image/video exports.
 
@@ -28,6 +32,8 @@ Changes since the latest formal release remain under `[Unreleased]`.
 - Cloudflare Worker analytics integration for aggregate counts by date, country and event type in D1. Motion-capture files, filenames, measurements and metadata remain local. Backend deployment and verification scope are documented in [docs/ANALYTICS.md](docs/ANALYTICS.md). ([#5])
 
 ### Changed
+
+- The Trial Inspector now prioritizes subject, condition and file metadata instead of prominent current-frame marker coordinates.
 
 - Grouped image and video export under one Export media menu with separate configuration dialogs; scientific C3D/H5 export remains in the header.
 

@@ -1,3 +1,4 @@
+import { independentModelMessage, type ModelView } from '../motion/modelTiming';
 import type { MotionData, Series } from '../motion/types';
 import { eventSourceFrame } from '../motion/events';
 import { metadataText } from '../motion/metadata';
@@ -19,7 +20,7 @@ export interface Dataset {
   time?: (row: number) => number;
   current?: (time: number) => number;
   seek?: (row: number) => number;
-  model?: { kind: 'ik' | 'id'; sourceIndex: number; unit: string };
+  model?: ModelView & { kind: 'ik' | 'id'; sourceIndex: number; unit: string; aligned?: boolean };
 }
 const col = (name: string, numeric = true): Column => ({ name, numeric });
 const xyz = ['X', 'Y', 'Z'];
@@ -290,7 +291,9 @@ export function explorerDatasets(data: MotionData): Dataset[] {
           ...(entry.rate ? [['Nominal rate', `${entry.rate} Hz`] as [string, string]] : []),
           [
             'Clock',
-            'Independent model time; no declared playback alignment. Retained unchanged after crop.',
+            result.timeBasis === 'trial-aligned'
+              ? 'Aligned with trajectory timeline; cropped with trial.'
+              : independentModelMessage,
           ],
           ...(result.inDegrees !== undefined && kind === 'ik'
             ? [
@@ -309,7 +312,14 @@ export function explorerDatasets(data: MotionData): Dataset[] {
               ]
             : []),
         ],
-        model: { kind, sourceIndex: entry.sourceIndex ?? i, unit },
+        model: {
+          kind,
+          sourceIndex: entry.sourceIndex ?? i,
+          unit,
+          aligned: result.timeBasis === 'trial-aligned',
+          range: result.sourceRange,
+          timeOrigin: result.timeOrigin,
+        },
       });
     });
   }

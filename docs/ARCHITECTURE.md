@@ -96,3 +96,31 @@ units take precedence, with a conservative tested IK rotation convention retaine
 as small importer metadata. ID units are never inferred from names.
 
 Additional data-label commands retain small name overrides and source identities. H5 platforms and bodies retain original group paths, and EMG/model variables retain original row indices (including gaps from hidden time rows). Body renames update their copied signal names. The export worker resolves these identities against its source import; it never uses the new display name as a source lookup key.
+
+IK/ID plot descriptors in `src/plots/modelSeries.ts` store catalog/source row
+identities, semantic labels and the existing Explorer unit policy. A visible
+plot pane requests one scalar column from the local Explorer worker, using the
+same validated hyperslab/clock reader. Numerical buffers live in a pane ref,
+not session or React selection state; the existing uPlot component renders them
+directly. Explicit Time takes precedence over a labelled time row and then
+SamplingFrequency. Missing clocks report a local plot error. Importer normalization records `trial-aligned` only when count, corresponding
+physical timestamps, declared rate and supplied frame range agree. Aligned
+source-backed reads carry a retained sample range and trial origin; repeated
+crops update these small descriptors. Independent results retain their original
+clock and samples. Plot, Explorer and H5 export consume the same timing fact.
+The shared cursor uses trial-relative seconds for aligned results.
+Two panes retain the existing selection limit and separate unit scales.
+`src/plots/series.ts` holds reusable in-memory signal preparation. Selecting or
+deselecting a plot never edits MotionData, history or export payloads.
+
+The Signal Inspector uses a compact single-line selector, a reserved 18px status
+row and a flex chart region. A ResizeObserver sizes the existing uPlot chart
+from the remaining container height, accounting for its legend. Independent
+clock information truncates with a full-text tooltip; aligned results show no
+independent status. Message presence never changes the chart's bottom boundary.
+
+Crop previews reuse session crop boundaries through `plots/cropPreview.ts` and
+`motion/crop.ts`. Two translucent DOM regions in uPlot's overlay layer map
+physical time through the current x scale on draw, resize and crop updates.
+They ignore pointer events and leave signal arrays untouched. Split panes share
+the same boundaries. Retained independent model results have no removal preview.

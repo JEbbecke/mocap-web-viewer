@@ -4,6 +4,7 @@ import { forceScale, millimetres, momentScale, MOTION_UNITS } from '../../motion
 import { validateMotion } from '../../motion/validation';
 import { h5RecordingInfo } from './metadata';
 import { h5Layout } from './layout';
+import { modelTrialAligned } from '../../motion/modelTiming';
 import {
   embeddedC3DAnalogEncoding,
   embeddedC3DPlate,
@@ -571,8 +572,8 @@ export function parseH5Tree(root: H5Node, name: string): MotionData {
       metadata.hierarchy as { groups: Record<string, unknown> }
     ).groups.MetaData;
   const signals: NonNullable<MotionData['signals']> = [];
-  // IKResults/IDResults expose only variable catalogs/counts, not plotted signals.
-  // Their original datasets remain available to the raw-tree exporter.
+  // IKResults/IDResults keep small catalogs; Explorer and plots read selected
+  // source columns lazily. Raw-tree export preserves their independent clocks.
   for (const groupName of ['EMG']) {
     const group = node(root, groupName);
     if (!group) continue;
@@ -716,6 +717,26 @@ export function parseH5Tree(root: H5Node, name: string): MotionData {
   };
   const firstFrame = Number(scalar(attr(traj, 'StartFrame')) ?? 0);
   if (!Number.isSafeInteger(firstFrame)) throw new Error('Invalid H5 StartFrame.');
+  const info = h5RecordingInfo(root);
+  for (const kind of ['ik', 'id'] as const) {
+    const result = info.modelResults?.[kind];
+    const group = node(root, kind === 'ik' ? 'IKResults' : 'IDResults');
+    if (
+      result?.samples &&
+      group &&
+      modelTrialAligned(group, {
+        count: frameCount,
+        rate,
+        startTime: timeOrigin,
+        firstFrame,
+        times: pointClock,
+      })
+    ) {
+      result.timeBasis = 'trial-aligned';
+      result.sourceRange = { start: 0, end: frameCount };
+      result.timeOrigin = timeOrigin;
+    }
+  }
   return validateMotion({
     units: MOTION_UNITS,
     name,
@@ -723,7 +744,7 @@ export function parseH5Tree(root: H5Node, name: string): MotionData {
       format: 'H5',
       originalPositionUnit: unit,
       metadata,
-      info: h5RecordingInfo(root),
+      info,
       timeOrigin,
       eventSchema,
       h5Layout: layout,

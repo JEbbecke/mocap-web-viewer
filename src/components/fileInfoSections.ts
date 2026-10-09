@@ -1,5 +1,6 @@
 import type { MotionData } from '../motion/types';
-import { metadataText, metadataValues, type MetadataValue } from '../motion/metadata';
+import { metadataValues, type MetadataValue } from '../motion/metadata';
+import { metadataFieldValues, metadataTimestamp, sourceBasename } from './metadataDisplay';
 
 export interface InfoRow {
   label: string;
@@ -21,15 +22,13 @@ export function fileInfoSections(data: MotionData): InfoSection[] {
   });
   const field = (label: string, value?: MetadataValue): InfoRow => ({
     label,
-    values: (value?.values ?? []).flatMap((v) => {
-      const text = metadataText(v),
-        unit = metadataText(value?.unit);
-      return text === undefined ? [] : [unit ? `${text} ${unit}` : text];
-    }),
+    values: metadataFieldValues(value),
   });
-  const timestamp = (value?: string) => value?.replace(/^(\d{4}-\d{2}-\d{2})T(?=\d{2}:)/, '$1 ');
   const timestampField = (label: string, value?: MetadataValue) =>
-    field(label, value && { ...value, values: value.values.map((v) => timestamp(v)!) });
+    field(
+      label,
+      value && { ...value, values: value.values.flatMap((v) => metadataTimestamp(v) ?? []) },
+    );
   const rates = (values: number[]) =>
     [...new Set(values.filter((v) => Number.isFinite(v) && v > 0))].sort((a, b) => a - b);
   const analogRates = rates(data.analogs.map((a) => a.signal.rate));
@@ -70,9 +69,9 @@ export function fileInfoSections(data: MotionData): InfoSection[] {
     {
       title: 'File & Recording',
       rows: [
-        row('File', data.name),
+        row('File', sourceBasename(data.name)),
         row('Format', data.source.format),
-        row('Date', timestamp(info?.created)),
+        row('Date', metadataTimestamp(info?.created)),
         row('Frames', data.timeline.frameCount),
         row('Duration', `${data.timeline.duration.toFixed(3)} s`),
         row('Source first frame', data.timeline.firstFrame),
