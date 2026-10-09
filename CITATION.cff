@@ -9,4 +9,4 @@ version: "0.4.0"
 date-released: "2026-09-28"
 repository-code: "https://github.com/JEbbecke/mocap-web-viewer"
 url: "https://app.jemolab.com/"
-license: Apache-2.0
+license: PolyForm-Noncommercial-1.0.0
