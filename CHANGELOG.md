@@ -8,7 +8,7 @@ branches describe the planned release until its tag is published.
 
 ## [Unreleased]
 
-## [0.5.0] - 2026-10-14
+## [0.5.0] - 2026-10-09
 
 Planned release date; update this date and CITATION.cff before publication if promotion changes.
 

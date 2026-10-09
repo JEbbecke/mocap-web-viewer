@@ -6,7 +6,7 @@ authors:
   - family-names: Ebbecke
     given-names: Jonas
 version: "0.5.0"
-date-released: "2026-10-14"
+date-released: "2026-10-09"
 repository-code: "https://github.com/JEbbecke/mocap-web-viewer"
 url: "https://app.jemolab.com/"
 license: PolyForm-Noncommercial-1.0.0
