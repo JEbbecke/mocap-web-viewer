@@ -90,7 +90,17 @@ Search matches dataset names and category/parent names, never numeric samples.
 Each result identifies its category. Tables scroll vertically/horizontally with
 sticky headers and aligned numeric columns. Click selects one cell, Shift-click
 selects a rectangular range, and Ctrl/Cmd-click adds or removes individual cells.
-Click a column header to select its whole column. Tab focuses cells; Enter/Space
+Header clicks select whole columns: plain click replaces the selection;
+Ctrl/Cmd-click toggles a column and updates the anchor; Shift-click selects the
+visible-order range from that anchor. Ctrl/Cmd+Shift-click adds the range to the
+existing selection. Shift without an anchor selects one column. Selected headers
+have an accent background/border and pressed button state. Enter/Space supports
+the same modifiers on focused headers. There is no header sorting.
+
+Dataset-scoped semantic column IDs survive paging, scrolling, playback, resizing,
+and Viewer/Explorer switches. Changing datasets clears unrelated columns; opening
+another recording resets Explorer selection. Cell/range selection remains available
+for copying; selecting cells ends the header-based plot selection. Tab focuses cells; Enter/Space
 selects the focused cell and Shift+arrow keys extend a range. Native scrolling
 keys work within the table. The active cell reveals its complete exact value
 below the table, including long metadata or descriptions.
@@ -113,8 +123,8 @@ copies; single-cell copies preserve the complete string.
 Ctrl/Cmd+C copies the selected cells when the table has focus, without needing
 clipboard-button permissions. Normal browser text selection still works and takes
 precedence when copying highlighted text; that uses displayed precision. Use the
-buttons or exact-value panel for full precision. Selection stores only coordinates
-and ranges, including for whole columns. Numerical data are materialized as text
+buttons or exact-value panel for full precision. Cell selection stores coordinates and ranges; header selection stores only
+dataset/column IDs and an anchor. Numerical data are materialized as text
 only for explicit copy actions. No CSV export or numerical editing is added.
 
 Regular MotionData tables window fixed-height rows, with a small overscan. Only
@@ -138,8 +148,32 @@ undeclared model units and unsupported quality representations are not meaningfu
 inspected. No files, measurements, metadata or clipboard contents are uploaded,
 persisted in browser storage, or included in analytics.
 
-IK/ID variables can also be plotted from the Data sidebar or either existing
-signal inspector pane. Plot descriptors share source identities, units and the
-validated clock reader with Explorer; Explorer table selection and plot-window
-controls are unchanged. Aligned plots use trial-relative seconds and retained model samples after crop;
-independent results preserve their original model seconds and all samples.
+## Shared Signal Inspector
+
+Selecting numeric time-series headers automatically plots their complete underlying
+columns in the same Signal Inspector used by Data Viewer. Sample/frame indices,
+time columns, validity/quality categories, events, metadata and static geometry
+remain selectable for copying but never become plot lines. Empty selections show
+an explanatory plot message. Marker gaps respect validity; other nonfinite samples
+stay gaps. Dynamic force geometry and body matrices retain their original components.
+
+The plot uses dataset metadata for units and each stream's physical timestamps or
+start/rate, with no interpolation or resampling. Source-backed IK/ID selection loads
+one complete scalar and clock through the existing local worker; changing table
+pages neither reloads nor truncates the plot. Aligned results use retained samples
+and trial-relative time after crop; independent results preserve their original
+model seconds and samples. Missing clocks report a local plot error.
+
+Both views share legends, zoom/reset, click-to-scrub, the global playback cursor,
+and outside-crop shading. Independent retained models have no crop-removal shading.
+The usual plot hide/show toggle works in both views. Explorer has a flexible vertical
+table/plot split with compact controls and independently scrolling table rows;
+Viewer retains its single/split panes and dropdown choices when switching back.
+Explorer dataset/header choices persist separately for the current recording.
+
+Only selected components are materialized and memoized; sample buffers stay outside
+React/session selection state. No new series cap is imposed: selections belong to
+one dataset with common units (current tables have at most 12 plottable components),
+so there is no cross-dataset mixed-unit overlay or new axis system. Full-series plots
+still consume memory proportional to selected samples; table virtualization does not
+make plotting arbitrarily large signals free. Data and selections remain browser-local.

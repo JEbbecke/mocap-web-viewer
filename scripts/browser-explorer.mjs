@@ -56,6 +56,67 @@ async function verifySidebarLayout(page) {
   await page.setViewportSize(original);
 }
 
+async function verifyHeaderPlots(page, table) {
+  const header = (name) => table.getByRole('button', { name, exact: true });
+  const selected = () => table.locator('th.selected-column').allTextContents();
+  const plot = page.locator('#signal-panel');
+  await header('X [mm]').click();
+  assert.deepEqual(await selected(), ['X [mm]']);
+  await plot.locator('.u-legend').getByText('X (mm)', { exact: true }).waitFor();
+  await header('Y [mm]').click({ modifiers: ['Control'] });
+  await header('Z [mm]').click({ modifiers: ['Control'] });
+  await header('Y [mm]').click({ modifiers: ['Control'] });
+  assert.deepEqual(await selected(), ['X [mm]', 'Z [mm]']);
+  assert.equal(await plot.locator('.u-legend').getByText('Y (mm)', { exact: true }).count(), 0);
+  await header('Y [mm]').click({ modifiers: ['Meta'] });
+  assert.deepEqual(await selected(), ['X [mm]', 'Y [mm]', 'Z [mm]']);
+  await header('Time [s]').click({ modifiers: ['Shift'] });
+  assert.deepEqual(await selected(), ['Time [s]', 'X [mm]', 'Y [mm]']);
+  assert.equal(
+    await plot.locator('.u-series').count(),
+    3,
+    'time is omitted from plotted data columns',
+  );
+  await header('Z [mm]').click({ modifiers: ['Control', 'Shift'] });
+  assert.deepEqual(await selected(), ['Time [s]', 'X [mm]', 'Y [mm]', 'Z [mm]']);
+  assert((await header('X [mm]').getAttribute('aria-pressed')) === 'true');
+  assert.equal(
+    await page.evaluate(() => window.getSelection().toString()),
+    '',
+    'modifier header clicks avoid native text ranges',
+  );
+  assert.equal(
+    Number(await plot.locator('.plot-target').getAttribute('data-sample-count')),
+    Number(await table.getAttribute('aria-rowcount')) - 1,
+  );
+  await page.getByRole('button', { name: 'Hide plot panel', exact: true }).click();
+  assert.deepEqual(await selected(), ['Time [s]', 'X [mm]', 'Y [mm]', 'Z [mm]']);
+  await page.getByRole('button', { name: 'Show plot panel', exact: true }).click();
+  await page.getByRole('button', { name: 'Data Viewer', exact: true }).click();
+  await page.getByRole('button', { name: 'Data Explorer', exact: true }).click();
+  assert.deepEqual(
+    await selected(),
+    ['Time [s]', 'X [mm]', 'Y [mm]', 'Z [mm]'],
+    'dataset and columns survive view switches',
+  );
+  await header('Valid').click();
+  assert.equal(
+    await plot.locator('.uplot').count(),
+    0,
+    'categorical validity is selectable but not plotted',
+  );
+  await plot.getByText('Select a numeric signal column to plot.').waitFor();
+  await header('X [mm]').focus();
+  await header('X [mm]').press('Enter');
+  await header('Z [mm]').focus();
+  await header('Z [mm]').press('Shift+Space');
+  assert.deepEqual(
+    await selected(),
+    ['X [mm]', 'Y [mm]', 'Z [mm]'],
+    'keyboard header ranges preserve navigation',
+  );
+}
+
 /** Runs against synthetic files only. Shared by the existing Chromium smoke suite. */
 export async function verifyExplorer(page, format) {
   const undo = page.getByRole('button', { name: 'Undo', exact: true });
@@ -70,6 +131,7 @@ export async function verifyExplorer(page, format) {
     undo: await undo.isEnabled(),
     redo: await redo.isEnabled(),
     file: await page.locator('.header-file').innerText(),
+    signal: await page.getByLabel('Signal to plot', { exact: true }).inputValue(),
   };
   await page.getByRole('button', { name: 'Data Explorer', exact: true }).click();
   const explorer = page.getByRole('region', { name: 'Data Explorer', exact: true });
@@ -105,6 +167,7 @@ export async function verifyExplorer(page, format) {
   const table = explorer.locator('table');
   assert((await table.locator('th').allTextContents()).includes('X [mm]'));
   assert((await table.locator('th').allTextContents()).includes('Source frame'));
+  await verifyHeaderPlots(page, table);
   const firstCell = table.locator('tbody tr[data-row="0"] td').nth(4);
   const exact = await firstCell.getAttribute('title');
   await firstCell.click();
@@ -270,6 +333,23 @@ export async function verifyExplorer(page, format) {
         assert.equal(await table.locator('tr[data-row="0"] td').last().getAttribute('title'), '4');
       }
     }
+    await search.fill('Corners');
+    await explorer.locator('nav button').first().click();
+    await table.getByRole('button', { name: 'Corner 1 X [mm]', exact: true }).click();
+    await table
+      .getByRole('button', { name: 'Corner 4 Z [mm]', exact: true })
+      .click({ modifiers: ['Shift'] });
+    assert.equal(
+      await page.locator('#signal-panel .u-series').count(),
+      13,
+      'all twelve dynamic geometry components plot without a silent cap',
+    );
+    const panelBounds = await page.locator('#signal-panel').boundingBox();
+    const legendBounds = await page.locator('#signal-panel .u-legend').boundingBox();
+    assert(
+      legendBounds.y + legendBounds.height <= panelBounds.y + panelBounds.height + 1,
+      'large selections keep the legend inside the plot',
+    );
     await search.fill('Events');
     await explorer.locator('nav button').first().click();
     await table.locator('tr[data-row="0"] td').first().click();
@@ -299,6 +379,11 @@ export async function verifyExplorer(page, format) {
     'browsing leaves dirty state unchanged',
   );
   await page.getByRole('button', { name: 'Data Viewer', exact: true }).click();
+  assert.equal(
+    await page.getByLabel('Signal to plot', { exact: true }).inputValue(),
+    before.signal,
+    'Explorer headers preserve Viewer selection',
+  );
   assert.equal(
     await page.getByRole('button', { name: 'Data Explorer', exact: true }).count(),
     1,
@@ -348,6 +433,38 @@ export async function verifyLargeExplorer(page) {
     '199999',
   );
   await table.locator('th').last().getByRole('button').click();
+  const target = page.locator('#signal-panel .plot-target');
+  assert.equal(
+    await target.getAttribute('data-sample-count'),
+    '200000',
+    'plot uses every analog sample',
+  );
+  assert.equal(
+    Number(await target.getAttribute('data-time-end')),
+    39.9998,
+    'plot uses analog physical clock',
+  );
+  const analogPlot = page.locator('#signal-panel .uplot');
+  await analogPlot.evaluate((el) => {
+    el.dataset.playbackPersistence = 'true';
+  });
+  await page.getByRole('button', { name: 'Jump to beginning', exact: true }).click();
+  const startCursor = await page.locator('#signal-panel .playhead').evaluate((el) => el.style.left);
+  await page.getByRole('button', { name: 'Play', exact: true }).click();
+  await page.waitForFunction(
+    (initial) => document.querySelector('#signal-panel .playhead').style.left !== initial,
+    startCursor,
+  );
+  await page.getByRole('button', { name: 'Pause', exact: true }).click();
+  assert.equal(
+    await analogPlot.getAttribute('data-playback-persistence'),
+    'true',
+    'playback moves the cursor without rebuilding selected arrays or chart',
+  );
+  assert.equal(
+    await table.locator('th').last().getByRole('button').getAttribute('aria-pressed'),
+    'true',
+  );
   assert(
     (await table.locator('tr[data-row]').count()) < 60,
     'selecting a whole column keeps bounded table DOM',
@@ -366,15 +483,47 @@ export async function verifyLargeExplorer(page) {
     (await scroll.boundingBox()).height > 250,
     `laptop table height: ${(await scroll.boundingBox()).height}`,
   );
+  const plotBounds = await page.locator('#signal-panel').boundingBox();
+  const footerBounds = await page.locator('footer').boundingBox();
+  const chartBounds = await analogPlot.boundingBox();
+  assert(
+    plotBounds.y + plotBounds.height <= footerBounds.y + 1 &&
+      chartBounds.y + chartBounds.height <= plotBounds.y + plotBounds.height + 1,
+    'table, chart and footer fit together on a laptop',
+  );
   await page.setViewportSize({ width: 1440, height: 1000 });
   await explorer.getByLabel('Search explorer datasets').fill('Large model');
   await explorer.locator('nav button').first().click();
   await explorer.locator('.explorer-pagination').getByText('1–200 of 1005 samples').waitFor();
+  assert.equal(
+    await target.getAttribute('data-sample-count'),
+    '0',
+    'changing datasets clears unrelated columns',
+  );
+  await table.locator('th').last().getByRole('button').click();
+  await page.waitForFunction(
+    () => document.querySelector('#signal-panel .plot-target')?.dataset.sampleCount === '1005',
+  );
+  assert.equal(Number(await target.getAttribute('data-time-start')), 0.25);
+  assert.equal(Number(await target.getAttribute('data-time-end')), 1.254);
+  await page.locator('#signal-panel .uplot').evaluate((el) => {
+    el.dataset.pagePersistence = 'true';
+  });
   const model = (await copyWithButton(page, explorer, 'Copy full table')).split('\n');
   assert.equal(model.length, 1006, 'full model copy includes unloaded pages');
   assert.equal(model.at(-1), '1004\t1004\t1.254\t1008');
   await explorer.getByRole('button', { name: 'Next samples', exact: true }).click();
   await explorer.locator('.explorer-pagination').getByText('201–400 of 1005 samples').waitFor();
+  assert.equal(
+    await table.locator('th').last().getByRole('button').getAttribute('aria-pressed'),
+    'true',
+  );
+  assert.equal(await target.getAttribute('data-sample-count'), '1005');
+  assert.equal(
+    await page.locator('#signal-panel .uplot').getAttribute('data-page-persistence'),
+    'true',
+    'paging neither truncates nor rebuilds the full-series chart',
+  );
   await table.locator('tr[data-row="0"] td').last().click();
   const values = (await copyWithButton(page, explorer, 'Copy selected column(s)')).split('\n');
   assert.equal(values.length, 1006, 'model column copy covers all pages from sample zero');

@@ -1025,6 +1025,9 @@ dd {
 .u-legend {
   font-size: 10px !important;
   color: #9aafc0;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow-x: auto;
 }
 .u-cursor-x,
 .u-cursor-y {

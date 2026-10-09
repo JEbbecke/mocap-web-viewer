@@ -16,6 +16,7 @@ import {
   rowWindow,
   sampleAt,
   seriesDataset,
+  type Dataset,
 } from '../src/explorer/datasets';
 import { MODEL_PAGE_SIZE, readModelPage } from '../src/explorer/modelPage';
 import { cropMotionData } from '../src/motion/crop';
@@ -28,6 +29,7 @@ import {
 } from '../src/state/session';
 import { renameDataCommand } from '../src/motion/dataLabels';
 import type { MotionData, Series } from '../src/motion/types';
+import { columnPlotData } from '../src/plots/series';
 
 let motion: MotionData;
 const path = resolve('.local/explorer-synthetic.h5');
@@ -43,6 +45,39 @@ beforeAll(async () => {
   }
 });
 const table = (data: MotionData, id: string) => explorerDatasets(data).find((d) => d.id === id)!;
+
+it('maps dynamic force, geometry, body matrices and EMG columns using declared units and clocks', () => {
+  const datasets = explorerDatasets(motion);
+  for (const [id, unit, labels] of [
+    ['plate:0:Force', 'N', ['Fx', 'Fy', 'Fz']],
+    ['plate:0:Moment', 'Nm', ['Mx', 'My', 'Mz']],
+    ['plate:0:COP', 'mm', ['X', 'Y', 'Z']],
+    ['body:0:Position', 'mm', ['X', 'Y', 'Z']],
+    [
+      'body:0:Rotation matrix',
+      '1',
+      ['R11', 'R12', 'R13', 'R21', 'R22', 'R23', 'R31', 'R32', 'R33'],
+    ],
+  ] as const) {
+    const d = datasets.find((d) => d.id === id)!;
+    const columns = d.columns.filter((c) => c.plot).map((c) => c.plot!);
+    const graph = columnPlotData(d.count, d.time, columns)!;
+    expect(graph.unit).toBe(unit);
+    expect(graph.labels).toEqual(labels);
+    expect(graph.values[0]).toHaveLength(d.count);
+    expect(graph.values[0][1]).toBe(d.time!(1));
+    expect(graph.values[1][1]).toBe(d.cell(1, 2));
+  }
+  const emg = datasets.find((d) => d.path[0] === 'EMG')!;
+  const analog = table(motion, 'analog:0');
+  const plot = (d: Dataset) =>
+    columnPlotData(
+      d.count,
+      d.time,
+      d.columns.flatMap((c) => (c.plot ? [c.plot] : [])),
+    );
+  expect(plot(emg)).toEqual(plot(analog));
+});
 
 it('browses available categories and searches names and category paths, never values', () => {
   const ds = explorerDatasets(motion);

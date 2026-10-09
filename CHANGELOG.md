@@ -9,6 +9,9 @@ Changes since the latest formal release remain under `[Unreleased]`.
 
 ### Added
 
+- Data Explorer headers support Ctrl/Cmd-click column toggles, Shift ranges and additive Ctrl/Cmd+Shift ranges, with selections retained across pages and view switches.
+- The shared Signal Inspector is available in Data Viewer and Data Explorer; selected Explorer time-series columns plot complete underlying data with existing units, physical clocks, cursor, zoom and crop preview.
+
 - Signal plots now visually de-emphasize data outside the active crop selection.
 
 - IK and ID result time series can now be selected and visualized in the existing plot panes, preserving source variable names, units and model clocks. Results proven aligned with the trajectory timeline crop with the trial; independent results remain intact.

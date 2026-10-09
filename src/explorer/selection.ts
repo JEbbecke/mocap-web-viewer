@@ -1,5 +1,38 @@
 import { exactCell, type Dataset } from './datasets';
 
+/** Dataset-scoped stable column identities; no sample arrays or page coordinates. */
+export interface ColumnSelection {
+  datasetId: string;
+  columns: string[];
+  anchor: string | null;
+}
+export function selectHeaderColumn(
+  previous: ColumnSelection | null,
+  datasetId: string,
+  order: string[],
+  column: string,
+  modifiers: { extend?: boolean; toggle?: boolean } = {},
+): ColumnSelection {
+  const current = previous?.datasetId === datasetId ? previous : null;
+  const anchor = current?.anchor && order.includes(current.anchor) ? current.anchor : null;
+  let columns: string[];
+  if (modifiers.extend && anchor) {
+    const a = order.indexOf(anchor),
+      b = order.indexOf(column);
+    const range = order.slice(Math.min(a, b), Math.max(a, b) + 1);
+    columns = modifiers.toggle ? [...(current?.columns ?? []), ...range] : range;
+  } else if (modifiers.toggle && current) {
+    columns = current.columns.includes(column)
+      ? current.columns.filter((id) => id !== column)
+      : [...current.columns, column];
+  } else columns = [column];
+  return {
+    datasetId,
+    columns: order.filter((id) => columns.includes(id)),
+    anchor: modifiers.extend && anchor ? anchor : column,
+  };
+}
+
 export interface CellAddress {
   row: number;
   column: number;
@@ -13,6 +46,28 @@ export interface CellSelection {
   anchor: CellAddress;
   active: CellAddress;
   ranges: CellRange[];
+}
+
+/** Project stable header IDs onto the current page only for table highlighting/copy. */
+export function headerCellSelection(
+  selection: ColumnSelection | null,
+  datasetId: string,
+  order: string[],
+  count: number,
+): CellSelection | null {
+  if (!count || selection?.datasetId !== datasetId) return null;
+  const indexes = order.flatMap((id, i) => (selection.columns.includes(id) ? [i] : []));
+  if (!indexes.length) return null;
+  const anchorIndex = order.indexOf(selection.anchor ?? '');
+  const anchor = { row: 0, column: anchorIndex >= 0 ? anchorIndex : indexes[0] };
+  return {
+    anchor,
+    active: { row: 0, column: indexes.at(-1)! },
+    ranges: indexes.map((column) => ({
+      start: { row: 0, column },
+      end: { row: count - 1, column },
+    })),
+  };
 }
 const range = (a: CellAddress, b: CellAddress): CellRange => ({
   start: { row: Math.min(a.row, b.row), column: Math.min(a.column, b.column) },

@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { modelPlotDescriptors, readModelSeries } from '../src/plots/modelSeries';
+import { modelPlotData, modelPlotDescriptors, readModelSeries } from '../src/plots/modelSeries';
 import { sampleTime } from '../src/explorer/datasets';
 import { dataSections } from '../src/components/dataSections';
 import { DataBrowser } from '../src/components/DataBrowser';
@@ -57,6 +57,24 @@ function group(rate: number, explicit = true, origin = 7) {
           : undefined,
   };
 }
+
+it('shares scalar plot preparation, retaining finite buffers and rendering nonfinite samples as gaps', () => {
+  const series = readModelSeries(group(120), { kind: 'ik', sourceIndex: 1 });
+  const column = { label: 'IK · angle', unit: 'rad' };
+  const finite = modelPlotData(series, column)!;
+  expect(finite.values[0]).toBe(series.times);
+  expect(finite.values[1]).toBe(series.values);
+  series.values[10] = NaN;
+  series.values[11] = Infinity;
+  const gaps = modelPlotData(series, column)!;
+  expect(gaps.labels).toEqual(['IK · angle']);
+  expect(gaps.unit).toBe('rad');
+  expect(gaps.values[1][10]).toBeNull();
+  expect(gaps.values[1][11]).toBeNull();
+  expect(gaps.values[1][12]).toBe(1012);
+  expect(series.values[10]).toBeNaN();
+  expect(series.values[11]).toBe(Infinity);
+});
 
 it('exposes scalar IK and separately named ID columns, units and stable source row identities', () => {
   const data = fixture();

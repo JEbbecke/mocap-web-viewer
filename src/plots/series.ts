@@ -2,11 +2,42 @@ import type uPlot from 'uplot';
 import type { MotionData, Series } from '../motion/types';
 import { sampleTime } from '../explorer/datasets';
 
-export function plotSeries(
-  data: MotionData,
-  selection: string,
-  marker: number,
-): { values: uPlot.AlignedData; unit: string; labels: string[] } {
+export interface PlotData {
+  values: uPlot.AlignedData;
+  unit: string;
+  labels: string[];
+}
+
+/** A scalar over an existing scientific buffer, materialized only when selected. */
+export interface PlotColumn {
+  label: string;
+  unit: string;
+  value?: (row: number) => number | null;
+}
+
+export function columnPlotData(
+  count: number,
+  time: ((row: number) => number) | undefined,
+  columns: PlotColumn[],
+): PlotData | null {
+  const selected = columns.filter((c) => c.value);
+  if (!time || !count || !selected.length) return null;
+  return {
+    values: [
+      Array.from({ length: count }, (_, row) => time(row)),
+      ...selected.map((c) =>
+        Array.from({ length: count }, (_, row) => {
+          const value = c.value!(row);
+          return value !== null && Number.isFinite(value) ? value : null;
+        }),
+      ),
+    ] as uPlot.AlignedData,
+    unit: selected[0].unit,
+    labels: selected.map((c) => c.label),
+  };
+}
+
+export function plotSeries(data: MotionData, selection: string, marker: number): PlotData {
   if (selection.startsWith('marker:')) {
     const index = Number(selection.split(':')[1]);
     if (Number.isInteger(index) && index >= 0 && index < data.markers.labels.length) marker = index;
