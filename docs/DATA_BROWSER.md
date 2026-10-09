@@ -2,7 +2,10 @@
 
 Use [Data Explorer](DATA_EXPLORER.md) in the header for detailed numerical tables
 and local IK/ID sample inspection. The Data tab retains its quick selection,
-visibility and editing controls.
+visibility and editing controls. Viewer dropdown/split-pane choices remain separate
+from Explorer header choices; switching views restores both. Explorer header
+selection feeds the same plot renderer and global cursor, with the same hide/show,
+zoom, units and crop-preview behavior.
 
 The right sidebar contains Data, Display and File Info. Data replaces the former
 Markers tab with collapsible sections for available collections. Markers start

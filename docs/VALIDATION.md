@@ -196,3 +196,13 @@ check aligned and independent results before/after crop, Explorer counts,
 cursor synchronization and fixed plot/footer bounds at 1440x1000, 1366x768 and
 1280x720. Selector height and single-line timing text are checked without
 pixel screenshots.
+
+Explorer plotting regressions cover plain/toggle/range/additive header selection,
+anchor updates, dataset IDs, page projection, excluded columns, full-series
+materialization, labels/units, marker validity, analog/irregular clocks, aligned
+and independent lazy model clocks, crop descriptors and UI/scientific state separation.
+Browser smoke exercises Ctrl/Cmd/Shift and keyboard headers, plot hide/show,
+view-switch persistence, a full 200,000-sample analog and a 1,005-sample model across
+200-row pages, shared cursor/crop shading, clipboard behavior and laptop table/plot
+bounds. These fixtures do not establish unlimited full-series plot capacity or
+Safari-specific automation coverage.

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { MotionData } from '../motion/types';
+import type { ColumnSelection } from '../explorer/selection';
 import { cropMotionData } from '../motion/crop';
 import { croppedFilename } from '../exporters';
 import { eventCommand, type EventFields } from '../motion/events';
@@ -54,6 +55,8 @@ interface Session {
   camera: { preset: CameraPreset; revision: number };
   connectionSet: string;
   plot: string;
+  explorerDataset: string;
+  explorerColumns: ColumnSelection | null;
 }
 export const useSession = create<Session>(() => ({
   eventEditor: null,
@@ -93,6 +96,8 @@ export const useSession = create<Session>(() => ({
   camera: { preset: 'perspective', revision: 0 },
   connectionSet: 'auto',
   plot: 'marker',
+  explorerDataset: '',
+  explorerColumns: null,
 }));
 export function selectPlot(plot: string) {
   useSession.setState({ plot });
@@ -134,6 +139,8 @@ export function setData(data: MotionData, sourceFile: File | null = null) {
     hidden: new Set(),
     search: '',
     plot: 'marker',
+    explorerDataset: '',
+    explorerColumns: null,
     assumeGlobal: false,
   });
   setCamera('perspective');

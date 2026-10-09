@@ -25,6 +25,65 @@ export async function verifyCropPreview(page) {
     () =>
       [...document.querySelectorAll('.plot-crop-muted')].filter((el) => !el.hidden).length === 4,
   );
+  await page.getByRole('button', { name: 'Data Explorer', exact: true }).click();
+  const explorer = page.getByRole('region', { name: 'Data Explorer', exact: true });
+  const search = explorer.getByLabel('Search explorer datasets');
+  await search.fill('Analog');
+  await explorer.locator('nav button').first().click();
+  await explorer.locator('th').last().getByRole('button').click();
+  await page.waitForFunction(
+    () =>
+      [...document.querySelectorAll('.plot-crop-muted')].filter((el) => !el.hidden).length === 2,
+  );
+  assert.equal(Number(await page.locator('.plot-crop-before').getAttribute('data-end')), 0.05);
+  assert.equal(Number(await page.locator('.plot-crop-after').getAttribute('data-start')), 0.15);
+  const cursor = page.locator('.playhead');
+  const initialCursor = await cursor.evaluate((el) => el.style.left);
+  await page.getByRole('slider', { name: 'Frame', exact: true }).press('Home');
+  await page.getByRole('slider', { name: 'Frame', exact: true }).press('ArrowRight');
+  assert.notEqual(
+    await cursor.evaluate((el) => el.style.left),
+    initialCursor,
+    'Explorer shares global cursor',
+  );
+  const explorerOver = page.locator('#signal-panel .u-over');
+  const explorerBox = await explorerOver.boundingBox();
+  await page.mouse.click(
+    explorerBox.x + explorerBox.width * 0.1,
+    explorerBox.y + explorerBox.height / 2,
+  );
+  assert(
+    Number(
+      await page.getByRole('slider', { name: 'Frame', exact: true }).getAttribute('aria-valuenow'),
+    ) < 5,
+    'Explorer chart click scrubs outside the crop region',
+  );
+  await page.mouse.move(
+    explorerBox.x + explorerBox.width / 2,
+    explorerBox.y + explorerBox.height / 2,
+  );
+  await page.mouse.wheel(0, -120);
+  await page.waitForFunction(
+    () => Number(document.querySelector('.plot-crop-before').dataset.start) > 0,
+  );
+  await page.getByRole('button', { name: 'Reset zoom', exact: true }).click();
+  await page.waitForFunction(
+    () => Number(document.querySelector('.plot-crop-before').dataset.start) === 0,
+  );
+  await search.fill('IK Results');
+  await explorer.locator('nav button').first().click();
+  await explorer.locator('th').last().getByRole('button').click();
+  await page.waitForFunction(
+    () =>
+      [...document.querySelectorAll('.plot-crop-muted')].filter((el) => !el.hidden).length === 2,
+  );
+  assert.equal(Number(await page.locator('.plot-crop-before').getAttribute('data-end')), 0.05);
+  assert.equal(Number(await page.locator('.plot-crop-after').getAttribute('data-start')), 0.15);
+  await page.getByRole('button', { name: 'Data Viewer', exact: true }).click();
+  await page.waitForFunction(
+    () =>
+      [...document.querySelectorAll('.plot-crop-muted')].filter((el) => !el.hidden).length === 4,
+  );
   for (const pane of [page.locator('.signal-pane').first(), page.locator('.signal-pane').nth(1)]) {
     assert.equal(Number(await pane.locator('.plot-crop-before').getAttribute('data-end')), 0.05);
     assert.equal(Number(await pane.locator('.plot-crop-after').getAttribute('data-start')), 0.15);
@@ -106,6 +165,17 @@ export async function verifyCropPreview(page) {
   await page.locator('.u-legend').getByText(/ID ·/).waitFor();
   await middleCrop(page);
   assert.equal(await page.locator('.plot-crop-muted:visible').count(), 0);
+  await page.getByRole('button', { name: 'Data Explorer', exact: true }).click();
+  await search.fill('ID Results');
+  await explorer.locator('nav button').first().click();
+  await explorer.locator('th').last().getByRole('button').click();
+  await page.locator('.u-legend').getByText(/ID ·/).waitFor();
+  assert.equal(
+    await page.locator('.plot-crop-muted:visible').count(),
+    0,
+    'Explorer retains independent model clock without crop shading',
+  );
+  await page.getByRole('button', { name: 'Data Viewer', exact: true }).click();
   await page.getByRole('button', { name: 'Cancel crop', exact: true }).click();
   await page.setViewportSize({ width: 1440, height: 1000 });
   console.log(

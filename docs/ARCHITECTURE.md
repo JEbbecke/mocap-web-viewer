@@ -109,7 +109,7 @@ source-backed reads carry a retained sample range and trial origin; repeated
 crops update these small descriptors. Independent results retain their original
 clock and samples. Plot, Explorer and H5 export consume the same timing fact.
 The shared cursor uses trial-relative seconds for aligned results.
-Two panes retain the existing selection limit and separate unit scales.
+Viewer supports one selected signal per pane, with separate unit scales.
 `src/plots/series.ts` holds reusable in-memory signal preparation. Selecting or
 deselecting a plot never edits MotionData, history or export payloads.
 
@@ -124,3 +124,22 @@ Crop previews reuse session crop boundaries through `plots/cropPreview.ts` and
 physical time through the current x scale on draw, resize and crop updates.
 They ignore pointer events and leave signal arrays untouched. Split panes share
 the same boundaries. Retained independent model results have no removal preview.
+
+Explorer header selection lives in session UI state as dataset ID, semantic column
+IDs and a Shift anchor, independently of Viewer `plot` and secondary-pane choices.
+`explorer/selection.ts` handles modifier ranges and projects headers onto the current
+page for existing clipboard/cell highlighting; paging is never a plot input.
+`explorer/datasets.ts` annotates eligible scientific columns with generic `PlotColumn`
+accessors/labels/units over original buffers. Source-backed scalar columns instead
+carry the existing model source/range/origin descriptor. Metadata and clock/index
+columns have no plot descriptor.
+
+One `SignalPlot` panel in App selects a view-specific input adapter: Viewer keeps
+its dropdowns; `ColumnSignals` maps Explorer IDs to the same `PlotData` representation
+via `plots/series.ts`. `SignalChart` owns the only uPlot lifecycle, legend, zoom/reset,
+cursor, resize and crop overlays. `useModelSeries` shares full-scalar worker loading
+between both adapters, cancels stale requests, and retains transferred buffers in
+refs. Arrays materialize only when data/selected components change; playback updates
+the shared chart cursor imperatively. No second plot system, dependency or scientific
+state/export changes are introduced. Explorer's compact flex layout reserves a
+usable table and chart region with `min-height: 0` and the existing panel toggle.

@@ -21,7 +21,9 @@ import {
   copySelectedRows,
   copySelectedCells,
   selectCell,
-  selectColumn,
+  selectHeaderColumn,
+  headerCellSelection,
+  type CellAddress,
   selectedColumns,
   selectedCellCount,
   rowSelected,
@@ -101,11 +103,44 @@ function NumericalTable({
   const [selection, setSelected] = useState<CellSelection | null>(null),
     [status, setStatus] = useState(''),
     [copying, setCopying] = useState(false);
+  const headers = useSession((s) => s.explorerColumns);
   const bounded = useMemo(
-    () => boundSelection(selection, dataset.count, dataset.columns.length),
-    [selection, dataset.count, dataset.columns.length],
+    () =>
+      headers?.datasetId === dataset.id
+        ? headerCellSelection(
+            headers,
+            dataset.id,
+            dataset.columns.map((c) => c.id),
+            dataset.count,
+          )
+        : boundSelection(selection, dataset.count, dataset.columns.length),
+    [headers, selection, dataset.id, dataset.count, dataset.columns],
   );
+  const selectHeader = (column: string, modifiers: { extend?: boolean; toggle?: boolean }) => {
+    setSelected(null);
+    useSession.setState((state) => ({
+      explorerDataset: dataset.id,
+      explorerColumns: selectHeaderColumn(
+        state.explorerColumns,
+        dataset.id,
+        dataset.columns.map((c) => c.id),
+        column,
+        modifiers,
+      ),
+    }));
+  };
+  const selectTableCell = (
+    cell: CellAddress,
+    modifiers: { extend?: boolean; toggle?: boolean } = {},
+  ) => {
+    setSelected(selectCell(bounded, cell, modifiers));
+    useSession.setState({ explorerColumns: null });
+  };
   const selected = bounded?.active;
+  const headerSelected = (column: number) =>
+    headers?.datasetId === dataset.id
+      ? headers.columns.includes(dataset.columns[column].id)
+      : columnSelected(bounded, column);
   const count = selectedCellCount(bounded);
   const frame = useSession((s) => s.frame);
   const current = dataset.current?.(frame / pointRate) ?? -1;
@@ -200,7 +235,8 @@ function NumericalTable({
       </div>
       <p className="explorer-selection-help">
         Click a cell · Shift-click a range · Ctrl/Cmd-click to add or remove cells · Click a header
-        to select a column{count ? ` · ${count.toLocaleString()} selected` : ''}
+        to select columns (Ctrl/Cmd toggles, Shift selects a range)
+        {count ? ` · ${count.toLocaleString()} selected` : ''}
       </p>
       <div
         className="explorer-scroll"
@@ -241,15 +277,28 @@ function NumericalTable({
               {dataset.columns.map((c, i) => (
                 <th
                   scope="col"
-                  key={i}
-                  className={`${c.numeric ? 'numeric' : ''} ${columnSelected(bounded, i) ? 'selected-column' : ''}`}
+                  key={c.id}
+                  className={`${c.numeric ? 'numeric' : ''} ${headerSelected(i) ? 'selected-column' : ''}`}
                 >
                   <button
                     className="explorer-column-select"
                     title={`Select column: ${c.name}`}
-                    onClick={() => {
-                      setSelected(selectColumn(i, dataset.count));
+                    aria-pressed={headerSelected(i)}
+                    onMouseDown={(e) => {
+                      if (e.shiftKey || e.ctrlKey || e.metaKey) e.preventDefault();
+                    }}
+                    onClick={(e) => {
+                      if (e.shiftKey || e.ctrlKey || e.metaKey)
+                        globalThis.getSelection()?.removeAllRanges();
+                      selectHeader(c.id, { extend: e.shiftKey, toggle: e.ctrlKey || e.metaKey });
                       viewport.current?.focus({ preventScroll: true });
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        selectHeader(c.id, { extend: e.shiftKey, toggle: e.ctrlKey || e.metaKey });
+                      }
                     }}
                   >
                     {c.name}
@@ -292,12 +341,9 @@ function NumericalTable({
                             globalThis.getSelection()?.removeAllRanges();
                           if (e.shiftKey || e.ctrlKey || e.metaKey)
                             e.currentTarget.focus({ preventScroll: true });
-                          setSelected((s) =>
-                            selectCell(
-                              boundSelection(s, dataset.count, dataset.columns.length),
-                              { row: r, column: i },
-                              { extend: e.shiftKey, toggle: e.ctrlKey || e.metaKey },
-                            ),
+                          selectTableCell(
+                            { row: r, column: i },
+                            { extend: e.shiftKey, toggle: e.ctrlKey || e.metaKey },
                           );
                         }}
                         onKeyDown={(e) => {
@@ -305,13 +351,10 @@ function NumericalTable({
                           if (e.key === 'Enter' || e.key === ' ') {
                             e.preventDefault();
                             e.stopPropagation();
-                            setSelected((s) =>
-                              selectCell(
-                                boundSelection(s, dataset.count, dataset.columns.length),
-                                cell,
-                                { extend: e.shiftKey, toggle: e.ctrlKey || e.metaKey },
-                              ),
-                            );
+                            selectTableCell(cell, {
+                              extend: e.shiftKey,
+                              toggle: e.ctrlKey || e.metaKey,
+                            });
                           } else if (
                             e.shiftKey &&
                             ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)
@@ -334,14 +377,10 @@ function NumericalTable({
                                 ),
                               ),
                             };
-                            setSelected((s) =>
-                              selectCell(
-                                boundSelection(s, dataset.count, dataset.columns.length) ??
-                                  selectCell(null, cell),
-                                next,
-                                { extend: true },
-                              ),
+                            setSelected(
+                              selectCell(bounded ?? selectCell(null, cell), next, { extend: true }),
                             );
+                            useSession.setState({ explorerColumns: null });
                             const el = viewport.current!;
                             if (
                               next.row * ROW_HEIGHT < el.scrollTop ||
@@ -459,12 +498,6 @@ function ModelTable({ dataset, data }: { dataset: Dataset; data: MotionData }) {
     const d: Dataset = {
       ...dataset,
       count: page.values.length,
-      columns: [
-        { name: 'Sample (0-based)', numeric: true },
-        { name: 'Source sample (0-based)', numeric: true },
-        { name: 'Model time [s]', numeric: true },
-        { name: `Value [${model.unit}]`, numeric: true },
-      ],
       cell: (r, c) =>
         c === 0
           ? page.offset + r
@@ -546,7 +579,9 @@ function ModelTable({ dataset, data }: { dataset: Dataset; data: MotionData }) {
         </label>
       </div>
       <p className="small muted">
-        Independent model clock · samples remain unchanged by trial crops.
+        {model.aligned
+          ? 'Aligned model clock; samples are cropped with trial.'
+          : independentModelMessage}
       </p>
       {page && !page.clockKnown && (
         <p className="small muted">No declared model clock; time values are unknown.</p>
@@ -577,8 +612,13 @@ function ModelTable({ dataset, data }: { dataset: Dataset; data: MotionData }) {
 export function DataExplorer({ data, onClose }: { data: MotionData; onClose: () => void }) {
   const datasets = useMemo(() => explorerDatasets(data), [data]);
   const [query, setQuery] = useState(''),
-    [selected, setSelected] = useState(''),
     [follow, setFollow] = useState(false);
+  const selected = useSession((s) => s.explorerDataset);
+  const selectDataset = (id: string) =>
+    useSession.setState((state) => ({
+      explorerDataset: id,
+      explorerColumns: state.explorerDataset === id ? state.explorerColumns : null,
+    }));
   const matches = useMemo(() => filterDatasets(datasets, query), [datasets, query]);
   const dataset = datasets.find((d) => d.id === selected) ?? datasets[0];
   useEffect(() => {
@@ -608,7 +648,7 @@ export function DataExplorer({ data, onClose }: { data: MotionData; onClose: () 
           </p>
           <Navigation
             datasets={matches}
-            onSelect={setSelected}
+            onSelect={selectDataset}
             selected={dataset?.id ?? ''}
             searching={!!query.trim()}
           />
@@ -617,36 +657,38 @@ export function DataExplorer({ data, onClose }: { data: MotionData; onClose: () 
         <div className="explorer-detail">
           {dataset ? (
             <>
-              <div className="explorer-dataset-heading">
-                <div>
-                  <p>{dataset.path.join(' / ')}</p>
-                  <h3>{dataset.name}</h3>
+              <div className="explorer-dataset-info">
+                <div className="explorer-dataset-heading">
+                  <div>
+                    <p>{dataset.path.join(' / ')}</p>
+                    <h3>{dataset.name}</h3>
+                  </div>
+                  {(dataset.current || dataset.model) && (
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={follow}
+                        disabled={!!dataset.model}
+                        onChange={(e) => setFollow(e.target.checked)}
+                      />{' '}
+                      Follow playback
+                    </label>
+                  )}
                 </div>
-                {(dataset.current || dataset.model) && (
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={follow}
-                      disabled={!!dataset.model}
-                      onChange={(e) => setFollow(e.target.checked)}
-                    />{' '}
-                    Follow playback
-                  </label>
+                {!!dataset.facts.length && (
+                  <details className="explorer-facts">
+                    <summary>Units, clock and dataset details</summary>
+                    <dl>
+                      {dataset.facts.map(([key, value]) => (
+                        <div key={key}>
+                          <dt>{key}</dt>
+                          <dd>{value}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  </details>
                 )}
               </div>
-              {!!dataset.facts.length && (
-                <details className="explorer-facts">
-                  <summary>Units, clock and dataset details</summary>
-                  <dl>
-                    {dataset.facts.map(([key, value]) => (
-                      <div key={key}>
-                        <dt>{key}</dt>
-                        <dd>{value}</dd>
-                      </div>
-                    ))}
-                  </dl>
-                </details>
-              )}
               {dataset.model ? (
                 <ModelTable key={dataset.id} dataset={dataset} data={data} />
               ) : (

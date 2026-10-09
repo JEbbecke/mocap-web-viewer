@@ -260,7 +260,8 @@ export function App() {
               <Timeline data={data} />
               <SignalPlot
                 data={data}
-                collapsed={!showPlot || showExplorer}
+                collapsed={!showPlot}
+                explorer={showExplorer}
                 onToggle={() => setShowPlot((value) => !value)}
               />
             </>

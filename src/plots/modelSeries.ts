@@ -1,6 +1,20 @@
 import type { MotionData, Series } from '../motion/types';
 import { modelUnit } from '../explorer/datasets';
 import { MODEL_PAGE_SIZE, readModelPage, type ModelRequest } from '../explorer/modelPage';
+import type { PlotColumn, PlotData } from './series';
+
+/** Both selection adapters reuse transferred buffers; nonfinite values render as gaps. */
+export function modelPlotData(series: Series | null, column: PlotColumn): PlotData | null {
+  if (!series) return null;
+  const values = series.values.every(Number.isFinite)
+    ? series.values
+    : Array.from(series.values, (value) => (Number.isFinite(value) ? value : null));
+  return {
+    values: [series.times!, values] as PlotData['values'],
+    labels: [column.label],
+    unit: column.unit,
+  };
+}
 
 /** Scalar source columns; selections contain identity, never numerical buffers. */
 export function modelPlotDescriptors(data: MotionData) {

@@ -3,11 +3,14 @@ import type { MotionData, Series } from '../motion/types';
 import { eventSourceFrame } from '../motion/events';
 import { metadataText } from '../motion/metadata';
 import { fileInfoSections } from '../components/fileInfoSections';
+import type { PlotColumn } from '../plots/series';
 
 export type Cell = string | number | boolean | undefined;
 export interface Column {
+  id: string;
   name: string;
   numeric?: boolean;
+  plot?: PlotColumn;
 }
 export interface Dataset {
   id: string;
@@ -22,7 +25,7 @@ export interface Dataset {
   seek?: (row: number) => number;
   model?: ModelView & { kind: 'ik' | 'id'; sourceIndex: number; unit: string; aligned?: boolean };
 }
-const col = (name: string, numeric = true): Column => ({ name, numeric });
+const col = (name: string, numeric = true, id = name): Column => ({ id, name, numeric });
 const xyz = ['X', 'Y', 'Z'];
 const matrix = Array.from({ length: 9 }, (_, i) => `R${Math.floor(i / 3) + 1}${(i % 3) + 1} [1]`);
 export const sampleTime = (s: Series, i: number) => s.times?.[i] ?? s.startTime + i / s.rate;
@@ -57,14 +60,19 @@ export function seriesDataset(
     path,
     count,
     columns: [
-      col('Sample (0-based)'),
-      ...(!isStatic ? [col('Time [s]')] : []),
-      ...Array.from({ length: s.components }, (_, i) =>
-        col(
-          labels?.[i] ??
-            `${s.components === 1 ? 'Value' : (xyz[i] ?? `Component ${i + 1}`)} [${unit}]`,
-        ),
-      ),
+      col('Sample (0-based)', true, 'sample'),
+      ...(!isStatic ? [col('Time [s]', true, 'time')] : []),
+      ...Array.from({ length: s.components }, (_, i) => {
+        const label =
+          labels?.[i]?.replace(/ \[[^\]]*\]$/, '') ??
+          (s.components === 1 ? 'Value' : (xyz[i] ?? `Component ${i + 1}`));
+        return {
+          ...col(labels?.[i] ?? `${label} [${unit}]`, true, `component:${i}`),
+          ...(!isStatic
+            ? { plot: { label, unit, value: (row: number) => s.values[row * s.components + i] } }
+            : {}),
+        };
+      }),
     ],
     cell: (r, c) =>
       c === 0
@@ -111,12 +119,26 @@ export function explorerDatasets(data: MotionData): Dataset[] {
       q = data.markers.quality;
     const optional: [Column, (r: number) => Cell][] = [];
     if (data.markers.residuals)
-      optional.push([col('Residual [mm]'), (r) => data.markers.residuals![r * stride + m]]);
-    if (q?.type) optional.push([col('Source quality type'), (r) => q.type![r * stride + m]]);
-    if (q?.virtual) optional.push([col('Virtual', false), () => !!q.virtual![m]]);
+      optional.push([
+        {
+          ...col('Residual [mm]', true, 'residual'),
+          plot: {
+            label: 'Residual',
+            unit: data.units.position,
+            value: (r) => data.markers.residuals![r * stride + m],
+          },
+        },
+        (r) => data.markers.residuals![r * stride + m],
+      ]);
+    if (q?.type)
+      optional.push([
+        col('Source quality type', true, 'qualityType'),
+        (r) => q.type![r * stride + m],
+      ]);
+    if (q?.virtual) optional.push([col('Virtual', false, 'virtual'), () => !!q.virtual![m]]);
     if (q?.cameraMasks)
       optional.push([
-        col('Camera mask', false),
+        col('Camera mask', false, 'cameraMasks'),
         (r) =>
           q.cameraMasksKnown?.[m] === 0
             ? 'unknown'
@@ -131,12 +153,22 @@ export function explorerDatasets(data: MotionData): Dataset[] {
       path: ['Trajectories'],
       count: data.timeline.frameCount,
       columns: [
-        col('Index (0-based)'),
-        col('Current frame (1-based)'),
-        col('Source frame'),
-        col('Time [s]'),
-        ...xyz.map((a) => col(`${a} [mm]`)),
-        col('Valid', false),
+        col('Index (0-based)', true, 'sample'),
+        col('Current frame (1-based)', true, 'currentFrame'),
+        col('Source frame', true, 'sourceFrame'),
+        col('Time [s]', true, 'time'),
+        ...xyz.map((a, component) => ({
+          ...col(`${a} [mm]`, true, a.toLowerCase()),
+          plot: {
+            label: a,
+            unit: data.units.position,
+            value: (r: number) =>
+              data.markers.valid[r * stride + m]
+                ? data.markers.positions[(r * stride + m) * 3 + component]
+                : null,
+          },
+        })),
+        col('Valid', false, 'valid'),
         ...optional.map((o) => o[0]),
       ],
       cell: (r, c) =>
@@ -284,7 +316,15 @@ export function explorerDatasets(data: MotionData): Dataset[] {
         name: entry.name,
         path: [category],
         count: result.samples ?? 0,
-        columns: [col('Sample (0-based)'), col('Time [s]'), col(`Value [${unit}]`)],
+        columns: [
+          col('Sample (0-based)', true, 'sample'),
+          col('Source sample (0-based)', true, 'sourceSample'),
+          col('Model time [s]', true, 'time'),
+          {
+            ...col(`Value [${unit}]`, true, 'value'),
+            plot: { label: `${kind.toUpperCase()} · ${entry.name}`, unit },
+          },
+        ],
         cell: () => undefined,
         facts: [
           ['Unit', unit],
