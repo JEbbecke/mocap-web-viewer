@@ -18,6 +18,7 @@ import { PanelToggle } from './components/PanelToggle';
 import { DataExplorer } from './components/DataExplorer';
 import { ExportControl } from './components/ExportControl';
 import { getAnalyticsStats, trackEvent, type AnalyticsStats } from './analytics';
+import { LicenseInfo } from './components/LicenseInfo';
 class ViewerBoundary extends Component<{ children: ReactNode }, { error: string | null }> {
   state = { error: null as string | null };
   static getDerivedStateFromError(error: Error) {
@@ -307,9 +308,7 @@ export function App() {
           uploaded.
         </span>
         <span>
-          {data
-            ? `${data.timeline.rate} Hz · ${data.markers.labels.length} markers · ${data.forcePlatforms.length} plates`
-            : 'C3D + H5'}
+          <span className="footer-gh-repo">© 2026 JE Motion Lab</span>
           <span className="footer-version" aria-label={`JE Motion Lab version ${__APP_VERSION__}`}>
             v{__APP_VERSION__}
           </span>
@@ -319,8 +318,11 @@ export function App() {
               target="_blank"
               rel="noopener noreferrer"
             >
-              Open Source on Github
+              Source on GitHub
             </a>
+          </span>
+          <span className="footer-gh-repo">
+            <LicenseInfo />
           </span>
           <span className="footer-gh-repo">
             <a href="https://jemolab.com/privacy.html" target="_blank" rel="noopener noreferrer">

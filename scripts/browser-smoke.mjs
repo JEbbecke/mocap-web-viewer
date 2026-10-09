@@ -4,6 +4,7 @@ import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import assert from 'node:assert/strict';
+import { verifyLicense } from './browser-license.mjs';
 import { verifyModelPlots } from './browser-model-plots.mjs';
 import { createModelTimingFixtures, verifyModelTiming } from './browser-model-timing.mjs';
 import { verifyCropPreview } from './browser-crop-preview.mjs';
@@ -288,6 +289,7 @@ try {
     'https://app.jemolab.com/',
   );
   assert.equal(await page.locator('.footer-version').textContent(), `v${version}`);
+  await verifyLicense(page);
   assert.equal(
     await page.locator('.footer-version').getAttribute('aria-label'),
     `JE Motion Lab version ${version}`,

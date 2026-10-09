@@ -1144,6 +1144,25 @@ footer .privacy-dot {
   color: #5d788c;
 }
 
+.footer-license {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+}
+.license-dialog {
+  line-height: 1.6;
+  font-size: 12px;
+  overflow: auto;
+}
+.legal-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 11px;
+}
+
 .error-banner {
   padding: 12px 22px;
   color: #ffc1b4;
@@ -1350,9 +1369,17 @@ footer .privacy-dot {
     min-height: 36px;
     line-height: 1.7;
     padding: 8px 12px;
+    flex-wrap: wrap;
   }
   footer > span:last-child {
-    display: none;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+  footer .footer-gh-repo,
+  footer .footer-version {
+    margin-left: 0;
   }
   .welcome {
     left: 4%;

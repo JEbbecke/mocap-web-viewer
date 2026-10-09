@@ -47,12 +47,15 @@ smoke check compares the rendered footer against the package version.
 When preparing a formal release, keep [CITATION.cff](../CITATION.cff)'s `version`
 in sync with the package and set `date-released` to the actual release date.
 Ordinary unreleased changes do not advance either field. Citation metadata
-requests scholarly credit. The [Apache-2.0 license](../LICENSE) defines the license
-conditions, and [NOTICE](../NOTICE) records author attribution.
+requests scholarly credit. The [PolyForm Noncommercial License 1.0.0](../LICENSE) defines the license
+conditions, and [NOTICE](../NOTICE) records the required project notices.
+[Third-party notices](../THIRD_PARTY_NOTICES.md) preserve the separate component licenses.
 
-The footer also links to [Privacy](https://jemolab.com/privacy.html) and
+The footer opens a local Noncommercial License dialog with the exact bundled
+license, required notices, third-party notices and commercial-license contact
+link. It also links to [Privacy](https://jemolab.com/privacy.html) and
 [Imprint](https://jemolab.com/imprint.html). These external pages are the single
-source of truth for legal text; release notes describe the links without copying
+source of truth for Privacy and Imprint text; release notes describe the links without copying
 their contents into the repository.
 
 [README](../README.md) describes capabilities without a duplicated current-version
@@ -101,6 +104,23 @@ codec fallback, progress/cancellation, unsupported-video image availability and
 unchanged timeline/playback/history. Video uses explicit offline timestamps;
 never substitute performance-dependent live capture for physical-time validation.
 Manual Safari/Samsung video checks are required before compatibility claims.
+
+## Licensing checks before release
+
+- Verify [LICENSE](../LICENSE) matches the exact official PolyForm Noncommercial
+  License 1.0.0 text and [NOTICE](../NOTICE) preserves the copyright and
+  `Required Notice:` lines for Jonas Ebbecke / JE Motion Lab.
+- Review production bundle dependencies after any dependency/import change;
+  update [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md) with the applicable
+  original copyright, license texts and any upstream NOTICE requirements.
+  Revisit native WebAssembly provenance limits recorded in the
+  [licensing audit](LICENSING_AUDIT.md).
+- Check the README describes the current source-available license and separate
+  commercial licensing, and validate CITATION.cff against the CFF 1.2.0 schema.
+- Build and inspect the in-app License dialog, full terms and third-party notices;
+  verify footer navigation, Privacy and Imprint links and startup/workspace behavior.
+- Confirm the distribution includes LICENSE, required notices and third-party
+  notices (bundled in the dialog); do not edit generated dist files.
 
 ## Prepare an intentional release through a pull request
 

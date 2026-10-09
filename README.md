@@ -179,11 +179,22 @@ Keep private recordings out of Git and `public/`. The existing ignore rules excl
 
 ## License
 
-JE Motion Lab is licensed under the [Apache License 2.0](LICENSE). [NOTICE](NOTICE) records attribution to Jonas Ebbecke. Redistributions must comply with the license, including providing a copy of it, preserving applicable copyright and NOTICE attribution, and marking modified files as required by Apache-2.0.
+JE Motion Lab is source-available under the [PolyForm Noncommercial License 1.0.0](LICENSE).
+
+Noncommercial use is allowed subject to the license. Modification is allowed for
+purposes permitted by the license, and redistribution is allowed subject to its
+terms, including preservation of the [required notices](NOTICE). The public
+license does not grant commercial use. Commercial use requires a separate
+commercial license from Jonas Ebbecke; use the contact details in the
+[Imprint](https://jemolab.com/imprint.html).
+
+See the [official PolyForm terms](https://polyformproject.org/licenses/noncommercial/1.0.0)
+and [third-party notices](THIRD_PARTY_NOTICES.md). Third-party components retain
+their respective licenses.
 
 ## Citation
 
-For scientific use, please cite JE Motion Lab using the metadata in [CITATION.cff](CITATION.cff). Scientific citation is requested for scholarly credit and is not a condition of Apache-2.0.
+For scientific use, please cite JE Motion Lab using the metadata in [CITATION.cff](CITATION.cff). Scientific citation is requested for scholarly credit and is not a condition of the public license.
 
 ## Development status and releases
 

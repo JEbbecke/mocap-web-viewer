@@ -33,6 +33,8 @@ Changes since the latest formal release remain under `[Unreleased]`.
 
 ### Changed
 
+- JE Motion Lab is now distributed under the PolyForm Noncommercial License 1.0.0; commercial use requires a separate license. The footer now exposes bundled license terms, required notices and third-party licensing information.
+
 - The Trial Inspector now prioritizes subject, condition and file metadata instead of prominent current-frame marker coordinates.
 
 - Grouped image and video export under one Export media menu with separate configuration dialogs; scientific C3D/H5 export remains in the header.
