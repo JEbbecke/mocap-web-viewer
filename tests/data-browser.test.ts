@@ -75,8 +75,8 @@ it('lists all eight categories with authoritative counts and existing plot/event
   expect(group('EMG channels').entries[0]).toMatchObject({ name: 'knee EMG', plot: 'signal:0' });
   expect(group('IK results').entries.map((e) => e.name)).toEqual(['knee_angle_r', 'hip_flexion_r']);
   expect(group('ID results').entries.map((e) => e.name)).toEqual(['knee_moment_r', 'hip_moment_r']);
-  expect(group('IK results').entries[0].plot).toBeUndefined();
-  expect(group('IK results').note).toContain('not plotted');
+  expect(group('IK results').entries[0].plot).toBe('ik:0');
+  expect(group('IK results').note).toContain('Independent model timeline');
   expect(group('ID results').entries[0].detail).toBe('');
   expect(group('IK results').entries[0].detail).toBe('deg · 120 Hz');
   // Browsing retains source arrays and does not change force values or events.

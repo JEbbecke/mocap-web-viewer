@@ -72,6 +72,32 @@ export function cropMotionData(data: MotionData, startFrame: number, endFrame: n
     ...data,
     source: {
       ...data.source,
+      ...(Object.values(data.source.info?.modelResults ?? {}).some(
+        (result) => result?.timeBasis === 'trial-aligned',
+      )
+        ? {
+            info: {
+              ...data.source.info,
+              modelResults: Object.fromEntries(
+                Object.entries(data.source.info?.modelResults ?? {}).map(([kind, result]) => [
+                  kind,
+                  result?.timeBasis === 'trial-aligned'
+                    ? {
+                        ...result,
+                        samples: frameCount,
+                        sourceRange: {
+                          start: (result.sourceRange?.start ?? 0) + startFrame,
+                          end: (result.sourceRange?.start ?? 0) + endFrame,
+                        },
+                        timeOrigin:
+                          (result.timeOrigin ?? data.source.timeOrigin ?? 0) + interval.start,
+                      }
+                    : result,
+                ]),
+              ),
+            },
+          }
+        : {}),
       ...(data.source.timeOrigin !== undefined
         ? { timeOrigin: data.source.timeOrigin + interval.start }
         : {}),

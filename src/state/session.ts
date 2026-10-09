@@ -94,6 +94,12 @@ export const useSession = create<Session>(() => ({
   connectionSet: 'auto',
   plot: 'marker',
 }));
+export function selectPlot(plot: string) {
+  useSession.setState({ plot });
+}
+export function togglePlot(plot: string) {
+  selectPlot(useSession.getState().plot === plot ? 'none' : plot);
+}
 export function setFrame(frame: number) {
   const n = useSession.getState().data?.timeline.frameCount || 1;
   useSession.setState({ frame: Math.max(0, Math.min(n - 1, Math.round(frame))) });

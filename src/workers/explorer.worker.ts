@@ -1,10 +1,12 @@
 import { readModelPage, type ModelRequest } from '../explorer/modelPage';
 import { readModelText } from '../explorer/modelCopy';
+import { readModelSeries } from '../plots/modelSeries';
 self.onmessage = async (
   event: MessageEvent<{
     file: File;
     request: ModelRequest;
     copy?: { headers: string[]; columns?: number[] };
+    plot?: boolean;
   }>,
 ) => {
   const h5 = await import('h5wasm');
@@ -20,7 +22,10 @@ self.onmessage = async (
     handle = new h5.File('/explorer/model.h5', 'r');
     const group = handle.get(event.data.request.kind === 'ik' ? 'IKResults' : 'IDResults');
     if (!(group instanceof h5.Group)) throw Error('Model result group is unavailable.');
-    if (event.data.copy) {
+    if (event.data.plot) {
+      const series = readModelSeries(group, event.data.request);
+      self.postMessage({ series }, { transfer: [series.values.buffer, series.times!.buffer] });
+    } else if (event.data.copy) {
       const text = readModelText(
         group,
         event.data.request,

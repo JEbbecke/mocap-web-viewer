@@ -4,6 +4,10 @@ import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import assert from 'node:assert/strict';
+import { verifyModelPlots } from './browser-model-plots.mjs';
+import { createModelTimingFixtures, verifyModelTiming } from './browser-model-timing.mjs';
+import { verifyCropPreview } from './browser-crop-preview.mjs';
+import { verifyTrialOverview, verifyLongTrialFilename } from './browser-trial-overview.mjs';
 import * as h5 from 'h5wasm/node';
 import {
   createCoordinateSystemsFixture,
@@ -53,6 +57,7 @@ await writeFile('.local/current-browser.h5', Buffer.from(currentH5.base64, 'base
 // Synthetic metadata exercises all curated sections without participant data.
 await h5.ready;
 createCoordinateSystemsFixture();
+createModelTimingFixtures();
 // Three-frame current-schema fixture for the shared C3D/H5 crop interaction checks.
 const smallH5 = new h5.File(resolve('.local/synthetic.h5'), 'w');
 try {
@@ -154,6 +159,7 @@ try {
   const metadata = populatedFile.get('MetaData');
   for (const [key, value] of Object.entries({
     SubjectID: 'SYNTHETIC-INFO',
+    SubjectGroup: 'Synthetic group',
     Age: 29,
     Sex: 'N/A',
     BodyHeight: 175,
@@ -313,6 +319,13 @@ try {
   await page.getByLabel('Open motion file').setInputFiles(resolve('.local/populated.h5'));
   await controlsLoad;
   await page.getByRole('slider', { name: 'Frame', exact: true }).waitFor();
+  await verifyTrialOverview(page, {
+    title: 'Baseline',
+    filename: 'populated.h5',
+    subject: 'SYNTHETIC-INFO',
+    group: 'Synthetic group',
+    created: '2026-01-02 03:04:05.123456',
+  });
   await verifyExportToolbar(page);
   await page.getByRole('tab', { name: 'File Info', exact: true }).click();
   const fileInfo = page.getByRole('tabpanel', { name: 'File Info', exact: true });
@@ -387,7 +400,10 @@ try {
   assert.match(await firstMarker.getByRole('alert').innerText(), /already has this label/);
   await renameInput.fill('  R_Thigh_Renamed  ');
   await firstMarker.getByRole('button', { name: 'Save', exact: true }).click();
-  assert.match(await page.locator('.selected-marker').innerText(), /R_Thigh_Renamed/);
+  assert.match(
+    await page.locator('.signal-selector-trigger').first().innerText(),
+    /R_Thigh_Renamed/,
+  );
   assert.equal(await firstMarker.getByRole('checkbox').isChecked(), false);
   assert.match(
     await page.getByLabel('Signal to plot', { exact: true }).innerText(),
@@ -410,16 +426,25 @@ try {
   await draftInput.pressSequentially('_draft');
   await draftInput.press('Control+z');
   assert.notEqual(await draftInput.inputValue(), 'R_Thigh_Renamed_draft');
-  assert.match(await page.locator('.selected-marker').innerText(), /R_Thigh_Renamed/);
+  assert.match(
+    await page.locator('.signal-selector-trigger').first().innerText(),
+    /R_Thigh_Renamed/,
+  );
   await draftInput.press('Escape');
   await undoButton.click();
   assert(await undoButton.isDisabled());
   assert(!(await redoButton.isDisabled()));
   await page.keyboard.press('Control+Shift+z');
-  assert.match(await page.locator('.selected-marker').innerText(), /R_Thigh_Renamed/);
+  assert.match(
+    await page.locator('.signal-selector-trigger').first().innerText(),
+    /R_Thigh_Renamed/,
+  );
   await page.keyboard.press('Control+z');
   await page.keyboard.press('Control+y');
-  assert.match(await page.locator('.selected-marker').innerText(), /R_Thigh_Renamed/);
+  assert.match(
+    await page.locator('.signal-selector-trigger').first().innerText(),
+    /R_Thigh_Renamed/,
+  );
   await page.screenshot({ path: '.local/marker-rename.png' });
   await page.getByRole('button', { name: 'Restore original', exact: true }).click();
   assert(await undoButton.isDisabled());
@@ -581,7 +606,8 @@ try {
   assert(await dataBrowser.evaluate((el) => el.scrollWidth <= el.clientWidth + 1));
   await page.screenshot({ path: '.local/data-browser.png' });
   assert.match(await page.locator('.viewport-title').innerText(), /XYZ.*mm/);
-  assert.match(await page.locator('.selected-marker').innerText(), /Position in mm/);
+  assert.equal(await page.locator('.selected-marker, .coordinate-values').count(), 0);
+  assert(await page.getByRole('region', { name: 'Trial overview' }).isVisible());
   const primarySignal = page.getByLabel('Signal to plot', { exact: true });
   for (const [selection, unit] of [
     ['marker', 'mm'],
@@ -618,7 +644,7 @@ try {
   await page.getByRole('button', { name: 'Next frame', exact: true }).click();
   await page.getByLabel('Search data').fill('B');
   await page.getByRole('button', { name: 'B', exact: true }).click();
-  assert.equal(await page.locator('.selected-marker h3').textContent(), 'B');
+  assert.equal((await page.locator('.marker-row.selected button').first().innerText()).trim(), 'B');
   await page.getByLabel('Show B', { exact: true }).uncheck();
   assert.equal(await page.getByLabel('Show B', { exact: true }).isChecked(), false);
   await page.getByLabel('Search data').fill('A');
@@ -786,9 +812,9 @@ try {
   );
   await page.getByLabel('Open motion file').setInputFiles(resolve('.local/synthetic.c3d'));
   await page.waitForFunction(
-    () => document.querySelector('.coordinate-values strong')?.textContent === '100.0000',
+    () => document.querySelector('.trial-overview h3')?.textContent === 'synthetic.c3d',
   );
-  assert.match(await page.locator('.selected-marker').innerText(), /residual 1.00 mm/);
+  assert.equal(await page.locator('.trial-overview dt').filter({ hasText: 'Created' }).count(), 0);
   await page.getByRole('tab', { name: 'File Info', exact: true }).click();
   assert.equal(await fileInfo.locator('section').count(), 3, 'minimal C3D omits optional sections');
   assert.equal(
@@ -903,6 +929,7 @@ try {
     await mkdir('.local/h5-validation', { recursive: true });
     await open(path);
     await verifyExplorer(page, 'H5');
+    await verifyModelPlots(page);
     assert.equal(
       await page.getByRole('button', { name: 'Add Event', exact: true }).isEnabled(),
       true,
@@ -917,21 +944,36 @@ try {
       .getByLabel('Signal to plot', { exact: true })
       .locator('option')
       .allTextContents();
-    for (const group of ['EMG', 'RigidBodies'])
-      assert(
-        options.some((o) => o.includes(group)),
-        `${group} signals exposed`,
-      );
+    assert(
+      options.some((o) => o.includes('EMG')),
+      'EMG signals exposed',
+    );
+    assert.equal(
+      await page
+        .getByLabel('Signal to plot', { exact: true })
+        .locator('optgroup[label="Rigid Bodies"]')
+        .count(),
+      1,
+    );
     const signalSelect = page.getByLabel('Signal to plot', { exact: true });
     for (const group of ['IKResults', 'IDResults']) {
-      assert(!options.some((o) => o.includes(group)), `${group} signals ignored`);
+      assert(
+        await signalSelect
+          .locator(`option[value^="${group === 'IKResults' ? 'ik' : 'id'}:"]`)
+          .count(),
+        `${group} signals exposed`,
+      );
       assert(
         !(await page.locator('body').innerText()).includes(`${group}:`),
         `${group} has no import notes`,
       );
     }
-    for (const group of ['EMG', 'RigidBodies']) {
-      await signalSelect.selectOption({ index: options.findIndex((o) => o.includes(group)) });
+    for (const group of ['Analogs', 'Rigid Bodies']) {
+      const value = await signalSelect
+        .locator(`optgroup[label="${group}"] option[value^="signal:"]`)
+        .first()
+        .getAttribute('value');
+      await signalSelect.selectOption(value);
       await page.waitForTimeout(50);
     }
     await signalSelect.selectOption('plate:0:freeMoment');
@@ -979,6 +1021,7 @@ try {
     await page.getByRole('slider', { name: 'Crop end', exact: true }).press('Home');
     await page.getByRole('button', { name: 'Crop', exact: true }).click();
     await verifyCroppedExplorer(page, label);
+    await verifyModelPlots(page);
     const cropped = await save('cropped');
     await open(cropped);
     assert.equal(
@@ -1271,6 +1314,9 @@ try {
   await page.waitForFunction(() => !document.body.textContent.includes('Reading your recording'));
   await verifyExplorer(page, 'C3D');
   await verifyCrossFormat(page, analyticsEvents);
+  await verifyModelTiming(page);
+  await verifyCropPreview(page);
+  await verifyLongTrialFilename(page);
   await page.getByLabel('Open motion file').setInputFiles(resolve('.local/explorer-large.h5'));
   await page.waitForFunction(() => !document.body.textContent.includes('Reading your recording'));
   await verifyLargeExplorer(page);

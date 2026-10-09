@@ -6,35 +6,7 @@ import { displayOptions } from './displayOptions';
 import { PanelToggle } from './PanelToggle';
 import { FileInfo } from './FileInfo';
 import { DataBrowser } from './DataBrowser';
-function SelectedMarker({ data }: { data: MotionData }) {
-  const selected = useSession((s) => s.selected),
-    frame = useSession((s) => s.frame),
-    i = frame * data.markers.labels.length + selected,
-    valid = data.markers.valid[i];
-  return (
-    <section className="selected-marker">
-      <div className="eyebrow">
-        SELECTED MARKER{' '}
-        <span className={valid ? 'good' : 'warning'}>{valid ? 'VALID' : 'MISSING'}</span>
-      </div>
-      <h3>{data.markers.labels[selected]}</h3>
-      <div className="coordinate-values">
-        {['X', 'Y', 'Z'].map((axis, a) => (
-          <div key={axis}>
-            <span>{axis}</span>
-            <strong>{valid ? data.markers.positions[i * 3 + a].toFixed(4) : '—'}</strong>
-          </div>
-        ))}
-      </div>
-      <div className="muted small">
-        Position in {data.units.position} · source frame {data.timeline.firstFrame + frame}
-        {data.markers.residuals && valid
-          ? ` · residual ${data.markers.residuals[i].toFixed(2)} mm`
-          : ''}
-      </div>
-    </section>
-  );
-}
+import { TrialOverview } from './TrialOverview';
 export function Inspector({
   data,
   collapsed,
@@ -57,7 +29,7 @@ export function Inspector({
         <span>{data.markers.labels.length} markers</span>
         <PanelToggle panel="sidebar" expanded={!collapsed} onToggle={onToggle} />
       </div>
-      <SelectedMarker data={data} />
+      <TrialOverview data={data} />
       <div className="tabs" role="tablist">
         {['Data', 'Display', 'File Info'].map((t) => (
           <button role="tab" aria-selected={tab === t} key={t} onClick={() => setTab(t)}>

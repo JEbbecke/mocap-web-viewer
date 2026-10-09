@@ -1,3 +1,4 @@
+import { independentModelMessage } from '../motion/modelTiming';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { MotionData } from '../motion/types';
 import { setFrame, useSession } from '../state/session';
@@ -407,8 +408,14 @@ function ModelTable({ dataset, data }: { dataset: Dataset; data: MotionData }) {
     [loading, setLoading] = useState(true);
   const model = dataset.model!;
   const request = useMemo<ModelRequest>(
-    () => ({ kind: model.kind, sourceIndex: model.sourceIndex, offset }),
-    [model.kind, model.sourceIndex, offset],
+    () => ({
+      kind: model.kind,
+      sourceIndex: model.sourceIndex,
+      offset,
+      range: model.range,
+      timeOrigin: model.timeOrigin,
+    }),
+    [model.kind, model.sourceIndex, offset, model.range, model.timeOrigin],
   );
   const pendingCopy = useRef<{ worker: Worker; reject: (error: Error) => void } | null>(null);
   useEffect(

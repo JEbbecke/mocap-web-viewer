@@ -35,8 +35,9 @@ platforms still produce their existing import warnings.
 - Body names come from normalized rigid bodies. EMG count comes only from the
   dedicated EMG group, not analog labels. IK/ID presence and variable counts come
   from `Data` dataset shapes and aligned Labels, excluding labelled time rows;
-  no model samples are loaded or plotted. No sample count is shown because those
-  independent model clocks are retained unchanged after crop.
+  File Info displays variable counts without loading model samples. Source-backed
+  samples and their clocks are available in Data Explorer and the plot panes;
+  confirmed aligned results crop with the trial, while independent results remain intact.
 
 Metadata values retain their source units: numeric height/mass/age do not acquire
 assumed cm/kg/years. If a matching `FieldUnit` or `FieldUnits` attribute exists,
@@ -87,3 +88,11 @@ unit warning. This removes only the message: ANALOG:SCALE calibration, type-4
 matrix handling, N forces, Nm moments, mm COP and raw analog values are unchanged.
 Unsupported types/units, missing channels and malformed calibration remain
 validation failures or import warnings.
+
+The compact TRIAL overview above the tabs reuses these normalized fields and
+clock formatting. Condition supplies the primary identity when available;
+otherwise the source filename is used. Subject ID (or subject name), group and
+embedded creation time appear only when meaningful. Creation time is labelled
+Created and never comes from browser open time or file modification time.
+Basenames and single-line text with tooltips keep the overview compact. Marker
+selection, plots, editing and Explorer coordinates remain available.

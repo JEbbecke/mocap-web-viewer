@@ -179,3 +179,20 @@ Before a separate promoted release, rerun applicable checks on the final release
 commit, review losses/limits and verify all private/generated data are ignored,
 untracked and absent from deployed assets. Version changes, tags and release
 publication belong to [the separate release workflow](RELEASING.md).
+
+IK/ID plotting regressions cover scalar source columns, semantic component
+labels, units, independent explicit/time-row/rate clocks, missing clocks,
+cross-page clock validation, retained model crop state, empty categories and
+selection without scientific edits. Synthetic browser smoke selects IK and ID
+in the existing split panes, checks legends, shared cursor movement and
+deselection, and retains the suite's image/video/H5/force-platform checks.
+
+`tests/model-timing.test.ts` verifies physical clock alignment (including
+floating-point reconstruction and incompatible count/rate/frame/timestamp
+cases), separate IK/ID classification, beginning/end/middle/one-frame crops,
+repeated crops, lazy source ranges, raw columns and H5 crop/export/re-import
+with explicit, embedded-time-row and rate/frame clocks. Browser timing fixtures
+check aligned and independent results before/after crop, Explorer counts,
+cursor synchronization and fixed plot/footer bounds at 1440x1000, 1366x768 and
+1280x720. Selector height and single-line timing text are checked without
+pixel screenshots.

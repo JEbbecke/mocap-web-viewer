@@ -68,8 +68,9 @@ alongside **Valid: No**. Missing values display `—`; NaN displays `NaN`.
 H5 model samples remain backed by the immutable local source File. A short-lived
 worker reads at most **200 samples of one variable and its clock** with hyperslabs.
 The UI exposes no HDF5 tree. Previous/Next and Go to sample navigate the result.
-Current institute H5 results retain their independent model
-times and all samples after crop; they have no playback highlighting/following.
+Current institute H5 results proven aligned with marker timestamps show retained
+samples and trial-relative seconds after crop. Independent results retain their
+original model times and samples. Source-backed tables have no playback following.
 Missing model clocks display NaN times, with unknown units kept explicit. Missing
 or unsupported model structures produce a local inspection message.
 
@@ -136,3 +137,9 @@ Unimported custom H5 arrays, nonstandard C3D rotation records, raw ADC/file byte
 undeclared model units and unsupported quality representations are not meaningfully
 inspected. No files, measurements, metadata or clipboard contents are uploaded,
 persisted in browser storage, or included in analytics.
+
+IK/ID variables can also be plotted from the Data sidebar or either existing
+signal inspector pane. Plot descriptors share source identities, units and the
+validated clock reader with Explorer; Explorer table selection and plot-window
+controls are unchanged. Aligned plots use trial-relative seconds and retained model samples after crop;
+independent results preserve their original model seconds and all samples.
