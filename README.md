@@ -4,7 +4,7 @@
 
 A browser-based motion capture viewer and editor for biomechanics researchers and technically interested users. Inspect recordings in 3D, compare synchronized signals, rename data labels, edit events, crop trials, and export results as C3D or the institute-specific H5 schema with a compatibility review before conversion.
 
-Visit the [SEO-optimized static landing page](https://jemolab.com/) or [open the JE Motion Lab web application](https://app.jemolab.com/). The web app is still hosted by GitHub Pages, using `app.jemolab.com` as its custom domain. The landing page is maintained separately from this application repository.
+Visit the [project website](https://jemolab.com/) or [open JE Motion Lab](https://app.jemolab.com/). The app is hosted on GitHub Pages at its custom domain; the project website is maintained separately.
 
 **Motion-capture files are processed entirely locally in the browser. Files are not uploaded to a server.** JE Motion Lab sends anonymous usage events for session visits and successful C3D/H5 loads to a Cloudflare Worker for aggregate country statistics in D1. Analytics payloads contain only an event type, never MoCap files, filenames, labels, metadata or measurements. Normal network information is still visible to hosting and Cloudflare; see [Privacy](#privacy) for the scope and backend verification limits. There are no remote fonts or runtime CDN dependencies.
 
@@ -23,7 +23,7 @@ The screenshot shows the current viewer with generated synthetic test data, not 
 7. Use the header's **Data Explorer** button to inspect numerical tables and metadata. **Data Viewer** switches back to the 3D workspace. Select cells, rows or columns to copy exact values, or copy the full selected dataset. Click headers to plot complete numeric time-series columns in the shared Signal Inspector; Ctrl/Cmd toggles columns, Shift selects a range, and Ctrl/Cmd+Shift adds a range. Viewer and Explorer selections persist separately when switching views.
 8. Open **Export media** beside the camera controls. **Export image…** creates a PNG at viewport, 1920 × 1080 or 3840 × 2160 resolution. **Export video…** creates a browser-local WebM of the current recorded sample span, including applied crops, at 30/60 fps and 1×, 0.5× or 0.25× speed. Both offer the optional JE Motion Lab watermark. Video depends on runtime encoder support; image export remains available. See [image export](docs/IMAGE_EXPORT.md) and [video export](docs/VIDEO_EXPORT.md).
 
-![JE Motion Lab Data Explorer with synthetic current-schema marker values and a selected cell](docs/data-explorer.png)
+![JE Motion Lab Data Explorer with synthetic marker values and multiple selected columns in the shared plot](docs/data-explorer.png)
 
 ## Development setup
 
@@ -40,7 +40,7 @@ Open the local URL printed by Vite, normally http://127.0.0.1:5173. On Windows P
 
 - [Data Explorer](docs/DATA_EXPLORER.md): a wide, read-only workspace for numerical marker, analog, force-platform, event, rigid-body, EMG and IK/ID inspection, structured metadata, dataset search and exact-value copying. Tables use bounded row windows; H5 model variables load local sample pages on demand.
 - Inline relabeling for all non-event Data-tab collections, including generated trajectory names, with validation and C3D/H5 round trips. Events use their existing editor. Undo/redo retains up to 100 label/event actions: **Ctrl/Cmd+Z**, **Ctrl/Cmd+Shift+Z**, or **Ctrl+Y** to redo on Windows. See [data labels and history](docs/DATA_EDITING.md) for identity, connections, format limits and lifecycle rules.
-- Use the **Split plots** icon beside the hide toggle in the signal inspector to switch between one and two plots. Split view shows two side-by-side plots with independent marker/force/analog selection and zoom. Both follow the same playback cursor; clicking either plot scrubs the recording. On narrow windows, the split area scrolls horizontally.
+- Data Viewer offers **Split plots** for two independent signal selections and zoom ranges, including IK/ID. Data Explorer reuses the same chart for selected numeric columns across the full underlying series. Both follow the playback cursor; clicking a plot scrubs the recording. Crop preview de-emphasizes samples outside the selected interval without changing data. On narrow windows, the split area scrolls horizontally.
 
 - Local `.c3d`, `.h5`, and `.hdf5` loading in a cancellable Web Worker.
 - Shared format-independent 3D viewer and playback for both formats.
@@ -148,7 +148,7 @@ For independent cross-format comparisons of generated synthetic files, run `pyth
 
 ## GitHub Pages
 
-The included [workflow](.github/workflows/deploy.yml) runs `npm ci`, tests and the typechecked production build. Pushes to `main` deploy only `dist/`; pull requests run checks without deploying. Manual workflow runs deploy only when run on `main`. In **Settings → Pages**, choose **GitHub Actions** as the deployment source. No custom secrets are needed for Pages. This workflow does not deploy the analytics Worker, configure D1 or run the browser smoke check.
+The included [workflow](.github/workflows/deploy.yml) runs `npm ci`, tests, `format:check` and the typechecked production build. Pushes to `main` deploy only `dist/`; pull requests run checks without deploying. Manual workflow runs deploy only when run on `main`. In **Settings → Pages**, choose **GitHub Actions** as the deployment source. No custom secrets are needed for Pages. This workflow does not deploy the analytics Worker, configure D1 or run the browser smoke check.
 
 The workflow explicitly builds with `VITE_BASE_PATH=/` for the custom app domain, `app.jemolab.com`. Configure that domain in **Settings → Pages → Custom domain**; the separate static landing page at `jemolab.com` is not deployed by this workflow. For a matching local build:
 
@@ -179,7 +179,7 @@ Keep private recordings out of Git and `public/`. The existing ignore rules excl
 
 ## License
 
-JE Motion Lab is source-available under the [PolyForm Noncommercial License 1.0.0](LICENSE).
+JE Motion Lab is source-available under the [PolyForm Noncommercial License 1.0.0](LICENSE.md).
 
 Noncommercial use is allowed subject to the license. Modification is allowed for
 purposes permitted by the license, and redistribution is allowed subject to its

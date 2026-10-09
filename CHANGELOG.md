@@ -3,81 +3,107 @@
 Notable changes to JE Motion Lab are recorded here, using a Keep a Changelog-style
 structure and Semantic Versioning. Published GitHub releases and their Git tags
 establish release history; `package.json` supplies the matching application version.
-Changes since the latest formal release remain under `[Unreleased]`.
+Future changes belong under `[Unreleased]`; dated entries on release-preparation
+branches describe the planned release until its tag is published.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-14
+
+Planned release date; update this date and CITATION.cff before publication if promotion changes.
+
 ### Added
 
-- Data Explorer headers support Ctrl/Cmd-click column toggles, Shift ranges and additive Ctrl/Cmd+Shift ranges, with selections retained across pages and view switches.
-- The shared Signal Inspector is available in Data Viewer and Data Explorer; selected Explorer time-series columns plot complete underlying data with existing units, physical clocks, cursor, zoom and crop preview.
-
-- Signal plots now visually de-emphasize data outside the active crop selection.
-
-- IK and ID result time series can now be selected and visualized in the existing plot panes, preserving source variable names, units and model clocks. Results proven aligned with the trajectory timeline crop with the trial; independent results remain intact.
-
-- Optional force-platform local coordinate-system visualization in Display, using declared global poses or C3D corner bases with type-specific measurement-origin placement, synchronized with moving geometry and on by default.
-- Optional rigid-body local coordinate-system visualization in Display, using stored position/rotation poses, independently toggled and on by default. Helpers are display-only and follow visible scene elements into image/video exports.
-
-- Browser-local 3D video export using native timestamped VP9/VP8 WebM encoding, 30/60 fps, viewport/1080p resolution, 1×/0.5×/0.25× speed, progress/cancellation and the optional JE Motion Lab watermark.
-
-- High-resolution PNG export of the current 3D scene at viewport, 1920 × 1080 or 3840 × 2160 resolution, with an optional JE Motion Lab watermark and entirely browser-local processing.
-
-- Browser-local C3D→H5 and supported H5→C3D export, with a compatibility review showing included data, changed representations, omissions and blocking errors. Same-format C3D/H5 export keeps the existing source-preserving path. Conversion creates a fresh file from imported data; unsupported mappings are reported rather than guessed. ([#13], [#14])
-- Apache-2.0 licensing, author attribution in `NOTICE`, and scientific citation metadata in `CITATION.cff`, with README guidance distinguishing license obligations from requested scientific citation. ([#12])
-- Footer links to [Privacy](https://jemolab.com/privacy.html) and [Imprint](https://jemolab.com/imprint.html) give access to the current privacy policy and legal notice. ([#12])
-- Read-only Data Explorer workspace with structured numerical marker, analog, force-platform, event, rigid-body, EMG and IK/ID tables, curated metadata, dataset search, playback highlighting, subtle selection row/column highlights, exact cell/range/selected-row/selected-column/full-table copying and bounded table rendering. The header switches between Explorer and Viewer; navigation starts collapsed with Metadata first. H5 model samples load locally in small pages, including complete clipboard copies, without loading full numerical result matrices. ([#12])
-- Label assignment/relabeling for markers, analog channels, force platforms, rigid bodies, EMG and IK/ID variables in the Data tab via pencil or double-click, with inline validation and source-preserving C3D/H5 export. ([#9])
-- Undo/redo for committed data-label renames and event add/edit/delete, with up to 100 reversible actions per recording, modified-state tracking and Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z and Ctrl+Y shortcuts. Native text-field undo and view settings remain separate from data-edit history. ([#9])
-- Data sidebar replacing the Markers tab, with searchable, counted sections for available markers, analog channels, force platforms, events, rigid bodies, EMG and IK/ID variables. Marker visibility/selection and Show all are preserved; supported signals open in the existing plot and events seek the timeline. IK/ID variable catalogs exclude labelled time rows; the separate Data Explorer exposes source-backed numerical samples. ([#8])
-- App welcome-screen usage summary showing live visit, country and combined MoCap load totals from the analytics `/stats` endpoint; unavailable totals remain hidden. ([#5])
-- Anonymous session visit attempts and successful C3D/H5/HDF5 load events, with a per-tab `sessionStorage` visit flag and event-only payloads. Repeated successful loads count again; failed/cancelled imports do not count as loads. ([#5])
-- Cloudflare Worker analytics integration for aggregate counts by date, country and event type in D1. Motion-capture files, filenames, measurements and metadata remain local. Backend deployment and verification scope are documented in [docs/ANALYTICS.md](docs/ANALYTICS.md). ([#5])
+- Read-only Data Explorer for numerical MoCap collections, structured metadata,
+  dataset search, playback highlighting and exact-value copying, with bounded
+  tables and lazy source-backed H5 model pages. ([#12])
+- Explorer Ctrl/Cmd-click column toggles, Shift ranges and additive Ctrl/Cmd+Shift
+  ranges. Numeric time-series columns plot complete underlying data in the shared
+  Viewer/Explorer Signal Inspector; selections persist across pages/view switches.
+  ([#21])
+- Data sidebar for available markers, analogs, platforms, events, bodies, EMG and
+  model variables, replacing the Markers tab. ([#8])
+- Inline data-label editing and shared event/label undo/redo, keyboard shortcuts,
+  modified-state tracking and source-preserving export. ([#9])
+- IK/ID scalar plots with source units and physical clocks. Results proven aligned
+  with trajectories crop with the trial; independent results remain intact. Plot
+  crop previews de-emphasize samples outside the selected interval. ([#20])
+- Browser-local C3D↔H5 conversion with a pre-export compatibility/loss review;
+  same-format export retains the source-preserving path. ([#13], [#14])
+- High-resolution scene PNG export at viewport, Full HD or 4K resolution, with
+  an optional JE Motion Lab watermark. ([#16])
+- Browser-local timestamped VP9/VP8 WebM export at 30/60 fps, viewport/1080p and
+  1×/0.5×/0.25× speed, with watermark, progress and cancellation. ([#17])
+- Independently toggled, default-on platform and rigid-body coordinate helpers,
+  following validated poses into image/video exports without changing data. ([#19])
+- Aggregate usage totals and anonymous session-visit/successful-load analytics.
+  Event payloads contain only event types; recordings, filenames and measurements
+  remain local. Hosting/Cloudflare still receive normal network information. ([#5])
+- Footer Privacy/Imprint links, author/required notices and scientific citation
+  metadata, distinguishing license obligations from scholarly citation. ([#12], [#22])
 
 ### Changed
 
-- JE Motion Lab is now distributed under the PolyForm Noncommercial License 1.0.0; commercial use requires a separate license. The footer now exposes bundled license terms, required notices and third-party licensing information.
-
-- The Trial Inspector now prioritizes subject, condition and file metadata instead of prominent current-frame marker coordinates.
-
-- Grouped image and video export under one Export media menu with separate configuration dialogs; scientific C3D/H5 export remains in the header.
-
-- Moved Export next to Open file in the header, with C3D/H5 choices inside its button menu. Add Event and the Events selector now share the timeline's right-hand action area beside Crop, reducing its height. ([#14])
-- Standardized local file generation terminology as Export in UI progress/status messages, documentation and application helpers. The conversion review uses **Changed or omitted**, listing changes before omissions; generic raw-tree and event-provenance notices are covered by the format-differences explanation and documented mappings. ([#14])
-- H5 to C3D conversion reuses existing analog channels and embedded original TYPE-2/3/4 force-platform definitions when current and float32-encoded force/moment/COP/free-moment reconstruction validates. Original origins, calibration and COP correction are retained; incompatible or missing definitions use the derived TYPE-2 fallback per plate. Known analog encoding is reversed before writing to preserve scaled values without double scaling. ([#13], [#14])
-- H5→C3D export preserves imported project/file/location, coordinate descriptions and full subject values/units in documented `JE_METADATA` parameters, including arrays and long text. C3D import restores these fields; compatible singleton `SUBJECT` parameters remain available to other readers. ([#13], [#14])
-
-- Standardized the application and project branding as JE Motion Lab. The SEO-optimized static landing page is at [jemolab.com](https://jemolab.com/); the web app is at [app.jemolab.com](https://app.jemolab.com/), still hosted on GitHub Pages. Updated application metadata, canonical URL, package name, synthetic README screenshot and deployment/release documentation; citation and attribution files use the same branding. ([#12])
-- GitHub Pages builds use the root base path (`/`) for the custom domain. ([#10])
-- Updated institute H5 compatibility for nested project/file metadata, expanded event context/subject fields and independent stream frame ranges. ([#11])
-- Clicking a Data-tab event now seeks to its frame and opens the same editor as clicking the timeline event. ([#9])
-- Restore original discards all label/event edits and crops. Loading another recording or restoring the original clears edit history; cropping establishes a modified baseline and clears undo/redo without retaining numerical snapshots. ([#9])
-- Redesigned File Info as a curated recording/acquisition and metadata inspector for C3D and institute H5, with honest sampling-rate summaries, data counts, optional subject/provenance/location sections and compact lists replacing the raw JSON and event listings. Raw metadata remains internal; event editing stays on the timeline. ([#7])
-- Updated the production Content Security Policy to allow connections to the JE Motion Lab analytics origin and the application's own origin. Development also permits local Vite WebSockets. ([#5])
-- Updated documentation and browser privacy checks for analytics payloads, session storage and network behavior, including infrastructure privacy limits. Browser checks intercept analytics locally without updating live statistics. ([#5])
-
-- Documented extensive manual compatibility testing in Google Chrome, Microsoft Edge, Safari and Samsung Internet / Samsung Browser separately from automated Chromium/Chrome/Edge coverage. Current validation docs and browser smoke use the supported H5 schema and synthetic data.
-- Consolidated current scientific validation guidance, renamed the broader label/history guide to Data Editing, and replaced institution-specific optional oracle paths with explicit local inputs.
+- Current distribution is source-available under PolyForm Noncommercial License
+  1.0.0; commercial use requires a separate license. The legal dialog bundles the
+  exact terms, required notices and separate third-party notices. ([#22])
+- Standardized branding as JE Motion Lab / MoCap Viewer & Editor, with the project
+  website at [jemolab.com](https://jemolab.com/) and application at
+  [app.jemolab.com](https://app.jemolab.com/). Pages builds use the root base path.
+  ([#10], [#12])
+- Curated File Info recording/acquisition and optional subject/provenance/location
+  summaries replace raw JSON. Trial Inspector prioritizes subject, condition and
+  file identity. ([#7], [#20])
+- Current institute H5 supports nested metadata, expanded event context/subject
+  fields and independent stream extents. ([#11])
+- H5→C3D conversion reuses validated original TYPE-2/3/4 force definitions and
+  analog encoding where possible, otherwise reporting the derived TYPE-2 fallback.
+  Subject/project/file/location values and units round-trip through documented
+  custom metadata; other readers may not display these fields. ([#13], [#14])
+- Export is beside Open file; image/video share Export media. Timeline event actions
+  sit beside Crop. File-generation UI consistently uses Export. ([#14], [#17])
+- Data events seek and open the timeline editor. Restore original discards all edits
+  and crops; loading/restoring/cropping clears undo/redo, while export preserves it.
+  ([#9])
+- Production CSP permits the fixed analytics origin. Browser checks intercept
+  analytics locally; backend and infrastructure verification limits are documented.
+  ([#5])
+- Consolidated scientific/editing documentation and independent validation inputs;
+  distinguished historical manual browser coverage from automated Chrome/Edge and
+  required final Safari/Samsung media checks. ([#15])
 
 ### Fixed
 
-- Force-platform coordinate helpers interpret C3D/H5 ORIGIN by the declared platform type: TYPE-3 transducer spacing does not cause X/Y translations, and sensor-to-surface vectors are inverted to locate the measurement origin. Unknown nonzero origin semantics are omitted rather than guessed.
-
-- Current-schema H5 files with empty optional groups such as EMG now import without placeholder signals or warnings; populated dimensions, labels, units and clocks remain strictly validated. Empty categories stay hidden and round-trip through H5 export without false cross-format loss warnings.
-- Cross-format C3D retains surveyed corners within documented tolerances without a geometry warning. Derived force plates remain included when stored COP/free moment differs, with a specific omission warning and reconstruction from exported force/moment; excessive geometry deviations still omit the affected plate. ([#13], [#14])
-- Fixed the 3D stage overlapping the right sidebar after hiding and reopening it in Data Viewer. The stage now shrinks to the available workspace width. ([#12])
-- H5 edited/cropped exports preserve nested C3D provenance and boolean types, keep marker label aliases consistent, and update each stream's own sample/frame extents. Mapped EMG shares identical analog signals; independent IK/ID results are retained when their trial-time relationship is unspecified. ([#11])
-- Removed the misleading V-channel warning for validated QTM-style C3D Type 2/3 force platforms while retaining calibrated force/moment/COP calculations and other validation warnings. ([#7])
-- Spatial MoCap data now consistently uses millimetres for marker positions, residuals, force-plate geometry and COP, with matching inspector/plot labels and unchanged 3D scene scale. H5/C3D import respects declared units; source-preserving exports retain matching numerical values and unit metadata. Force remains N and moments remain Nm with independent conversion and round-trip regression coverage. ([#6])
-- Corrected the package, lockfile and application footer version from `0.1.0` to `0.4.0` to match the existing formal release. Reconciled this changelog and release documentation with Git/GitHub history; no new release or tag was created. ([#6])
+- Spatial positions/residuals/geometry/COP consistently use mm, with force in N and
+  moments in Nm. Import honors declared units; source-preserving export retains
+  raw values with matching metadata. Corrected package/footer 0.1.0 to the formal
+  0.4.0 baseline without changing published history. ([#6])
+- Current H5 accepts absent/empty optional groups without placeholders, warnings or
+  false conversion losses, while strictly validating populated data. ([#18])
+- Platform helpers interpret ORIGIN by declared type: TYPE-3 transducer spacing
+  does not shift X/Y, and sensor-to-surface direction correctly locates the origin.
+  Unknown nonzero semantics are omitted rather than guessed. ([#19])
+- H5 edited/cropped export preserves nested C3D provenance and booleans, keeps label
+  aliases consistent and updates each stream's own extents. ([#11])
+- C3D conversion retains accepted surveyed corners and reports differing stored
+  COP/free moment without unnecessarily discarding the plate. ([#13], [#14])
+- Restored Viewer sidebar no longer overlaps the 3D stage. ([#12])
+- Validated QTM-style calibrated force channels no longer warn solely because their
+  acquisition labels say V. ([#7])
+- Release preparation corrects IK/ID picker unit labels to show resolved source
+  units or unknown instead of assuming deg/Nm; chart/data values are unchanged.
 
 ### Removed
 
-- **Breaking pre-1.0 change:** removed support for obsolete institute H5 schemas. The current authoritative unversioned institute H5 schema is the only supported H5 layout; obsolete collection versions, Location/Offset geometry and missing marker-unit assumptions fail explicitly.
-- Obsolete H5 compatibility fixtures/tests and completed migration/Python application audit documents; current independent h5py/ezc3d validation tools remain.
-
-- Per-platform cards and their force-signal shortcuts from the Display tab. Force signals remain selectable in the signal inspector; File Info summarizes platform counts, types and rates. ([#7])
-- Built-in synthetic demo, its welcome-screen button and generated motion data. Viewer controls and the README screenshot use local synthetic file fixtures. ([#5])
+- **Breaking pre-1.0 change:** obsolete institute H5 layouts are rejected. Only the
+  current authoritative unversioned institute schema is supported; missing marker
+  units and obsolete geometry/version declarations fail explicitly. ([#11], [#15])
+- Obsolete compatibility fixtures and completed migration/Python audit documents;
+  useful independent h5py/ezc3d validators remain. ([#15])
+- Per-platform Display cards; force signals remain available in the Signal
+  Inspector and Data sidebar. ([#7])
+- Built-in synthetic demo and its welcome button; validation/public screenshots
+  use local synthetic file fixtures. ([#5])
 
 ## [0.4.0] - 2026-09-28
 
@@ -98,10 +124,11 @@ and PRs #1–#4. PRs #5–#8 merged later that day and are not part of this rele
 - Updated the public README to describe viewing, editing, export and privacy behavior. ([#4])
 
 The published tag retained `0.1.0` in its package files despite being released as
-`v0.4.0`. That historical mismatch is corrected in current development under
-`[Unreleased]`; the existing release and tag have not been rewritten.
+`v0.4.0`. That historical mismatch was corrected after publication and is recorded under
+`[0.5.0]`; the existing release and tag have not been rewritten.
 
-[Unreleased]: https://github.com/JEbbecke/mocap-web-viewer/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/JEbbecke/mocap-web-viewer/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/JEbbecke/mocap-web-viewer/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/JEbbecke/mocap-web-viewer/releases/tag/v0.4.0
 [#1]: https://github.com/JEbbecke/mocap-web-viewer/pull/1
 [#2]: https://github.com/JEbbecke/mocap-web-viewer/pull/2
@@ -117,3 +144,11 @@ The published tag retained `0.1.0` in its package files despite being released a
 [#12]: https://github.com/JEbbecke/mocap-web-viewer/pull/12
 [#13]: https://github.com/JEbbecke/mocap-web-viewer/pull/13
 [#14]: https://github.com/JEbbecke/mocap-web-viewer/pull/14
+[#15]: https://github.com/JEbbecke/mocap-web-viewer/pull/15
+[#16]: https://github.com/JEbbecke/mocap-web-viewer/pull/16
+[#17]: https://github.com/JEbbecke/mocap-web-viewer/pull/17
+[#18]: https://github.com/JEbbecke/mocap-web-viewer/pull/18
+[#19]: https://github.com/JEbbecke/mocap-web-viewer/pull/19
+[#20]: https://github.com/JEbbecke/mocap-web-viewer/pull/20
+[#21]: https://github.com/JEbbecke/mocap-web-viewer/pull/21
+[#22]: https://github.com/JEbbecke/mocap-web-viewer/pull/22

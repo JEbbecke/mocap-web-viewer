@@ -1,25 +1,23 @@
-# Current licensing audit
+# Licensing and third-party provenance
 
-Audit performed on 9 October 2026 for `chore/noncommercial-license`, based on
-commit `9296448` and its lockfile. Application and citation versions remain 0.4.0.
+This document records current distribution obligations and the remaining native
+provenance review. Recheck the actual production bundles whenever dependencies or
+imports change; installed packages alone do not identify distributed components.
 
 ## Project authorship and terms
 
-`git shortlog -sne --all` and unique commit-author inspection found only Jonas
-Ebbecke: Jonas Ebbecke / JEbbecke with `jonasebbecke97@gmail.com`, and JonasEb
-with `j.ebbecke@dshs-koeln.de`. No external human contributor or unresolved
-contribution permission was identified in the recorded history. Git authorship
+Repository authorship inspection identified only Jonas Ebbecke. Git authorship
 does not independently establish employer assignments or ownership of material
-added outside Git; the copyright holder should confirm those before release.
+added outside Git; the copyright holder must confirm those before promotion.
 
-The current project license is PolyForm Noncommercial License 1.0.0. `LICENSE`
+The current project license is PolyForm Noncommercial License 1.0.0. `LICENSE.md`
 is the unmodified official download from
 <https://polyformproject.org/licenses/noncommercial/1.0.0.txt>.
 `NOTICE` uses the license's `Required Notice:` prefix for copyright and project
 name. The dialog bundles both texts. SPDX and CFF 1.2.0 recognize
 `PolyForm-Noncommercial-1.0.0`; package, root lockfile and citation license fields
-use that identifier. Citation version, release date and other metadata are
-unchanged.
+use that identifier. Release preparation keeps citation version/date synchronized with the package
+and planned promotion date.
 
 This change applies to the current repository state and future releases. It
 does not revoke rights already granted for prior Apache-licensed distributions.
@@ -60,6 +58,18 @@ the promoted release, confirm the exact native compression/runtime provenance
 with upstream, including any additional runtime component notices; the npm
 metadata alone cannot establish it. No compression version is asserted here.
 
+Release preparation rechecked h5wasm 0.10.3's installed CMakeLists and the matching
+[upstream source](https://github.com/usnistgov/h5wasm/blob/v0.10.3/CMakeLists.txt).
+The retained HDF5 archive matches its required SHA256
+`d4dc6719ef164679728d9a50d6a4d97c826f563e22a40c4dec63e485b29781be`.
+The matching [libhdf5-wasm workflow](https://github.com/usnistgov/libhdf5-wasm/blob/v0.6.0_4.0.23/.github/workflows/build.yaml)
+derives the Emscripten SDK from the release tag. Its compression version overrides
+are commented out; the archive's zlib/libaec version-config files have empty
+version fields. These establish the build inputs and static support but do not
+conclusively identify every native constituent of the npm WASM binary. The review
+gate below therefore remains open; do not turn commented example versions into
+provenance claims.
+
 Original copyright, permission text, conditions and disclaimers are preserved in
 [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md), bundled in the License dialog.
 MIT and BSD redistribution require these materials even for minified browser
@@ -76,31 +86,26 @@ playwright-core, baseline-browser-mapping, expect-type and typescript are
 development dependencies. Their lockfile licenses remain unchanged; adding their
 code/assets to a future distribution requires another notice review.
 
-CHANGELOG's PR #12 entry accurately records the prior licensing addition and
-remains historical context. The browser regression also names Apache as wording
-that must be absent from current legal presentation. No project-owned Apache
-source headers or current open-source claims remain. Third-party license texts
-retain their original descriptions and commercial permissions.
-Emscripten and musl notices describe those external projects as open source;
-these original upstream descriptions do not describe JE Motion Lab's license.
+Release notes describe the net PolyForm release state. Historical intermediate
+project-license changes remain in Git. Third-party notices retain their original
+license names and commercial permissions; they do not describe the project license.
+Privacy and Imprint remain separately maintained external pages.
 
-README, RELEASING and Unreleased changelog wording are updated. ARCHITECTURE,
-OPEN_QUESTIONS and VALIDATION were inspected and require no licensing correction.
-Privacy/Imprint continue to use their existing external pages; no privacy
-behavior or separately maintained landing-page content is changed.
+## Release verification and review gate
 
-## Validation
+Build with the production base, inspect Rollup module inventories for the main
+bundle and all workers, and compare bundled package versions/licenses against
+[THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md). Verify the in-app legal dialog
+with `npm run test:browser`; it must contain the exact project license, required
+notices, third-party notices and commercial-license contact.
 
-- `npm test`: 358 passed; three optional reference tests skipped.
-- `npm run typecheck`, `npm run build`, `npm run format:check` and
-  `git diff --check`: passed.
-- CITATION.cff passed the official CFF 1.2.0 JSON Schema with date/URL format
-  validation. LICENSE matched the official download byte for byte.
-- Production legal checks passed at startup and with an imported recording,
-  including exact bundled license/notices, commercial wording, close/Escape,
-  Privacy/Imprint URLs and desktop/mobile navigation (390–1440 px).
-- The complete browser smoke passed for the updated build on an isolated preview
-  port, and for the unchanged HEAD baseline. Earlier updated-build runs had an
-  intermittent post-crop native-image dimension mismatch and a large-model
-  Explorer read failure. Existing assertions were preserved. Recheck these
-  workflows on the final release commit before promotion.
+**MANUAL RELEASE CHECK REQUIRED:** establish exact native zlib/libaec and runtime
+provenance, including additional runtime obligations, against upstream build
+metadata or written upstream confirmation. Available notices are preserved;
+the identified HDF5/toolchain archive does not prove every constituent version.
+Do not treat passing application tests as legal clearance.
+
+Earlier audit runs observed intermittent post-crop native-image dimensions and
+large-model Explorer read failures. Preserve those assertions and repeat clean
+Chrome/Edge smoke runs on each release candidate. Record actual outcomes in the
+release readiness report rather than carrying old test counts forward here.
