@@ -36,16 +36,6 @@ const root = process.cwd();
 const { version } = JSON.parse(await readFile('package.json', 'utf8'));
 const analyticsOrigin = 'https://je-motion-analytics.jonasebbecke97.workers.dev';
 const analyticsURL = `${analyticsOrigin}/event`;
-const statsURL = `${analyticsOrigin}/stats`;
-const statsFixture = {
-  visits: 428,
-  c3d_loaded: 405,
-  h5_loaded: 500,
-  files_loaded: 905,
-  countries: 'DE US GB FR ES IT NL BE AT CH SE NO DK FI PL CZ PT IE CA AU NZ JP KR'
-    .split(' ')
-    .map((country) => ({ country, visits: 1 })),
-};
 await mkdir('.local', { recursive: true });
 const fixtures = JSON.parse(await readFile('tests/fixtures/c3d.json', 'utf8'));
 await writeFile('.local/synthetic.c3d', Buffer.from(fixtures.intelFloat, 'base64'));
@@ -243,18 +233,17 @@ try {
     args: ['--enable-unsafe-swiftshader'],
   });
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
-  let statsResponse = statsFixture;
   // Validate client requests without sending test activity or local references to the service.
   await page.route(`${analyticsOrigin}/**`, (route) =>
     route.fulfill({
       status: 200,
       headers: {
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type',
       },
       contentType: 'application/json',
-      body: JSON.stringify(route.request().url() === statsURL ? statsResponse : {}),
+      body: '{}',
     }),
   );
   const analyticsEvents = () =>
@@ -295,24 +284,12 @@ try {
     `JE Motion Lab version ${version}`,
   );
   assert.deepEqual(analyticsEvents(), ['visit'], 'one visit on initial mount');
-  assert.equal(
-    (await page.locator('.welcome-stats').textContent()).replace(/\s+/g, ' ').trim(),
-    '428 visits · 23 Countries · 905 MoCap files visualized',
+  await page.reload({ waitUntil: 'networkidle' });
+  assert.deepEqual(
+    analyticsEvents(),
+    ['visit', 'visit'],
+    'application loads emit visits but no file-load events',
   );
-  await page.screenshot({ path: '.local/landing-stats.png' });
-  await page.reload({ waitUntil: 'networkidle' });
-  assert.deepEqual(analyticsEvents(), ['visit'], 'reload does not duplicate a session visit');
-  statsResponse = {};
-  await page.reload({ waitUntil: 'networkidle' });
-  assert.equal(await page.locator('.welcome-stats').count(), 0, 'invalid stats are hidden');
-  assert.equal(
-    await page.getByRole('button', { name: 'Open a recording', exact: true }).count(),
-    1,
-  );
-  statsResponse = statsFixture;
-  await page.reload({ waitUntil: 'networkidle' });
-  assert.equal(await page.locator('.welcome-stats').count(), 1, 'valid stats are shown again');
-  assert.deepEqual(analyticsEvents(), ['visit'], 'the landing page emits no file-load events');
   const controlsLoad = page.waitForResponse(
     (response) =>
       response.url() === analyticsURL &&
@@ -627,11 +604,6 @@ try {
   const controlsLastFrame = Number(
     await page.getByRole('slider', { name: 'Frame', exact: true }).getAttribute('aria-valuemax'),
   );
-  assert.equal(
-    await page.locator('.welcome-stats').count(),
-    0,
-    'stats appear only on the landing page',
-  );
   await page.getByRole('button', { name: 'Play', exact: true }).click();
   await page.waitForFunction(
     () => Number(document.querySelector('[aria-label="Frame"]').getAttribute('aria-valuenow')) > 0,
@@ -809,7 +781,7 @@ try {
   await page.screenshot({ path: '.local/screenshot.png' });
   assert.deepEqual(
     analyticsEvents(),
-    ['visit', 'h5_loaded'],
+    ['visit', 'visit', 'h5_loaded'],
     'viewer controls emit no additional file-load events',
   );
   await page.getByLabel('Open motion file').setInputFiles(resolve('.local/synthetic.c3d'));
@@ -1334,7 +1306,44 @@ try {
   await page.getByRole('button', { name: 'Dismiss error' }).click();
   assert.equal(await page.getByRole('slider', { name: 'Frame', exact: true }).count(), 1);
   assert.deepEqual(analyticsEvents(), eventsBeforeFailure, 'failed imports emit no load event');
-  assert.equal(analyticsEvents().filter((event) => event === 'visit').length, 1);
+  // Hold the next import before parsing so cancellation is deterministic even for tiny files.
+  await page.evaluate(() => {
+    window.originalWorker = window.Worker;
+    window.cancelledImportWorker = false;
+    window.Worker = class extends window.originalWorker {
+      postMessage() {}
+      terminate() {
+        window.cancelledImportWorker = true;
+        super.terminate();
+      }
+    };
+  });
+  try {
+    await page.getByLabel('Open motion file').setInputFiles(resolve('.local/synthetic.c3d'));
+    await page.getByRole('heading', { name: 'Reading your recording', exact: true }).waitFor();
+    await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await page.getByRole('heading', { name: 'Reading your recording', exact: true }).waitFor({
+      state: 'hidden',
+    });
+    assert(await page.evaluate(() => window.cancelledImportWorker), 'cancel terminates the worker');
+    assert.equal(await page.getByRole('slider', { name: 'Frame', exact: true }).count(), 1);
+    assert.deepEqual(
+      analyticsEvents(),
+      eventsBeforeFailure,
+      'cancelled imports emit no load event',
+    );
+  } finally {
+    await page.evaluate(() => {
+      window.Worker = window.originalWorker;
+      delete window.originalWorker;
+      delete window.cancelledImportWorker;
+    });
+  }
+  assert.equal(
+    analyticsEvents().filter((event) => event === 'visit').length,
+    2,
+    'initial load and reload emit two app-load visits',
+  );
   assert(analyticsEvents().includes('c3d_loaded'), 'successful C3D imports are counted');
   assert(analyticsEvents().includes('h5_loaded'), 'successful H5 imports are counted');
   const unexpectedErrors = errors.filter(
@@ -1344,12 +1353,7 @@ try {
   for (const request of requests) {
     const url = new URL(request.url);
     if (url.origin === analyticsOrigin) {
-      if (request.url === statsURL) {
-        assert.equal(request.method, 'GET', 'stats are read without sending an event');
-        assert.equal(request.body, null, 'stats requests contain no recording data');
-        continue;
-      }
-      assert.equal(request.url, analyticsURL, 'analytics uses only the fixed endpoint');
+      assert.equal(request.url, analyticsURL, 'analytics uses only the fixed event endpoint');
       if (request.method === 'OPTIONS') {
         assert.equal(request.body, null, 'CORS preflights have no payload');
       } else {
@@ -1385,7 +1389,7 @@ try {
   }));
   assert.deepEqual(storage, {
     local: 0,
-    session: { 'je-motion-visit-counted': 'true' },
+    session: {},
     caches: [],
     databases: [],
   });
@@ -1410,7 +1414,7 @@ try {
     ),
   );
   console.log(
-    'Browser smoke passed: viewer controls, local C3D/H5, footer version, errors, event-only analytics and session flag.',
+    'Browser smoke passed: viewer controls, local C3D/H5, footer version, errors, event-only analytics and empty browser storage.',
   );
 } catch (error) {
   const page = browser?.contexts()[0]?.pages()[0];

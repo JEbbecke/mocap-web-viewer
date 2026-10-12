@@ -14,32 +14,39 @@ duplicate those pages' legal text.
 
 These client behaviors apply to the JE Motion Lab web app at
 [app.jemolab.com](https://app.jemolab.com/). The static landing page at
-[jemolab.com](https://jemolab.com/) is maintained separately. The deployed Worker
-hostname and session flag retain their existing identifiers across the branding
-change so the analytics endpoint and visit suppression keep working.
+[jemolab.com](https://jemolab.com/) is maintained separately. The Worker hostname
+and analytics event names retain their existing identifiers across branding changes.
 
 [`src/analytics.ts`](../src/analytics.ts) posts JSON to
 `https://je-motion-analytics.jonasebbecke97.workers.dev/event` with
 `Content-Type: application/json`. Each body has exactly one `event` field:
 
-| Event        | Trigger                                                             | Counting limits                                                                                                                         |
-| ------------ | ------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `visit`      | App mounts without the `je-motion-visit-counted` session flag       | The flag is set to `true` before sending, so reloads in that tab session do not retry or count again. It is not a unique visitor count. |
-| `c3d_loaded` | The import worker successfully returns a `.c3d` recording           | Every successful load counts, including re-importing an export or the same file.                                                        |
-| `h5_loaded`  | The import worker successfully returns a `.h5` or `.hdf5` recording | Both extensions share one event type; every successful load counts.                                                                     |
+| Event        | Trigger                                                             | Counting limits                                                                                                                                         |
+| ------------ | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `visit`      | App mounts                                                          | Sent once on each application load. Reloading the page sends another `visit`. This is an application-load count, not a unique visitor or session count. |
+| `c3d_loaded` | The import worker successfully returns a `.c3d` recording           | Every successful load counts, including re-importing an export or the same file.                                                                        |
+| `h5_loaded`  | The import worker successfully returns a `.h5` or `.hdf5` recording | Both extensions share one event type; every successful load counts.                                                                                     |
 
-[`App.tsx`](../src/App.tsx) owns the visit flag;
+[`App.tsx`](../src/App.tsx) sends one visit on each mount;
 [`state/session.ts`](../src/state/session.ts) sends load events only after a
 successful import. Failed, cancelled and unsupported imports do not emit load
 events. Playback, cropping, event edits and exports do not emit
 their own analytics events. The file extension selects the load event locally;
 the filename is never included in the request.
 
-The session flag contains no identifier and is never transmitted. Tab duplication
-or session restoration can preserve browser session storage, so visits should not
-be interpreted as an exact count of newly opened tabs or people. Clearing that
-storage permits another visit attempt. No persistent identifier, fingerprint,
-tracking cookie, device profile, file size or application version is added to the
+The `visit` event is emitted once on each application load. Reloading the page
+therefore emits another `visit` event. The backend field remains named `visits`
+for compatibility, but the value represents application loads rather than unique
+visitors or unique sessions.
+
+Analytics does not use cookies, sessionStorage, localStorage, IndexedDB, Cache
+Storage, persistent identifiers or browser fingerprinting. No visit state is
+persisted across page loads. An instance-local React ref prevents StrictMode's
+development-only effect replay from sending a second visit. It resets with each
+new mounted App instance, including page reloads, and contains no identifier.
+
+No IDs, UUIDs, timestamps, filenames, paths, file sizes, labels, recording
+metadata, measurements, device profiles or application versions are added to the
 payload. Fetch uses the default `same-origin` credentials mode, so credentials
 are not included on cross-origin analytics requests. The page's `no-referrer`
 policy suppresses `Referer`; CORS still supplies an `Origin` header. These settings
@@ -47,20 +54,20 @@ do not conceal the IP address or other normal browser-supplied headers.
 
 Analytics runs in production, local development and preview. There is no client
 queue or retry: rejected responses and fetch failures produce only a local debug
-message. A failed visit request leaves the flag set. Blocking or losing requests
-can therefore undercount activity. The current visit effect assumes that
-`sessionStorage` is accessible; it has no fallback for a browser that throws on
-storage access.
+message. Blocking or losing requests can therefore undercount activity.
+
+Analytics failures are best-effort and never interrupt application use. Imported
+recordings and edits live in memory, never in browser storage. File conversion
+and export happen locally and export requires explicit user action.
 
 ## Cloudflare Worker and D1
 
-The client also reads `/stats` once on application mount with a bodyless GET.
-The response includes `visits`, `c3d_loaded`, `h5_loaded`, `files_loaded` and a
-`countries` array of `{ country, visits }` entries. While no recording is
-loaded, the app's welcome screen shows visits, the number of country entries and the
-combined `files_loaded` total. Invalid or unavailable totals leave the summary
-hidden; the example display numbers are not fallback data. This read does not
-send recording information or create an analytics event.
+The web app sends `POST /event` only; it does not retrieve or display aggregate
+statistics. The existing `GET /stats` endpoint remains available to the separately
+maintained [jemolab.com landing page](https://jemolab.com/). Its response fields
+remain `visits`, `c3d_loaded`, `h5_loaded`, `files_loaded` and a `countries` array of
+`{ country, visits }` entries. No Worker/API/D1 schema or country aggregation
+changes are part of this client cleanup.
 
 The documented backend design is a Cloudflare Worker that derives approximate
 country from Cloudflare request information and increments daily D1 counts keyed
@@ -97,8 +104,8 @@ not validate payloads. Development additionally allows `ws://127.0.0.1:*` and
 modes use bundled scripts/workers and embedded HDF5 WASM, with no runtime CDN or
 remote fonts. Frames, objects and form submissions remain blocked.
 
-Normal traffic consists of same-origin application asset requests, a GET for
-aggregate statistics and analytics JSON POSTs; cross-origin JSON POSTs can trigger
+Normal app traffic consists of same-origin application asset requests and
+analytics JSON POSTs; cross-origin JSON POSTs can trigger
 an OPTIONS preflight. The separately
 managed Worker must provide CORS responses for the intended application origins.
 The footer's GitHub, Privacy and Imprint links navigate separately; `connect-src`
@@ -107,13 +114,16 @@ is not a blanket ban on browser navigation or all network activity.
 ## Verification
 
 After `npm test` and `npm run build`, run `npm run test:browser`. The browser check
-intercepts the analytics origin locally, verifies the exact endpoints, methods,
-bodyless stats reads and event-only POST bodies, and checks the landing summary,
-its absence for invalid stats, visit suppression on reload, successful load events,
-the lack of additional load events for viewer controls or a failed import, and the one permitted
-session flag. Other requests must be local assets; localStorage, Cache Storage,
-IndexedDB and cookies remain empty in the test context. This validates the client,
-not live Worker CORS, country aggregation, D1 contents or infrastructure logging.
+intercepts the analytics origin locally and verifies the fixed event endpoint,
+methods and exact event-only POST bodies. It checks one visit on initial mount,
+another after the single deliberate reload, successful load events, and no load
+events for viewer controls, failed imports or cancelled imports. Any other
+analytics endpoint or GET fails the request allowlist, so aggregate statistics
+cannot be fetched in the tested flow. Analytics does not use sessionStorage,
+localStorage, Cache Storage, IndexedDB or cookies; all are checked to be empty in
+the test context. Unit tests also verify that rejected HTTP responses and network
+failures resolve without retrying. This validates the client, not live Worker
+CORS, country aggregation, D1 contents or infrastructure logging.
 
 Local reports remain under ignored `.local/`. See [validation](VALIDATION.md) and
 [release checks](RELEASING.md) for the surrounding workflow.

@@ -17,7 +17,7 @@ import { handleHistoryShortcut } from './state/shortcuts';
 import { PanelToggle } from './components/PanelToggle';
 import { DataExplorer } from './components/DataExplorer';
 import { ExportControl } from './components/ExportControl';
-import { getAnalyticsStats, trackEvent, type AnalyticsStats } from './analytics';
+import { trackEvent } from './analytics';
 import { LicenseInfo } from './components/LicenseInfo';
 class ViewerBoundary extends Component<{ children: ReactNode }, { error: string | null }> {
   state = { error: null as string | null };
@@ -48,17 +48,14 @@ export function App() {
     [showSidebar, setShowSidebar] = useState(true),
     [showExplorer, setShowExplorer] = useState(false),
     [dragging, setDragging] = useState(false);
-  const [analyticsStats, setAnalyticsStats] = useState<AnalyticsStats | null>(null);
+  const visitTracked = useRef(false);
 
   useEffect(startClock, []);
   useEffect(() => {
-    if (!sessionStorage.getItem('je-motion-visit-counted')) {
-      sessionStorage.setItem('je-motion-visit-counted', 'true');
-      void trackEvent('visit');
-    }
-  }, []);
-  useEffect(() => {
-    void getAnalyticsStats().then(setAnalyticsStats);
+    // Keep StrictMode's effect replay within the same mounted instance to one visit.
+    if (visitTracked.current) return;
+    visitTracked.current = true;
+    void trackEvent('visit');
   }, []);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -239,18 +236,6 @@ export function App() {
                     <span>H5 / HDF5</span>
                     <span>LOCAL ONLY</span>
                   </div>
-                  {analyticsStats && (
-                    <p className="welcome-stats">
-                      <strong>
-                        {analyticsStats.visits.toLocaleString('en-US')}{' '}
-                        {analyticsStats.visits === 1 ? 'visit' : 'visits'} ·{' '}
-                        {analyticsStats.countries.length.toLocaleString('en-US')}{' '}
-                        {analyticsStats.countries.length === 1 ? 'Country' : 'Countries'} ·{' '}
-                        {analyticsStats.files_loaded.toLocaleString('en-US')} MoCap{' '}
-                        {analyticsStats.files_loaded === 1 ? 'file' : 'files'} visualized
-                      </strong>
-                    </p>
-                  )}
                 </div>
               )}
             </div>
