@@ -8,12 +8,22 @@ branches describe the planned release until its tag is published.
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-10-12
+
 ### Changed
 
 - Emit one anonymous `visit` event per application load, including reloads,
   without browser storage or reload deduplication. Analytics does not use
   sessionStorage; the former deduplication has been removed. Event names,
   event-only payloads, the Worker/API/D1 and country aggregation remain unchanged.
+- Updated privacy/analytics architecture and validation documentation.
+
+### Fixed
+
+- Prevent duplicate logical visit events when React StrictMode replays effects
+  during development; the guard is limited to the mounted App instance.
+- Browser checks verify empty browser storage, event-only payloads and no load
+  events after failed or cancelled imports.
 
 ### Removed
 
@@ -140,7 +150,8 @@ The published tag retained `0.1.0` in its package files despite being released a
 `v0.4.0`. That historical mismatch was corrected after publication and is recorded under
 `[0.5.0]`; the existing release and tag have not been rewritten.
 
-[Unreleased]: https://github.com/JEbbecke/mocap-web-viewer/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/JEbbecke/mocap-web-viewer/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/JEbbecke/mocap-web-viewer/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/JEbbecke/mocap-web-viewer/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/JEbbecke/mocap-web-viewer/releases/tag/v0.4.0
 [#1]: https://github.com/JEbbecke/mocap-web-viewer/pull/1
