@@ -159,11 +159,18 @@ numbers or universal compatibility are claimed. A browser needs WebGL,
 WebAssembly and module workers; mobile remains secondary.
 
 Browser checks intercept analytics locally without updating live totals. Allowed
-requests are same-origin asset GETs, bodyless analytics stats GETs and event-only
-POSTs. They verify request bodies, failed-import behavior and storage: only the
-non-identifying visit flag is allowed in sessionStorage; recordings never enter
-localStorage, IndexedDB, cookies or Cache Storage. These checks do not verify the
-separately managed Cloudflare Worker, D1, infrastructure logs or retention; see
+requests are same-origin asset GETs, event-only POSTs to the fixed analytics event
+endpoint and bodyless CORS preflights. Any other analytics endpoint fails the check.
+Initial mount sends exactly one visit and one deliberate reload sends another.
+Successful C3D/H5 imports send load events; failed and cancelled imports send none.
+Each analytics body contains exactly one allowed event field, with no recording
+data, filenames, measurements, metadata or identifiers. Analytics does not use
+sessionStorage, localStorage, cookies, IndexedDB or Cache Storage; all remain
+empty in the browser check, proving no visit state or recordings are persisted
+in the tested flow. Aggregate statistics are neither retrieved nor displayed by
+the app. The separately maintained landing page may consume the Worker's existing
+`/stats` endpoint. These checks do not verify the separately managed Cloudflare
+Worker, D1, infrastructure logs or retention; see
 [analytics](ANALYTICS.md).
 
 ## Remaining limits and release gate

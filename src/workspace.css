@@ -296,16 +296,6 @@ header {
   margin-left: 15px;
   font-size: 11px;
 }
-.welcome .welcome-stats {
-  margin: 22px 0 0;
-  color: #b9cfdd;
-  font-size: 13px;
-  text-wrap: balance;
-  font-variant-numeric: tabular-nums;
-}
-.welcome-stats strong {
-  font-weight: 600;
-}
 .format-tags {
   display: flex;
   gap: 10px;

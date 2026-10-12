@@ -8,6 +8,19 @@ branches describe the planned release until its tag is published.
 
 ## [Unreleased]
 
+### Changed
+
+- Emit one anonymous `visit` event per application load, including reloads,
+  without browser storage or reload deduplication. Analytics does not use
+  sessionStorage; the former deduplication has been removed. Event names,
+  event-only payloads, the Worker/API/D1 and country aggregation remain unchanged.
+
+### Removed
+
+- Aggregate usage statistics and their fetch logic from the web application.
+  The separately maintained jemolab.com landing page may continue using the
+  existing backend `/stats` endpoint.
+
 ## [0.5.0] - 2026-10-09
 
 Planned release date; update this date and CITATION.cff before publication if promotion changes.
