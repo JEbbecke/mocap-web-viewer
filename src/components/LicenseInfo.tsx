@@ -20,7 +20,8 @@ export function LicenseInfo() {
         <p>
           Noncommercial use, modification, and redistribution are permitted subject to the license
           terms. The public license does not grant commercial use. Commercial use requires a
-          separate commercial license from Jonas Ebbecke.
+          separate commercial license from Jonas Ebbecke. Commercial licenses are offered
+          exclusively to organizations and business users (B2B).
         </p>
         <p>
           For commercial licensing, use the contact details in the{' '}

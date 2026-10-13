@@ -10,7 +10,7 @@ Visit the [project website](https://jemolab.com/) or [open JE Motion Lab](https:
 
 ![JE Motion Lab | MoCap Viewer & Editor with generated example data](docs/screenshot.png)
 
-The screenshot shows the current viewer with generated synthetic test data, not a participant recording.
+The viewer screenshot is a historical capture whose footer displays `v0.4.0`; the current release is `v0.5.1`.
 
 ## Basic usage
 
@@ -24,6 +24,8 @@ The screenshot shows the current viewer with generated synthetic test data, not 
 8. Open **Export media** beside the camera controls. **Export image…** creates a PNG at viewport, 1920 × 1080 or 3840 × 2160 resolution. **Export video…** creates a browser-local WebM of the current recorded sample span, including applied crops, at 30/60 fps and 1×, 0.5× or 0.25× speed. Both offer the optional JE Motion Lab watermark. Video depends on runtime encoder support; image export remains available. See [image export](docs/IMAGE_EXPORT.md) and [video export](docs/VIDEO_EXPORT.md).
 
 ![JE Motion Lab Data Explorer with synthetic marker values and multiple selected columns in the shared plot](docs/data-explorer.png)
+
+The Data Explorer screenshot is a historical `v0.5.0` capture with synthetic test data.
 
 ## Development setup
 
@@ -186,7 +188,7 @@ purposes permitted by the license, and redistribution is allowed subject to its
 terms, including preservation of the [required notices](NOTICE). The public
 license does not grant commercial use. Commercial use requires a separate
 commercial license from Jonas Ebbecke; use the contact details in the
-[Imprint](https://jemolab.com/imprint.html).
+[Imprint](https://jemolab.com/imprint.html). Separate commercial licenses are available exclusively to organizations and business users (B2B).
 
 See the [official PolyForm terms](https://polyformproject.org/licenses/noncommercial/1.0.0)
 and [third-party notices](THIRD_PARTY_NOTICES.md). Third-party components retain
@@ -197,6 +199,8 @@ their respective licenses.
 For scientific use, please cite JE Motion Lab using the metadata in [CITATION.cff](CITATION.cff). Scientific citation is requested for scholarly credit and is not a condition of the public license.
 
 ## Development status and releases
+
+The current release is [JE Motion Lab v0.5.1](https://github.com/JEbbecke/mocap-web-viewer/releases/tag/v0.5.1), dated 2026-10-12.
 
 JE Motion Lab is under active pre-1.0 development. Support is limited to the documented formats and validated conventions; arbitrary vendor variants and general HDF5 files are not claimed. Outstanding format questions are tracked in [OPEN_QUESTIONS.md](docs/OPEN_QUESTIONS.md).
 

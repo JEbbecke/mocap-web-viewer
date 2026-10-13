@@ -4,7 +4,7 @@ JE Motion Lab uses Semantic Versioning. Before 1.0, minor releases may include b
 
 Preparation, review, tagging, deployment, and promotion are separate steps.
 
-Current preparation: **v0.5.1**, dated **2026-10-12**, with **v0.5.0** as the published baseline. The v0.5.1 candidate has not been tagged or published.
+Current released baseline: **v0.5.1**, dated **2026-10-12**. Use this release as the baseline for future preparation.
 
 ## Establish the release baseline
 
