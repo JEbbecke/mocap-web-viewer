@@ -14,7 +14,7 @@ The viewer screenshot is a historical capture whose footer displays `v0.4.0`; th
 
 ## Basic usage
 
-1. Open the application and choose **Open file** or drop a recording anywhere. One recording is loaded at a time; imports can be cancelled, and a failed import leaves the previous trial available.
+1. Open the application and choose **Open file** or drop a recording anywhere. On the empty landing page, **Load Example File** downloads `example_data.h5` and opens it with the same H5 importer; nothing loads automatically. Downloading and importing can be cancelled, and errors allow retrying. All viewing, editing, cropping and export features work on the example. One recording is loaded at a time; a failed import leaves the previous trial available.
 2. Orbit, pan and zoom the 3D view. The Trial Inspector identifies the current trial/file and available subject metadata. Select a marker for its position plot, or use the inspector to adjust visibility and force display. Review import warnings before interpreting data.
 3. Play, step or scrub the timeline. Select a signal in the signal inspector; use **Split plots** for two independent selections sharing the playback cursor.
 4. Click a timeline event to edit it, or use **Add Event** and the Events selector beside Crop at the right of the timeline. New events use the current playback position. Supported fields depend on the source format.
@@ -135,7 +135,7 @@ With Chrome installed, run the browser and privacy smoke check after building:
 npm run test:browser
 ```
 
-For Microsoft Edge, set `BROWSER_CHANNEL=msedge`. This check exercises viewer controls using synthetic C3D/H5 test fixtures, error recovery, the footer version, request URLs/methods/bodies and browser storage. Analytics requests are intercepted locally to validate event-only payloads without affecting live counts; the check does not validate the deployed Worker or D1. Reports and screenshots stay under ignored `.local/`.
+For Microsoft Edge, set `BROWSER_CHANNEL=msedge`. This check exercises the demo download/import, cropping/export, base-aware asset URLs and byte-identical production H5 asset, plus viewer controls using synthetic C3D/H5 test fixtures, error recovery, the footer version, request URLs/methods/bodies and browser storage. Analytics requests are intercepted locally to validate event-only payloads without affecting live counts; the check does not validate the deployed Worker or D1. Reports and screenshots stay under ignored `.local/`.
 
 Optional local numerical comparison requires Python with ezc3d/numpy and explicit local C3D paths, supplied directly or as an ignored JSON array in `.local/reference-inputs.json`:
 
@@ -162,6 +162,8 @@ npm.cmd run build
 Outside CI, the default base is relative (`./`). For a deployment under a repository path, explicitly set `VITE_BASE_PATH` to that path (for example, `/mocap-web-viewer/`) and adjust the workflow too; it does not read a repository Actions variable. The application HTML declares `https://app.jemolab.com/` as its canonical URL. Source measurements, local comparison output, and node_modules are ignored; do not add private files to `public/`, because that directory is copied to the deployed site.
 
 ## Privacy
+
+The demo source is `reference-data/example_data.h5`. Vite emits this exact file as a separate static asset using `?url&no-inline`, following `VITE_BASE_PATH` in development and production; H5 bytes are never bundled into JavaScript. Other recordings remain ignored and are not included in the build. Retained subject identifiers have been replaced with generic test subjects, recording timestamps removed and source paths replaced with the demo filename; measurement arrays are preserved. Review all metadata and obtain clearance for public distribution before replacing the demo. The demo downloads only after a click and is processed locally, with the same single anonymous `h5_loaded` event as a local H5 import.
 
 The application footer links to [Privacy](https://jemolab.com/privacy.html) and [Imprint](https://jemolab.com/imprint.html). These external pages are the single source of truth for the privacy policy and legal notice. The information below documents the application's technical behavior.
 

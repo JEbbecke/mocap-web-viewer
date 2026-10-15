@@ -7,6 +7,7 @@ import { startClock } from './playback/clock';
 import {
   cancelImport,
   openFile,
+  openExampleFile,
   setFrame,
   togglePlay,
   undoEdit,
@@ -227,9 +228,14 @@ export function App() {
                     <br />
                     trajectories, forces, analogs and events.
                   </p>
-                  <button className="primary" onClick={open}>
-                    Open a recording
-                  </button>
+                  <div className="welcome-actions">
+                    <button className="primary" onClick={open}>
+                      Open a recording
+                    </button>
+                    <button onClick={() => void openExampleFile()} disabled={busy} aria-busy={busy}>
+                      {busy ? 'Loading example…' : 'Load Example File'}
+                    </button>
+                  </div>
                   <span className="muted">or drop a file anywhere</span>
                   <div className="format-tags">
                     <span>C3D</span>
@@ -327,7 +333,13 @@ export function App() {
         <div className="loading-overlay" role="status">
           <div className="loading-card">
             <span className="spinner" />
-            <h2>{operation === 'export' ? 'Preparing your export' : 'Reading your recording'}</h2>
+            <h2>
+              {operation === 'export'
+                ? 'Preparing your export'
+                : operation === 'download'
+                  ? 'Loading example file'
+                  : 'Reading your recording'}
+            </h2>
             <p>Processing locally. Your file stays on this device.</p>
             <button onClick={cancelImport}>Cancel</button>
           </div>

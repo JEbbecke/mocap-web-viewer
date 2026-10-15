@@ -16,6 +16,7 @@ import { renameAnalogCommand } from '../motion/analogLabels';
 import { renameDataCommand, type DataLabelTarget } from '../motion/dataLabels';
 import { trackEvent } from '../analytics';
 import type { ExportFormat } from '../exporters/conversion';
+import exampleFileUrl from '../../reference-data/example_data.h5?url&no-inline';
 export type DisplayKey =
   | 'markers'
   | 'connections'
@@ -37,7 +38,7 @@ interface Session {
   originalData: MotionData | null;
   sourceFile: File | null;
   cropSelection: { start: number; end: number } | null;
-  operation: 'import' | 'export';
+  operation: 'download' | 'import' | 'export';
   saved: boolean;
   busy: boolean;
   error: string | null;
@@ -154,10 +155,35 @@ export function toggleMarker(index: number) {
   });
 }
 let active: Worker | undefined;
+let exampleDownload: AbortController | undefined;
 export function cancelImport() {
+  exampleDownload?.abort();
+  exampleDownload = undefined;
   active?.terminate();
   active = undefined;
   useSession.setState({ busy: false });
+}
+export async function openExampleFile() {
+  if (useSession.getState().busy || useSession.getState().data) return;
+  const controller = new AbortController();
+  exampleDownload = controller;
+  useSession.setState({ busy: true, operation: 'download', error: null, playing: false });
+  try {
+    const response = await fetch(exampleFileUrl, { signal: controller.signal });
+    if (!response.ok) throw new Error(`Download failed (HTTP ${response.status}).`);
+    const blob = await response.blob();
+    // A cancelled download must never replace a recording opened in the meantime.
+    if (exampleDownload !== controller) return;
+    exampleDownload = undefined;
+    openFile(new File([blob], 'example_data.h5', { type: 'application/x-hdf5' }));
+  } catch (error) {
+    if (controller.signal.aborted) return;
+    exampleDownload = undefined;
+    useSession.setState({
+      busy: false,
+      error: `Could not load the example file. ${error instanceof Error ? error.message : 'Please try again.'}`,
+    });
+  }
 }
 export function openFile(file: File) {
   cancelImport();

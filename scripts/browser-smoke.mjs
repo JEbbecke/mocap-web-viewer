@@ -5,6 +5,7 @@ import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import assert from 'node:assert/strict';
 import { verifyLicense } from './browser-license.mjs';
+import { verifyExampleFile } from './browser-example.mjs';
 import { verifyModelPlots } from './browser-model-plots.mjs';
 import { createModelTimingFixtures, verifyModelTiming } from './browser-model-timing.mjs';
 import { verifyCropPreview } from './browser-crop-preview.mjs';
@@ -232,6 +233,7 @@ try {
     headless: true,
     args: ['--enable-unsafe-swiftshader'],
   });
+  await verifyExampleFile(browser, base, development);
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   // Validate client requests without sending test activity or local references to the service.
   await page.route(`${analyticsOrigin}/**`, (route) =>

@@ -292,6 +292,11 @@ header {
   line-height: 1.8;
   margin-bottom: 26px;
 }
+.welcome-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
 .welcome > span {
   margin-left: 15px;
   font-size: 11px;

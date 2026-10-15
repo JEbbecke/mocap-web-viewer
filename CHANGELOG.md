@@ -8,6 +8,18 @@ branches describe the planned release until its tag is published.
 
 ## [Unreleased]
 
+### Added
+
+- Landing-page **Load Example File** action using the existing H5 import pipeline,
+  with download/import loading states, cancellation, retryable errors and one
+  anonymous load event. Vite serves the unchanged demo as a separate static asset
+  under the configured base path; local upload remains available.
+- Demo loading tests for repeated clicks, errors, cancellation, local-file races,
+  browser import, event-only analytics and byte-identical production assets.
+- Public demo metadata sanitized: retained subject identifiers become generic
+  test subjects, recording timestamps are removed and source paths use the demo
+  filename. All measurement datasets are preserved.
+
 ## [0.5.1] - 2026-10-12
 
 ### Changed
