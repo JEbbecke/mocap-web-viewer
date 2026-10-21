@@ -8,9 +8,10 @@ selection feeds the same plot renderer and global cursor, with the same hide/sho
 zoom, units and crop-preview behavior.
 
 The right sidebar contains Data, Display and File Info. Data replaces the former
-Markers tab with collapsible sections for available collections. Markers start
-expanded; other sections start collapsed. Each header shows its total count.
-Empty collections are omitted.
+Markers tab with collapsible sections for available collections. All sections start
+collapsed when a file is loaded. Expansion state persists across Inspector tabs
+and workspace switches. Each header shows its total count. Empty collections are
+omitted.
 
 Double-clicking any non-event label, or using its pencil, opens an inline label editor with Save/Cancel
 and validation. Committed labels update this catalog and its search immediately;
@@ -19,8 +20,8 @@ visibility and selection retain source-column identity. See
 
 Search data filters names across all collections, case-insensitively. Matching
 sections expand and show matching/total counts. Clearing search restores the
-full collection list. An unmatched query shows a concise empty state. Search
-does not change marker visibility or the selected signal.
+full collection list and previous expansion state. An unmatched query shows a
+concise empty state. Search does not change marker visibility or the selected signal.
 
 | Collection      | Interaction                                                                                                                                                                                                                                    |
 | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

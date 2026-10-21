@@ -118,8 +118,8 @@ it('replaces the marker card without changing selection, scientific data or hist
   expect(view).toContain('aria-label="Trial overview"');
   expect(view).not.toContain('SELECTED MARKER');
   expect(view).not.toContain('coordinate-values');
-  expect(view).toContain('marker-row selected');
-  expect(view).toContain(`aria-label="Show ${data.markers.labels[0]}"`);
+  expect(view).toContain('class="data-section-heading" aria-expanded="false"');
+  expect(view).not.toContain('marker-row selected');
   const after = useSession.getState();
   expect(after.selected).toBe(0);
   expect(after.plot).toBe('marker');

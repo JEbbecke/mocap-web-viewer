@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import { verifyLicense } from './browser-license.mjs';
 import { verifyExampleFile } from './browser-example.mjs';
 import { verifyWorkspaceNavigation } from './browser-workspace-navigation.mjs';
+import { verifyDataTab } from './browser-data-tab.mjs';
 import { verifyModelPlots } from './browser-model-plots.mjs';
 import { createModelTimingFixtures, verifyModelTiming } from './browser-model-timing.mjs';
 import { verifyCropPreview } from './browser-crop-preview.mjs';
@@ -352,11 +353,15 @@ try {
   await page.getByRole('tab', { name: 'Data', exact: true }).click();
   assert.equal(await page.getByRole('tab', { name: 'Markers', exact: true }).count(), 0);
   const dataBrowser = page.getByRole('tabpanel', { name: 'Data', exact: true });
+  await verifyDataTab(page, 'H5');
   const dataGroup = (name) =>
     dataBrowser.locator('.data-section').filter({
-      has: page.locator('summary > span:first-child').filter({ hasText: new RegExp(`^${name}$`) }),
+      has: page
+        .locator('.data-section-heading > span:first-of-type')
+        .filter({ hasText: new RegExp(`^${name}$`) }),
     });
   // Committed marker edits share history; native text-field undo keeps its own draft.
+  await dataGroup('Markers').locator('.data-section-heading').click();
   const firstMarker = dataBrowser.locator('.marker-row').first();
   const oldMarkerName = await firstMarker.locator('button').first().getAttribute('title');
   const otherMarkerName = await dataBrowser
@@ -581,12 +586,12 @@ try {
   assert.equal(await dataBrowser.getByRole('status').innerText(), 'No matching data.');
   await page.getByLabel('Search data').fill('');
   assert.equal(await dataBrowser.locator('.data-section').count(), 8);
-  await dataGroup('Analog channels').locator('summary').click();
-  // Native details summaries also toggle from the keyboard.
-  const analogSummary = dataGroup('Analog channels').locator('summary');
-  const openBeforeKey = await dataGroup('Analog channels').getAttribute('open');
+  await dataGroup('Analog channels').locator('.data-section-heading').click();
+  // Category buttons also toggle from the keyboard.
+  const analogSummary = dataGroup('Analog channels').locator('.data-section-heading');
+  const openBeforeKey = await analogSummary.getAttribute('aria-expanded');
   await analogSummary.press('Enter');
-  assert.notEqual(await dataGroup('Analog channels').getAttribute('open'), openBeforeKey);
+  assert.notEqual(await analogSummary.getAttribute('aria-expanded'), openBeforeKey);
   assert(await dataBrowser.evaluate((el) => el.scrollWidth <= el.clientWidth + 1));
   await page.screenshot({ path: '.local/data-browser.png' });
   assert.match(await page.locator('.viewport-title').innerText(), /XYZ.*mm/);
@@ -805,6 +810,7 @@ try {
   assert.equal(await fileInfo.locator('.event-row, pre').count(), 0);
   await page.getByRole('tab', { name: 'Data', exact: true }).click();
   assert.equal(await dataBrowser.locator('.data-section').count(), 3);
+  await verifyDataTab(page, 'C3D');
   assert.equal(await dataGroup('Force platforms').count(), 0);
   for (const name of ['EMG channels', 'Rigid bodies', 'IK results', 'ID results'])
     assert.equal(await dataGroup(name).count(), 0);
@@ -1070,6 +1076,7 @@ try {
         'unavailable coordinate-system categories are hidden',
       );
     await page.getByRole('tab', { name: 'Data', exact: true }).click();
+    await dataGroup('Markers').locator('.data-section-heading').click();
     const exportMarker = dataBrowser.locator('.marker-row').first();
     const importedLabel = await exportMarker.locator('button').first().getAttribute('title');
     await exportMarker
@@ -1082,8 +1089,10 @@ try {
     await undoButton.click();
     await redoButton.click();
     const analogGroup = dataGroup('Analog channels');
-    if ((await analogGroup.getAttribute('open')) === null)
-      await analogGroup.locator('summary').click();
+    if (
+      (await analogGroup.locator('.data-section-heading').getAttribute('aria-expanded')) === 'false'
+    )
+      await analogGroup.locator('.data-section-heading').click();
     const analogLabel = analogGroup.locator('.data-entry').first();
     const originalAnalogName = await analogLabel.getAttribute('title');
     await analogLabel.dblclick();
@@ -1212,6 +1221,13 @@ try {
     await page.getByLabel('Open motion file').setInputFiles(exportedPath);
     await page.waitForFunction(() => !document.body.textContent.includes('Reading your recording'));
     assert.equal(await page.getByRole('alert').count(), 0);
+    assert.equal(
+      await dataBrowser.locator('.data-section-heading[aria-expanded="true"]').count(),
+      0,
+      're-import resets all category expansion',
+    );
+    await dataGroup('Markers').locator('.data-section-heading').click();
+    await dataGroup('Analog channels').locator('.data-section-heading').click();
     assert.equal(
       await dataBrowser.getByRole('button', { name: 'Exported_Thigh', exact: true }).count(),
       1,

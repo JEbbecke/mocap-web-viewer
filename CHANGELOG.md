@@ -10,6 +10,9 @@ branches describe the planned release until its tag is published.
 
 ### Changed
 
+- Trial Inspector Data categories start collapsed for each file and retain their
+  expansion state across Inspector tabs, workspace switches and searches. Compact
+  44 px category buttons keep counts aligned without changing expanded item spacing.
 - Permanent Data Visualizer / Data Explorer workspace controls in the existing
   header, with mint active states, keyboard focus and accessible compact icons on
   narrow screens. Switching reuses the current workspace state and loaded trial;

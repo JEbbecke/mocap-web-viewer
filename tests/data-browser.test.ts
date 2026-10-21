@@ -110,12 +110,19 @@ it('omits unavailable categories and displays a concise empty state', () => {
   expect(dataSections(data).map((s) => s.name)).toEqual(['Markers']);
   data.markers.labels = [];
   expect(dataSections(data)).toEqual([]);
-  const html = renderToStaticMarkup(createElement(DataBrowser, { data }));
+  const html = renderToStaticMarkup(
+    createElement(DataBrowser, {
+      data,
+      expandedSections: new Set<string>(),
+      collapsedSearchSections: new Set<string>(),
+      onToggleSection: () => {},
+    }),
+  );
   expect(html).toContain('No supported data available.');
   expect(html).not.toContain('<summary>');
 });
 
-it('renders Data, Display and File Info tabs with existing marker selection and visibility controls', () => {
+it('renders all Data categories collapsed with accessible disclosure buttons by default', () => {
   const data = populated();
   const html = renderToStaticMarkup(
     createElement(Inspector, { data, collapsed: false, onToggle: () => {} }),
@@ -124,12 +131,28 @@ it('renders Data, Display and File Info tabs with existing marker selection and 
   expect(html).toMatch(/role="tab"[^>]*>Display<\/button>/);
   expect(html).toMatch(/role="tab"[^>]*>File Info<\/button>/);
   expect(html).not.toMatch(/role="tab"[^>]*>Markers<\/button>/);
+  expect(html).toContain('aria-label="Search data"');
+  expect(html.match(/class="data-section-heading"/g)).toHaveLength(8);
+  expect(html.match(/aria-expanded="false"/g)).toHaveLength(8);
+  expect(html.match(/class="data-section-content" hidden=""/g)).toHaveLength(8);
+  expect(html).not.toContain('aria-label="Show Knee"');
+});
+
+it('renders existing marker controls only in expanded categories', () => {
+  const html = renderToStaticMarkup(
+    createElement(DataBrowser, {
+      data: populated(),
+      expandedSections: new Set(['Markers']),
+      collapsedSearchSections: new Set<string>(),
+      onToggleSection: () => {},
+    }),
+  );
   expect(html).toContain('aria-label="Show Knee"');
   expect(html).toContain('type="checkbox" checked=""');
   expect(html).toContain('Show all');
   expect(html).toContain('TRAJECTORIES');
-  expect(html).toContain('aria-label="Search data"');
-  expect(html).toContain('data-section" open=""');
+  expect(html.match(/aria-expanded="true"/g)).toHaveLength(1);
+  expect(html.match(/aria-expanded="false"/g)).toHaveLength(7);
 });
 
 it('reads model names and explicit units without loading samples or shifting missing labels', () => {

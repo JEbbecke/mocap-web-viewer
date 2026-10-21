@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { MotionData } from '../motion/types';
 import { connectionSets, resolveConnections } from '../motion/connections';
 import { useSession } from '../state/session';
@@ -17,6 +17,27 @@ export function Inspector({
   onToggle: () => void;
 }) {
   const [tab, setTab] = useState('Data');
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(() => new Set());
+  const [collapsedSearchSections, setCollapsedSearchSections] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const sourceFile = useSession((s) => s.sourceFile);
+  const search = useSession((s) => s.search);
+  useEffect(() => {
+    setExpandedSections(new Set());
+  }, [sourceFile]);
+  useEffect(() => {
+    setCollapsedSearchSections(new Set());
+  }, [sourceFile, search]);
+  const toggleSection = (name: string) => {
+    const update = search.trim() ? setCollapsedSearchSections : setExpandedSections;
+    update((current) => {
+      const next = new Set(current);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  };
   const display = useSession((s) => s.display),
     connectionSet = useSession((s) => s.connectionSet),
     threshold = useSession((s) => s.threshold),
@@ -39,7 +60,12 @@ export function Inspector({
       </div>
       <div className="sidebar-body">
         {tab === 'Data' ? (
-          <DataBrowser data={data} />
+          <DataBrowser
+            data={data}
+            expandedSections={expandedSections}
+            collapsedSearchSections={collapsedSearchSections}
+            onToggleSection={toggleSection}
+          />
         ) : tab === 'Display' ? (
           <>
             <h4>Scene layers</h4>

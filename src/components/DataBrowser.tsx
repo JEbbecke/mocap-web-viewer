@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useId, useMemo, useState, type ReactNode } from 'react';
 import type { MotionData } from '../motion/types';
 import {
   togglePlot,
@@ -15,33 +15,51 @@ import { dataSections, filterDataSections } from './dataSections';
 function Section({
   name,
   count,
-  searching,
+  expanded,
+  onToggle,
   children,
 }: {
   name: string;
   count: string;
-  searching: boolean;
+  expanded: boolean;
+  onToggle: () => void;
   children: ReactNode;
 }) {
-  const [expanded, setExpanded] = useState(name === 'Markers');
+  const id = useId();
+  const open = expanded;
   return (
-    <details
-      className="data-section"
-      open={searching || expanded}
-      onToggle={(e) => {
-        if (!searching) setExpanded(e.currentTarget.open);
-      }}
-    >
-      <summary>
-        <span>{name}</span>
+    <div className="data-section">
+      <button
+        type="button"
+        className="data-section-heading"
+        aria-expanded={open}
+        aria-controls={id}
+        onClick={onToggle}
+      >
+        <svg viewBox="0 0 16 16" aria-hidden="true">
+          <path d="m6 3 5 5-5 5" />
+        </svg>
+        <span title={name}>{name}</span>
         <span className="data-count">{count}</span>
-      </summary>
-      {(searching || expanded) && <div className="data-section-content">{children}</div>}
-    </details>
+      </button>
+      <div id={id} className="data-section-content" hidden={!open}>
+        {open && children}
+      </div>
+    </div>
   );
 }
 
-export function DataBrowser({ data }: { data: MotionData }) {
+export function DataBrowser({
+  data,
+  expandedSections,
+  collapsedSearchSections,
+  onToggleSection,
+}: {
+  data: MotionData;
+  expandedSections: ReadonlySet<string>;
+  collapsedSearchSections: ReadonlySet<string>;
+  onToggleSection: (name: string) => void;
+}) {
   const [editing, setEditing] = useState<string | null>(null);
   const busy = useSession((s) => s.busy);
   useEffect(() => {
@@ -75,7 +93,12 @@ export function DataBrowser({ data }: { data: MotionData }) {
         <Section
           key={section.name}
           name={section.name}
-          searching={searching}
+          expanded={
+            searching
+              ? !collapsedSearchSections.has(section.name)
+              : expandedSections.has(section.name)
+          }
+          onToggle={() => onToggleSection(section.name)}
           count={searching ? `${section.entries.length} / ${section.total}` : String(section.total)}
         >
           {section.note && <p className="muted small">{section.note}</p>}
