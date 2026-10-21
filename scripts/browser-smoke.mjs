@@ -13,6 +13,7 @@ import { verifyModelPlots } from './browser-model-plots.mjs';
 import { createModelTimingFixtures, verifyModelTiming } from './browser-model-timing.mjs';
 import { verifyCropPreview } from './browser-crop-preview.mjs';
 import { createTimelineFixture, verifyTimelineLayout } from './browser-timeline.mjs';
+import { verifyEventEditor } from './browser-event-editor.mjs';
 import { verifyTrialOverview, verifyLongTrialFilename } from './browser-trial-overview.mjs';
 import * as h5 from 'h5wasm/node';
 import {
@@ -1344,6 +1345,7 @@ try {
   await verifyModelTiming(page);
   await verifyCropPreview(page);
   await verifyTimelineLayout(page);
+  await verifyEventEditor(page);
   await page.getByLabel('Open motion file').setInputFiles(resolve('.local/same-source.h5'));
   await page.waitForFunction(() => !document.body.textContent.includes('Reading your recording'));
   await verifyFileMetadata(page, {

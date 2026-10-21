@@ -5,6 +5,7 @@ import { chromium } from '@playwright/test';
 import { spawn } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
+import { verifyEventEditor } from './browser-event-editor.mjs';
 
 export function createTimelineFixture(
   filename = '.local/timeline-ui.h5',
@@ -554,7 +555,8 @@ if (resolve(process.argv[1] ?? '') === fileURLToPath(import.meta.url)) {
     page.on('pageerror', (error) => errors.push(error.message));
     await page.goto('http://127.0.0.1:4174/', { waitUntil: 'networkidle' });
     try {
-      await verifyTimelineLayout(page);
+      if (!process.argv.includes('--editor-only')) await verifyTimelineLayout(page);
+      await verifyEventEditor(page);
       assert.deepEqual(errors, []);
     } catch (error) {
       await page.screenshot({ path: '.local/timeline-failure.png', fullPage: true });

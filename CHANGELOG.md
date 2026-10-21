@@ -10,6 +10,10 @@ branches describe the planned release until its tag is published.
 
 ### Changed
 
+- Event Editor uses compact, panel-width responsive identity/timing and metadata
+  fields, grouped Save/Cancel/Delete actions, inline validation and predictable
+  keyboard focus. Switching events protects unsaved input; inline deletion and
+  the stabilized Timeline controls remain intact.
 - Restored the compact Timeline with shared playback/bar alignment, matching
   two-row crop/event actions and panel-width responsive wrapping. The Event Editor
   opens below the stable controls. Clearer crop selection/actions, concise tooltips
