@@ -6,6 +6,7 @@ import { resolve } from 'node:path';
 import assert from 'node:assert/strict';
 import { verifyLicense } from './browser-license.mjs';
 import { verifyExampleFile } from './browser-example.mjs';
+import { verifyWorkspaceNavigation } from './browser-workspace-navigation.mjs';
 import { verifyModelPlots } from './browser-model-plots.mjs';
 import { createModelTimingFixtures, verifyModelTiming } from './browser-model-timing.mjs';
 import { verifyCropPreview } from './browser-crop-preview.mjs';
@@ -265,6 +266,7 @@ try {
     }),
   );
   await page.goto(`http://127.0.0.1:4173${base}`, { waitUntil: 'networkidle' });
+  await verifyWorkspaceNavigation(page, false);
   assert.equal(await page.title(), 'JE Motion Lab | MoCap Viewer & Editor');
   assert.equal(await page.locator('.brand strong').innerText(), 'JE Motion Lab');
   assert.equal(
@@ -300,6 +302,7 @@ try {
   await page.getByLabel('Open motion file').setInputFiles(resolve('.local/populated.h5'));
   await controlsLoad;
   await page.getByRole('slider', { name: 'Frame', exact: true }).waitFor();
+  await verifyWorkspaceNavigation(page);
   await verifyTrialOverview(page, {
     title: 'Baseline',
     filename: 'populated.h5',
@@ -1048,7 +1051,7 @@ try {
         3,
         'available marker table still opens',
       );
-      await page.getByRole('button', { name: 'Data Viewer', exact: true }).click();
+      await page.getByRole('button', { name: 'Data Visualizer', exact: true }).click();
       await page.getByRole('slider', { name: 'Frame', exact: true }).press('End');
       assert.equal(
         await page

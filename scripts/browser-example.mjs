@@ -68,7 +68,7 @@ export async function verifyExampleFile(browser, base, development) {
     );
     await page.getByRole('button', { name: 'Data Explorer', exact: true }).click();
     await page.getByRole('region', { name: 'Data Explorer', exact: true }).waitFor();
-    await page.getByRole('button', { name: 'Data Viewer', exact: true }).click();
+    await page.getByRole('button', { name: 'Data Visualizer', exact: true }).click();
     const cropStart = page.getByRole('slider', { name: 'Crop start', exact: true });
     await cropStart.press('ArrowRight');
     await page.getByRole('button', { name: 'Crop', exact: true }).click();

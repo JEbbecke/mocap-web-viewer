@@ -128,6 +128,33 @@ export function App() {
           </strong>
           <span>MoCap Viewer &amp; Editor</span>
         </div>
+        <div className="workspace-nav" role="group" aria-label="Workspace">
+          <button
+            aria-label="Data Visualizer"
+            title="Data Visualizer"
+            aria-pressed={!data || !showExplorer}
+            disabled={!data}
+            onClick={() => setShowExplorer(false)}
+          >
+            <svg viewBox="0 0 20 20" aria-hidden="true">
+              <path d="m10 2 7 4v8l-7 4-7-4V6Zm0 8 7-4M10 10 3 6m7 4v8" />
+            </svg>
+            <span className="workspace-label">Data Visualizer</span>
+          </button>
+          <button
+            aria-label="Data Explorer"
+            title="Data Explorer"
+            aria-pressed={!!data && showExplorer}
+            disabled={!data}
+            onClick={() => setShowExplorer(true)}
+          >
+            <svg viewBox="0 0 20 20" aria-hidden="true">
+              <rect x="2.5" y="3" width="15" height="14" rx="1.5" />
+              <path d="M3 8h14M3 12.5h14M8 8v9" />
+            </svg>
+            <span className="workspace-label">Data Explorer</span>
+          </button>
+        </div>
         <div className="header-file">
           {data ? (
             <>
@@ -144,22 +171,27 @@ export function App() {
         </div>
         {data && (
           <div className="history-controls">
-            <button aria-pressed={showExplorer} onClick={() => setShowExplorer((value) => !value)}>
-              {showExplorer ? 'Data Viewer' : 'Data Explorer'}
-            </button>
             <button
+              aria-label="Undo"
               onClick={undoEdit}
               disabled={busy || !history.past.length}
               title={`Undo${history.past.length ? ': ' + history.past.at(-1)!.command.description : ''} (Ctrl/Cmd+Z)`}
             >
-              Undo
+              <svg viewBox="0 0 20 20" aria-hidden="true">
+                <path d="M7 3 3 7l4 4M3 7h9a5 5 0 0 1 0 10H9" />
+              </svg>
+              <span className="header-action-label">Undo</span>
             </button>
             <button
+              aria-label="Redo"
               onClick={redoEdit}
               disabled={busy || !history.future.length}
               title={`Redo${history.future.length ? ': ' + history.future.at(-1)!.command.description : ''} (Ctrl/Cmd+Shift+Z, Ctrl+Y)`}
             >
-              Redo
+              <svg viewBox="0 0 20 20" aria-hidden="true">
+                <path d="m13 3 4 4-4 4m4-4H8a5 5 0 0 0 0 10h3" />
+              </svg>
+              <span className="header-action-label">Redo</span>
             </button>
           </div>
         )}
@@ -167,8 +199,9 @@ export function App() {
           {data && (
             <ExportControl data={data} disabled={busy || !sourceFile || Boolean(cropSelection)} />
           )}
-          <button className="primary" onClick={open}>
-            ＋ Open file
+          <button className="primary" onClick={open} aria-label="Open file" title="Open file">
+            <span aria-hidden="true">＋</span>{' '}
+            <span className="header-action-label">Open file</span>
           </button>
         </div>
         <input

@@ -6,6 +6,8 @@
   overflow: hidden;
 }
 header {
+  position: relative;
+  z-index: 2;
   display: flex;
   align-items: center;
   gap: 14px;
@@ -16,6 +18,7 @@ header {
   background: #141f2a;
 }
 .brand-mark {
+  flex: none;
   width: 38px;
   height: 38px;
   padding: 5px;
@@ -24,6 +27,7 @@ header {
   color: #8ce0c9;
 }
 .brand {
+  flex: none;
   display: flex;
   flex-direction: column;
   gap: 7px;
@@ -42,6 +46,63 @@ header {
   font-size: 9px;
   letter-spacing: 2px;
   color: #8096a8;
+}
+.workspace-nav {
+  display: flex;
+  flex: none;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid #334252;
+  border-radius: 7px;
+  background: #0f1923;
+}
+.workspace-nav button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 7px 10px;
+  border-color: transparent;
+  background: transparent;
+  color: #b3c3d1;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s;
+}
+.workspace-nav button:hover:not(:disabled) {
+  background: #263745;
+  color: #dce7ef;
+}
+.workspace-nav button[aria-pressed='true'] {
+  border-color: #3c655f;
+  background: #29463f;
+  color: #8ce0c9;
+}
+.workspace-nav button:disabled {
+  opacity: 0.65;
+}
+.workspace-nav button:focus-visible {
+  outline-offset: 1px;
+}
+.workspace-nav svg,
+.history-controls svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.history-controls svg {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .workspace-nav button {
+    transition: none;
+  }
 }
 .header-file {
   margin-left: auto;
@@ -1267,6 +1328,11 @@ footer .privacy-dot {
     gap: 10px;
     padding-inline: 16px;
   }
+  .workspace-nav button {
+    gap: 5px;
+    padding-inline: 7px;
+    font-size: 12px;
+  }
   .transport button {
     padding: 4px;
   }
@@ -1292,6 +1358,12 @@ footer .privacy-dot {
   }
 }
 @media (max-width: 900px) {
+  .workspace-label {
+    display: none;
+  }
+  .workspace-nav button {
+    padding: 8px;
+  }
   .timeline {
     flex-wrap: wrap;
   }
@@ -1313,10 +1385,9 @@ footer .privacy-dot {
     overflow: auto;
   }
   header {
-    padding: 12px;
-    min-height: 65px;
-    height: auto;
-    flex-wrap: wrap;
+    padding: 0 10px;
+    gap: 6px;
+    height: 65px;
   }
   .inspector.is-collapsed {
     width: 100%;
@@ -1332,11 +1403,6 @@ footer .privacy-dot {
   }
   .file-actions {
     margin-left: auto;
-  }
-  .history-controls {
-    order: 1;
-    width: 100%;
-    justify-content: flex-end;
   }
   .workspace {
     display: block;
@@ -1387,6 +1453,32 @@ footer .privacy-dot {
     font-size: 34px;
   }
 }
+@media (max-width: 600px) {
+  header .brand {
+    display: none;
+  }
+  header .brand-mark {
+    width: 30px;
+    height: 30px;
+  }
+  header .file-actions {
+    gap: 4px;
+  }
+  header button.primary {
+    padding: 8px;
+  }
+}
+@media (max-width: 480px) {
+  header .header-action-label {
+    display: none;
+  }
+  .history-controls svg {
+    display: block;
+  }
+  .history-controls button {
+    padding: 8px;
+  }
+}
 .brand-mark circle {
   fill: currentColor;
 }
@@ -1400,6 +1492,7 @@ footer .privacy-dot {
 }
 .history-controls {
   display: flex;
+  flex: none;
   gap: 4px;
 }
 .marker-row .rename-marker {

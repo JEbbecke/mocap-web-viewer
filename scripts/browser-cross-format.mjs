@@ -116,7 +116,7 @@ async function markerValues(page) {
   await explorer.getByLabel('Search explorer datasets').fill('Trajectories');
   await explorer.locator('nav button').first().click();
   const cells = await explorer.locator('tbody tr[data-row="0"] td').allTextContents();
-  await page.getByRole('button', { name: 'Data Viewer', exact: true }).click();
+  await page.getByRole('button', { name: 'Data Visualizer', exact: true }).click();
   return { currentFrame: cells[1], sourceFrame: Number(cells[2]), values: cells.slice(3, 8) };
 }
 
@@ -356,7 +356,7 @@ export async function verifyCrossFormat(page, analyticsEvents) {
     .slice(1)
     .map(Number);
   assert.deepEqual(surveyedCorners, [100, 100, 0, -100, 100, 0, -99, -101, 0.5, 100, -100, 0]);
-  await page.getByRole('button', { name: 'Data Viewer', exact: true }).click();
+  await page.getByRole('button', { name: 'Data Visualizer', exact: true }).click();
   await page.getByLabel('Open motion file').setInputFiles(resolve('.local/cross-incompatible.h5'));
   await page.waitForFunction(() => !document.body.textContent.includes('Reading your recording'));
   await chooseExportFormat(page, 'C3D');

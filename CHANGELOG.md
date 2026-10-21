@@ -8,6 +8,13 @@ branches describe the planned release until its tag is published.
 
 ## [Unreleased]
 
+### Changed
+
+- Permanent Data Visualizer / Data Explorer workspace controls in the existing
+  header, with mint active states, keyboard focus and accessible compact icons on
+  narrow screens. Switching reuses the current workspace state and loaded trial;
+  header actions stay on one row without increasing the header height.
+
 ### Added
 
 - Landing-page **Load Example File** action using the existing H5 import pipeline,

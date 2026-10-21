@@ -157,7 +157,7 @@ export async function verifyModelTiming(page) {
       );
       assert(Math.abs(firstTime - (independent && kind === 'ID' ? 7 : 0)) < 1e-10);
     }
-    await page.getByRole('button', { name: 'Data Viewer', exact: true }).click();
+    await page.getByRole('button', { name: 'Data Visualizer', exact: true }).click();
   }
   console.log(
     'Model timing smoke passed: alignment, crop, independent retention, shared cursor and desktop/laptop plot bounds.',
