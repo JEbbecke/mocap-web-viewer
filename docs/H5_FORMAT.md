@@ -138,6 +138,19 @@ No EMG category or conversion-loss warning is fabricated.
   Condition, Project, ProjectPI (strings, including numeric-looking values).
 - MetaData/FileInfo: FileCreationLocal, FileCreationUTC, LastUpdate, OriginalFiles,
   PathFile. These are provenance; retain their original history on crop.
+  The first three are file-level timestamp attributes. The reference stores
+  `FileCreationLocal` and `LastUpdate` as timezone-naive
+  `YYYY-MM-DD HH:mm:ss.ffffff` text, and `FileCreationUTC` as
+  `YYYY-MM-DD HH:mm:ss.ffffff+00:00`. Both creation values are retained separately;
+  their fractional seconds can differ. ISO `T` separators, explicit offsets, UTC
+  `Z` and date-only values are also accepted. No timezone or time of day is added
+  when absent. Invalid calendar/clock values display as `Invalid timestamp`,
+  separately from missing/empty fields (`Not available`). HDF5 object timestamps
+  are not used. The bundled demo has these attributes removed.
+  The metadata UI uses concise dates with expandable original values. Local and
+  UTC creation fields are grouped only when explicit offsets and full fractional
+  precision establish the same instant; the reference's naive local field does
+  not establish that equivalence. Parsing and stored timestamp text are unchanged.
 - MetaData/Location: Lat, Lon; unavailable/Unknown values stay hidden.
 - MetaData/C3DParameters: nested acquisition/provenance for ANALOG, POINT, EVENT,
   EVENT_CONTEXT, FORCE_PLATFORM, MANUFACTURER, PROCESSING, SEG and TRIAL.

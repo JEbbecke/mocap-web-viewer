@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 import { chooseExportFormat } from './browser-cross-format.mjs';
+import { verifyFileMetadata } from './browser-file-metadata.mjs';
 
 export async function verifyExampleFile(browser, base, development) {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
@@ -61,6 +62,11 @@ export async function verifyExampleFile(browser, base, development) {
     assert.equal(await button.count(), 0, 'demo button disappears after import');
     assert.equal(await page.locator('.scene-wrap canvas').count(), 1);
     assert.match(await page.locator('.header-file').innerText(), /example_data\.h5/);
+    await verifyFileMetadata(page, {
+      name: 'example_data.h5',
+      size: expectedBytes.length,
+      demo: true,
+    });
     await page.getByRole('slider', { name: 'Frame', exact: true }).press('End');
     assert.equal(
       await page.getByRole('slider', { name: 'Frame', exact: true }).getAttribute('aria-valuenow'),

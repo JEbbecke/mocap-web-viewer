@@ -15,6 +15,7 @@ import { renameMarkerCommand } from '../motion/markerLabels';
 import { renameAnalogCommand } from '../motion/analogLabels';
 import { renameDataCommand, type DataLabelTarget } from '../motion/dataLabels';
 import { trackEvent } from '../analytics';
+import { fileProperties, type FileProperties } from '../motion/fileMetadata';
 import type { ExportFormat } from '../exporters/conversion';
 import exampleFileUrl from '../../reference-data/example_data.h5?url&no-inline';
 export type DisplayKey =
@@ -175,7 +176,7 @@ export async function openExampleFile() {
     // A cancelled download must never replace a recording opened in the meantime.
     if (exampleDownload !== controller) return;
     exampleDownload = undefined;
-    openFile(new File([blob], 'example_data.h5', { type: 'application/x-hdf5' }));
+    openFile(new File([blob], 'example_data.h5', { type: 'application/x-hdf5' }), 'bundled-demo');
   } catch (error) {
     if (controller.signal.aborted) return;
     exampleDownload = undefined;
@@ -185,7 +186,7 @@ export async function openExampleFile() {
     });
   }
 }
-export function openFile(file: File) {
+export function openFile(file: File, origin: FileProperties['origin'] = 'local') {
   cancelImport();
   if (!/\.(c3d|h5|hdf5)$/i.test(file.name)) {
     useSession.setState({ error: 'Choose a .c3d, .h5 or .hdf5 motion file.' });
@@ -196,6 +197,7 @@ export function openFile(file: File) {
     type: 'module',
   });
   active = worker;
+  const filesystem = fileProperties(file, origin);
   worker.onmessage = (event) => {
     if (active !== worker) return;
     worker.terminate();
@@ -203,7 +205,8 @@ export function openFile(file: File) {
     if (event.data.error) {
       useSession.setState({ busy: false, error: event.data.error });
     } else {
-      setData(event.data.data, file);
+      const imported: MotionData = event.data.data;
+      setData({ ...imported, source: { ...imported.source, filesystem } }, file);
 
       if (/\.c3d$/i.test(file.name)) {
         void trackEvent('c3d_loaded');

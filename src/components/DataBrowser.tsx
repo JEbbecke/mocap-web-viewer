@@ -102,17 +102,6 @@ export function DataBrowser({
           count={searching ? `${section.entries.length} / ${section.total}` : String(section.total)}
         >
           {section.note && <p className="muted small">{section.note}</p>}
-          {section.name === 'Markers' && (
-            <div className="list-heading">
-              <span>{section.total} TRAJECTORIES</span>
-              <button
-                className="text-button"
-                onClick={() => useSession.setState({ hidden: new Set() })}
-              >
-                Show all
-              </button>
-            </div>
-          )}
           {section.entries.map((entry) =>
             entry.marker !== undefined ? (
               <div

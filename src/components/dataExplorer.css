@@ -155,6 +155,19 @@
   white-space: pre-wrap;
   flex: 1;
 }
+.explorer-metadata .explorer-dataset-heading h3 {
+  color: var(--metadata-heading);
+}
+.explorer-metadata .explorer-dataset-heading p,
+.explorer-metadata .explorer-facts summary {
+  color: var(--metadata-subheading);
+}
+.explorer-metadata .explorer-facts dt {
+  color: var(--metadata-label);
+}
+.explorer-metadata .explorer-facts dd {
+  color: var(--metadata-secondary);
+}
 .explorer-table-tools,
 .explorer-pagination {
   display: flex;

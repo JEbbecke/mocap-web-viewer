@@ -149,10 +149,22 @@ it('renders existing marker controls only in expanded categories', () => {
   );
   expect(html).toContain('aria-label="Show Knee"');
   expect(html).toContain('type="checkbox" checked=""');
-  expect(html).toContain('Show all');
-  expect(html).toContain('TRAJECTORIES');
+  expect(html).toContain('aria-label="Rename Knee"');
+  expect(html).not.toContain('Show all');
+  expect(html).not.toContain('TRAJECTORIES');
   expect(html.match(/aria-expanded="true"/g)).toHaveLength(1);
   expect(html.match(/aria-expanded="false"/g)).toHaveLength(7);
+});
+
+it('keeps intentionally removed Inspector explanations out of the visible hierarchy', () => {
+  const data = populated();
+  expect(
+    dataSections(data).find((section) => section.name === 'EMG channels')?.note,
+  ).toBeUndefined();
+  const html = renderToStaticMarkup(
+    createElement(Inspector, { data, collapsed: false, onToggle: () => {} }),
+  );
+  expect(html).not.toContain(`${data.markers.labels.length} markers</span>`);
 });
 
 it('reads model names and explicit units without loading samples or shifting missing labels', () => {

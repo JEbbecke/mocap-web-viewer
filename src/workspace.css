@@ -691,20 +691,56 @@ dd {
   overflow-wrap: anywhere;
   text-align: right;
 }
-.file-info-section + .file-info-section {
-  margin-top: 24px;
+.inspector,
+.file-info,
+.explorer-metadata {
+  --metadata-heading: #b1dfe1;
+  --metadata-subheading: #c1ced7;
+  --metadata-label: #9fb3c1;
+  --metadata-value: #e3f2f7;
+  --metadata-secondary: #8fa6b6;
+  --metadata-separator: #304350;
 }
-.file-info-section h4 {
+.file-info-section + .file-info-section {
+  margin-top: 18px;
+}
+.file-info-section h4,
+.display-settings h4 {
   margin: 0 0 6px;
+  color: var(--metadata-heading);
+  font-size: 12px;
+  font-weight: 600;
+}
+.display-settings h4:not(:first-child) {
+  margin-top: 18px;
 }
 .file-info dl {
   margin: 0;
 }
+.file-info-group + .file-info-group {
+  margin-top: 12px;
+}
+.file-info-group h5 {
+  margin: 0 0 5px;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--metadata-subheading);
+}
+.file-info-note {
+  margin: 0 0 5px;
+  font-size: 10px;
+}
+.file-info .file-info-group details {
+  margin: 0;
+  font-size: inherit;
+}
 .file-info dl > div {
   display: grid;
   grid-template-columns: minmax(0, 44%) minmax(0, 1fr);
-  gap: 12px;
-  align-items: baseline;
+  gap: 0 10px;
+  align-items: start;
+  padding-block: 7px;
+  border-color: var(--metadata-separator);
 }
 .file-info dt,
 .file-info dd {
@@ -714,6 +750,10 @@ dd {
 .file-info dd {
   text-align: left;
   user-select: text;
+  color: var(--metadata-value);
+}
+.file-info dt {
+  color: var(--metadata-label);
 }
 .file-info-value {
   display: block;
@@ -728,6 +768,111 @@ dd {
 }
 .file-info details[open] summary {
   margin-bottom: 6px;
+}
+.file-info .file-info-note,
+.file-info .metadata-detail-label,
+.file-info .metadata-copy-status {
+  color: var(--metadata-secondary);
+}
+.file-info-dates dl > .metadata-row {
+  grid-template-columns: minmax(0, 40%) minmax(0, 1fr);
+}
+.file-info .metadata-unavailable dd {
+  color: var(--metadata-secondary);
+}
+.metadata-display,
+.metadata-display > span {
+  display: block;
+}
+.file-info .metadata-compact {
+  text-align: right;
+}
+.metadata-timestamp {
+  font-variant-numeric: tabular-nums;
+}
+.metadata-timestamp > span {
+  display: block;
+  white-space: nowrap;
+}
+.metadata-disclosure {
+  grid-column: 1 / -1;
+}
+.metadata-expandable {
+  cursor: pointer;
+}
+.file-info .metadata-row-toggle {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 12px;
+  align-items: start;
+  gap: 4px;
+  width: 100%;
+  min-height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: right;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+.metadata-chevron {
+  width: 12px;
+  height: 12px;
+  margin-top: 2px;
+  color: var(--metadata-secondary);
+}
+.metadata-row-toggle[aria-expanded='true'] .metadata-chevron {
+  transform: rotate(90deg);
+}
+.metadata-row-toggle:hover .metadata-chevron,
+.metadata-row-toggle:focus-visible .metadata-chevron {
+  color: #8ce0c9;
+}
+.metadata-disclosure {
+  cursor: auto;
+}
+.file-info .metadata-action {
+  min-height: 24px;
+  padding: 2px 5px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--metadata-label);
+  font: inherit;
+  font-size: 10px;
+  cursor: pointer;
+}
+.file-info .metadata-action:hover,
+.file-info .metadata-action:focus-visible,
+.file-info .metadata-action[aria-expanded='true'] {
+  color: #8ce0c9;
+  border-color: #41645e;
+}
+.metadata-details {
+  margin-top: 5px;
+  padding: 7px 8px;
+  border-left: 2px solid var(--metadata-separator);
+  background: #101e28;
+}
+.metadata-original + .metadata-original {
+  margin-top: 8px;
+}
+.metadata-details .file-info-value {
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+.metadata-detail-label,
+.metadata-copy-status {
+  font-size: 10px;
+}
+.metadata-detail-label {
+  display: block;
+  margin-bottom: 3px;
+}
+.metadata-copy-status {
+  margin-left: 4px;
 }
 .event-row {
   display: flex;

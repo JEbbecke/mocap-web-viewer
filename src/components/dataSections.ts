@@ -119,7 +119,6 @@ export function dataSections(data: MotionData): DataSection[] {
     {
       name: 'EMG channels',
       entries: named('EMG'),
-      note: 'Dedicated EMG group; analog channels retain their source grouping.',
     },
     { name: 'IK results', ...models('ik', 'IKResults') },
     { name: 'ID results', ...models('id', 'IDResults') },

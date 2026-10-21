@@ -145,7 +145,8 @@ describe('curated H5 metadata', () => {
     );
     const data = parseH5Tree(root, 'synthetic.h5');
     const r = rows(data);
-    expect(r['Date']).toEqual(['2026-01-02 03:04:05.123456']);
+    expect(r['Created (local/original)']).toEqual(['2026-01-02T03:04:05.123456']);
+    expect(r['Date']).toBeUndefined();
     expect(r['Source first frame']).toEqual(['0']);
     expect(r['Duration']).toEqual(['0.017 s']);
     expect(r['Age']).toEqual(['0']);
@@ -172,7 +173,7 @@ describe('curated H5 metadata', () => {
     expect(data.source.metadata.hierarchy).toBeDefined();
     const cut = cropMotionData(data, 1, 3);
     expect(rows(cut)['Frames']).toEqual(['2']);
-    expect(rows(cut)['Date']).toEqual(r['Date']);
+    expect(rows(cut)['Created (local/original)']).toEqual(r['Created (local/original)']);
     expect(cut.source.info).toBe(data.source.info);
   });
 
@@ -203,10 +204,10 @@ describe('curated H5 metadata', () => {
       false,
     );
     const r = rows(data);
-    expect(r['Date']).toEqual(['2026-01-02 02:04:05Z']);
-    expect(r['EMG channels']).toBeUndefined();
-    expect(r['IK results']).toBeUndefined();
-    expect(r['ID results']).toBeUndefined();
+    expect(r['Created']).toEqual(['2026-01-02T02:04:05Z']);
+    expect(r['EMG channels']).toEqual(['0']);
+    expect(r['IK results']).toEqual(['0 variables']);
+    expect(r['ID results']).toEqual(['0 variables']);
     expect(r['Force platform type']).toBeUndefined();
   });
 });
@@ -224,6 +225,7 @@ describe('C3D metadata and acquisition summaries', () => {
       'File & Recording',
       'Acquisition',
       'Data',
+      'Dates & Provenance',
     ]);
     expect(r['Events']).toEqual(['4']);
   });
@@ -315,8 +317,8 @@ it('renders curated sections, expandable names, selectable paths and an event co
   data.events[0].label = 'Do not list this event';
   const html = renderToStaticMarkup(createElement(FileInfo, { data }));
   expect(html).toContain('File &amp; Recording');
-  expect(html).toContain('<dt>Events</dt><dd><span');
-  expect(html).toContain('<details>');
+  expect(html).toContain('<dt>Events</dt><dd class="metadata-compact"');
+  expect(html).toContain('aria-label="Rigid bodies details" aria-expanded="false"');
   expect(html).toContain('5 — names');
   expect(html).toContain('&lt;literal&gt;');
   expect(html).toContain('title="C:');

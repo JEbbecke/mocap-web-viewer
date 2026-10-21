@@ -1,3 +1,5 @@
+import type { EmbeddedTimestamps } from './fileMetadata';
+
 /** Curated source facts, separate from the unchanged raw metadata/export backing. */
 export interface MetadataValue {
   values: string[];
@@ -22,6 +24,7 @@ export interface ModelResultInfo {
   }[];
 }
 export interface RecordingInfo {
+  fileTimestamps?: EmbeddedTimestamps;
   created?: string;
   coordinateSystem?: string;
   manufacturer?: string;

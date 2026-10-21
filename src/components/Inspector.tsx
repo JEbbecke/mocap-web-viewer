@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { MotionData } from '../motion/types';
-import { connectionSets, resolveConnections } from '../motion/connections';
+import { connectionSets } from '../motion/connections';
 import { useSession } from '../state/session';
 import { displayOptions } from './displayOptions';
 import { PanelToggle } from './PanelToggle';
@@ -17,6 +17,7 @@ export function Inspector({
   onToggle: () => void;
 }) {
   const [tab, setTab] = useState('Data');
+  const [expandedFileInfo, setExpandedFileInfo] = useState<Set<string>>(() => new Set());
   const [expandedSections, setExpandedSections] = useState<Set<string>>(() => new Set());
   const [collapsedSearchSections, setCollapsedSearchSections] = useState<Set<string>>(
     () => new Set(),
@@ -25,6 +26,7 @@ export function Inspector({
   const search = useSession((s) => s.search);
   useEffect(() => {
     setExpandedSections(new Set());
+    setExpandedFileInfo(new Set());
   }, [sourceFile]);
   useEffect(() => {
     setCollapsedSearchSections(new Set());
@@ -47,7 +49,6 @@ export function Inspector({
     <aside id="trial-inspector" className={`inspector ${collapsed ? 'is-collapsed' : ''}`}>
       <div className="sidebar-heading">
         <span className="sidebar-title">TRIAL INSPECTOR</span>
-        <span>{data.markers.labels.length} markers</span>
         <PanelToggle panel="sidebar" expanded={!collapsed} onToggle={onToggle} />
       </div>
       <TrialOverview data={data} />
@@ -67,7 +68,7 @@ export function Inspector({
             onToggleSection={toggleSection}
           />
         ) : tab === 'Display' ? (
-          <>
+          <div className="display-settings" role="tabpanel" aria-label="Display">
             <h4>Scene layers</h4>
             <div className="display-options">
               {displayOptions(data).map(([key, label]) => (
@@ -99,15 +100,6 @@ export function Inspector({
                 </option>
               ))}
             </select>
-            <p className="small muted">
-              {
-                resolveConnections(
-                  data.markers.connectionLabels ?? data.markers.labels,
-                  connectionSet,
-                ).length
-              }{' '}
-              matching links. Display guides between named markers; no inferred joint centres.
-            </p>
             <h4>Force display</h4>
             <label className="field-label">
               Vector scale (mm/N)
@@ -148,9 +140,20 @@ export function Inspector({
                 I confirm unresolved force/COP samples are already in global lab coordinates.
               </label>
             )}
-          </>
+          </div>
         ) : (
-          <FileInfo data={data} />
+          <FileInfo
+            data={data}
+            expandedRows={expandedFileInfo}
+            onToggleRow={(key) =>
+              setExpandedFileInfo((current) => {
+                const next = new Set(current);
+                if (next.has(key)) next.delete(key);
+                else next.add(key);
+                return next;
+              })
+            }
+          />
         )}
       </div>
     </aside>

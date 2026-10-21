@@ -331,7 +331,7 @@ function NumericalTable({
                       <td
                         key={i}
                         className={`${c.numeric ? 'numeric' : ''} ${rowSelected(bounded, r) || columnSelected(bounded, i) ? 'selection-axis' : ''} ${cellSelected(bounded, { row: r, column: i }) ? 'selected-cell' : ''}`}
-                        title={exact}
+                        title={dataset.cellTitle?.(r, i) || exact}
                         tabIndex={0}
                         onMouseDown={(e) => {
                           if (e.shiftKey || e.ctrlKey || e.metaKey) e.preventDefault();
@@ -398,7 +398,7 @@ function NumericalTable({
                           }
                         }}
                       >
-                        {displayCell(value)}
+                        {dataset.cellDisplay?.(r, i) ?? displayCell(value)}
                       </td>
                     );
                   })}
@@ -654,7 +654,9 @@ export function DataExplorer({ data, onClose }: { data: MotionData; onClose: () 
           />
           {!matches.length && <p className="small muted">No matching datasets.</p>}
         </nav>
-        <div className="explorer-detail">
+        <div
+          className={`explorer-detail${dataset?.path[0] === 'Metadata' ? ' explorer-metadata' : ''}`}
+        >
           {dataset ? (
             <>
               <div className="explorer-dataset-info">

@@ -7,6 +7,7 @@ import {
 } from '../../motion/metadata';
 import type { H5Node } from './schema';
 import { modelCoordinateType } from '../../motion/modelUnits';
+import { parseFileTimestamp } from '../../motion/fileMetadata';
 
 /** Reads attributes and dataset shapes only; no IK/ID samples are loaded or interpreted. */
 export function h5RecordingInfo(root: H5Node): RecordingInfo {
@@ -86,6 +87,14 @@ export function h5RecordingInfo(root: H5Node): RecordingInfo {
   const coordinates = metadataValues(group('Trajectories')?.attrs?.GlobalCoordinateSystem?.value);
   const emgShape = group('EMG/Data')?.shape;
   return {
+    fileTimestamps: {
+      created: parseFileTimestamp(
+        attr('FileCreationLocal'),
+        '/MetaData/FileInfo@FileCreationLocal',
+      ),
+      createdUTC: parseFileTimestamp(attr('FileCreationUTC'), '/MetaData/FileInfo@FileCreationUTC'),
+      modified: parseFileTimestamp(attr('LastUpdate'), '/MetaData/FileInfo@LastUpdate'),
+    },
     created:
       createdLocal?.values.length === 1
         ? createdLocal.values[0]

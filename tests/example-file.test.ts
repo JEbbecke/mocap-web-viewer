@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { cancelImport, openExampleFile, openFile, useSession } from '../src/state/session';
+import { parseC3D } from '../src/importers/c3d/importer';
+import { physicalFixture } from './helpers/c3d';
 
 const workers: FakeWorker[] = [];
 class FakeWorker {
@@ -51,6 +53,12 @@ it('downloads once on demand and imports unchanged bytes through the normal work
   fetchMock.mockResolvedValue(new Response('{}'));
   workers[0].onmessage?.({ data: { data: { name: file.name } } });
   expect(useSession.getState()).toMatchObject({ busy: false, sourceFile: file });
+  expect(useSession.getState().data?.source.filesystem).toMatchObject({
+    origin: 'bundled-demo',
+    sizeBytes: bytes.length,
+    createdAt: null,
+    modifiedAt: { status: 'missing' },
+  });
   expect(fetchMock.mock.calls.slice(1)).toEqual([
     [
       'https://je-motion-analytics.jonasebbecke97.workers.dev/event',
@@ -122,4 +130,32 @@ it('ignores aborted fetch errors', async () => {
   cancelImport();
   await loading;
   expect(useSession.getState()).toMatchObject({ busy: false, error: null, data: null });
+});
+
+it('replaces local file properties with the successful trial and ignores stale or failed imports', () => {
+  fetchMock.mockResolvedValue(new Response('{}'));
+  const first = new File(['first'], 'first.c3d', { lastModified: 0 });
+  const second = new File(['second file'], 'second.c3d', { lastModified: 1000 });
+  openFile(first);
+  const firstData = parseC3D(physicalFixture(), first.name);
+  workers[0].onmessage?.({ data: { data: firstData } });
+  expect(useSession.getState().data?.source.filesystem).toMatchObject({
+    name: first.name,
+    sizeBytes: 5,
+  });
+  openFile(second);
+  expect(useSession.getState().data?.source.filesystem?.name).toBe(first.name);
+  workers[1].onmessage?.({ data: { data: parseC3D(physicalFixture(), second.name) } });
+  const properties = useSession.getState().data?.source.filesystem;
+  expect(properties).toMatchObject({
+    name: second.name,
+    sizeBytes: 11,
+    createdAt: null,
+    modifiedAt: { status: 'valid', value: '1970-01-01 00:00:01.000Z' },
+  });
+  workers[0].onmessage?.({ data: { data: firstData } });
+  expect(useSession.getState().data?.source.filesystem).toBe(properties);
+  openFile(new File(['broken'], 'broken.h5'));
+  workers[2].onmessage?.({ data: { error: 'Unsupported H5 schema.' } });
+  expect(useSession.getState().data?.source.filesystem).toBe(properties);
 });

@@ -10,6 +10,25 @@ branches describe the planned release until its tag is published.
 
 ### Changed
 
+- Display and File Info share restrained heading colors and spacing. Display
+  settings and File Info main sections remain immediately accessible; Data keeps
+  its compact collapsed defaults. Intentional UI text removals are preserved.
+  File Info uses integrated property-row chevrons in place of separate Details
+  rows. Independent expansions survive
+  Inspector tab changes; exact values and copy controls remain available.
+  A single original file and identical absolute source path share one compact
+  Original source row while retaining both labeled original fields in Details.
+- Polished Dates & Provenance with subdued headings, aligned date/time lines and
+  full-width Details areas for exact timestamps and paths, including accessible
+  copy actions. Original/UTC fields and distinct provenance concepts remain intact.
+- Consolidated File Info and Explorer metadata into File & Recording, Acquisition,
+  Data, and Dates & Provenance. Concise timestamps and paths expand to exact source
+  values; only proven equivalent offset-aware creation timestamps share a row.
+  Subject, location, zero-count categories and detailed provenance remain accessible.
+- File Info and Data Explorer share separate file properties and embedded metadata,
+  including exact byte-size tooltips and validated H5 creation/update timestamps.
+  Source offsets and precision are retained; unavailable and malformed timestamps
+  are distinguished. Fetched demo bytes never acquire invented filesystem dates.
 - Trial Inspector Data categories start collapsed for each file and retain their
   expansion state across Inspector tabs, workspace switches and searches. Compact
   44 px category buttons keep counts aligned without changing expanded item spacing.

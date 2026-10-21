@@ -8,6 +8,7 @@ import { verifyLicense } from './browser-license.mjs';
 import { verifyExampleFile } from './browser-example.mjs';
 import { verifyWorkspaceNavigation } from './browser-workspace-navigation.mjs';
 import { verifyDataTab } from './browser-data-tab.mjs';
+import { verifyFileMetadata } from './browser-file-metadata.mjs';
 import { verifyModelPlots } from './browser-model-plots.mjs';
 import { createModelTimingFixtures, verifyModelTiming } from './browser-model-timing.mjs';
 import { verifyCropPreview } from './browser-crop-preview.mjs';
@@ -188,6 +189,15 @@ try {
 } finally {
   populatedFile.close();
 }
+await writeFile('.local/same-source.h5', await readFile('.local/populated.h5'));
+const sameSourceFile = new h5.File(resolve('.local/same-source.h5'), 'a');
+try {
+  const info = sameSourceFile.get('MetaData/FileInfo');
+  info.delete_attribute('OriginalFiles');
+  info.create_attribute('OriginalFiles', [syntheticInfoPath]);
+} finally {
+  sameSourceFile.close();
+}
 const development = process.env.SMOKE_MODE === 'development';
 const base =
   process.env.VITE_BASE_PATH && process.env.VITE_BASE_PATH !== './'
@@ -309,7 +319,7 @@ try {
     filename: 'populated.h5',
     subject: 'SYNTHETIC-INFO',
     group: 'Synthetic group',
-    created: '2026-01-02 03:04:05.123456',
+    created: '02 Jan 2026, 03:04:05',
   });
   await verifyExportToolbar(page);
   await page.getByRole('tab', { name: 'File Info', exact: true }).click();
@@ -318,9 +328,15 @@ try {
     fileInfo
       .locator('dl > div')
       .filter({ has: page.locator('dt').filter({ hasText: new RegExp(`^${label}$`) }) })
-      .locator('dd');
-  assert.equal(await fileInfo.locator('section').count(), 6);
-  assert.equal(await infoValue('Date').innerText(), '2026-01-02 03:04:05.123456');
+      .locator('dd')
+      .first();
+  assert.equal(await fileInfo.locator('section').count(), 4);
+  await verifyFileMetadata(page, {
+    name: 'populated.h5',
+    size: (await readFile('.local/populated.h5')).length,
+    embeddedCreated: '2026-01-02 03:04:05.123456',
+  });
+  assert.equal(await infoValue('Date').count(), 0);
   assert.equal(await infoValue('Analog / force rate').innerText(), '8 Hz');
   assert.equal(await infoValue('EMG channels').innerText(), '1');
   assert.equal(await infoValue('IK results').innerText(), '1 variable');
@@ -331,16 +347,16 @@ try {
   assert.equal(await fileInfo.locator('pre, .event-row').count(), 0);
   assert(!/sourceTree|hierarchy|Source metadata/.test(await fileInfo.innerText()));
   await page.screenshot({ path: '.local/file-info-top.png' });
-  await infoValue('Original files').locator('summary').click();
+  await fileInfo.getByRole('button', { name: 'Original files details', exact: true }).click();
   assert.deepEqual(
-    await infoValue('Original files').locator('.file-info-value').allTextContents(),
+    await infoValue('Original files')
+      .locator('..')
+      .locator('.metadata-details .file-info-value')
+      .allTextContents(),
     ['first.c3d', 'second.h5', 'third.c3d', 'fourth.h5'],
   );
   await infoValue('Source path').scrollIntoViewIfNeeded();
-  assert.equal(
-    await infoValue('Source path').locator('span').getAttribute('title'),
-    syntheticInfoPath,
-  );
+  assert.equal(await infoValue('Source path').getAttribute('title'), syntheticInfoPath);
   assert(
     await fileInfo.evaluate(
       (el) =>
@@ -632,12 +648,18 @@ try {
   await page.getByLabel('Show B', { exact: true }).uncheck();
   assert.equal(await page.getByLabel('Show B', { exact: true }).isChecked(), false);
   await page.getByLabel('Search data').fill('A');
-  await page.getByRole('button', { name: 'Show all', exact: true }).click();
+  assert.equal(await page.getByRole('button', { name: 'Show all', exact: true }).count(), 0);
   await page.getByLabel('Search data').fill('B');
   assert.equal(
     await page.getByLabel('Show B', { exact: true }).isChecked(),
+    false,
+    'hidden markers stay hidden when switching search results',
+  );
+  await page.getByLabel('Show B', { exact: true }).check();
+  assert.equal(
+    await page.getByLabel('Show B', { exact: true }).isChecked(),
     true,
-    'Show all restores markers outside the search results',
+    'the existing marker checkbox restores visibility after filtering',
   );
   await page.getByLabel('Search data').fill('');
   const plotBox = await page.locator('.u-over').boundingBox();
@@ -800,7 +822,15 @@ try {
   );
   assert.equal(await page.locator('.trial-overview dt').filter({ hasText: 'Created' }).count(), 0);
   await page.getByRole('tab', { name: 'File Info', exact: true }).click();
-  assert.equal(await fileInfo.locator('section').count(), 3, 'minimal C3D omits optional sections');
+  assert.equal(
+    await fileInfo.locator('section').count(),
+    4,
+    'minimal C3D omits optional recording sections',
+  );
+  await verifyFileMetadata(page, {
+    name: 'synthetic.c3d',
+    size: (await readFile('.local/synthetic.c3d')).length,
+  });
   assert.equal(
     await infoValue('Date').count(),
     0,
@@ -1311,6 +1341,13 @@ try {
   await verifyCrossFormat(page, analyticsEvents);
   await verifyModelTiming(page);
   await verifyCropPreview(page);
+  await page.getByLabel('Open motion file').setInputFiles(resolve('.local/same-source.h5'));
+  await page.waitForFunction(() => !document.body.textContent.includes('Reading your recording'));
+  await verifyFileMetadata(page, {
+    name: 'same-source.h5',
+    size: (await readFile('.local/same-source.h5')).length,
+    embeddedCreated: '2026-01-02 03:04:05.123456',
+  });
   await verifyLongTrialFilename(page);
   await page.getByLabel('Open motion file').setInputFiles(resolve('.local/explorer-large.h5'));
   await page.waitForFunction(() => !document.body.textContent.includes('Reading your recording'));

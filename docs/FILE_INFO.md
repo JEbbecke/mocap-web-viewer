@@ -1,10 +1,68 @@
 # File Info metadata
 
-File Info is a curated inspector with File & Recording, Acquisition and Data
-sections. Subject & Trial, Project & Provenance and Location appear only when
-meaningful embedded values exist. It shows event counts; the timeline remains
+File & Recording contains the original browser File name and byte size alongside
+the format and current recording dimensions. Dates & Provenance distinguishes
+embedded timestamps from original filesystem dates. Filesystem creation dates are unavailable
+through the standard File API. Fetched demo bytes have a known size but no original
+filesystem timestamps; generated File dates and HTTP headers are not used as
+substitutes. Sizes use decimal KB/MB/GB and exact-byte tooltips in both workspaces.
+Missing timestamps show `Not available`; malformed nonempty fields show
+`Invalid timestamp` with the original value and source in the tooltip. Offset and
+timezone-naive timestamps retain their original precision and meaning.
+
+File Info has four main sections: File & Recording, Acquisition, Data, and
+Dates & Provenance. Subject & Trial is a subsection of File & Recording; Location
+is a subsection of Acquisition. Data retains all eight category counts, including
+zeros. Dates & Provenance contains Embedded file metadata, Filesystem metadata,
+and available Provenance. The source of filesystem facts is a secondary note.
+It shows event counts; the timeline remains
 the event editing interface, while Data also supports event navigation. Raw source
 trees are retained internally and source-preserving export is unchanged.
+
+| Previous display                                                                             | Consolidated location                                                  |
+| -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| File properties: name/size; File & Recording: File/Format/Frames/Duration/Source first frame | File & Recording, once per property                                    |
+| Subject & Trial                                                                              | File & Recording → Subject & Trial                                     |
+| Location                                                                                     | Acquisition → Location                                                 |
+| Embedded metadata; generic Date; provenance Created local/Created UTC/Last updated           | Dates & Provenance → Embedded file metadata                            |
+| Filesystem dates and metadata source                                                         | Dates & Provenance → Filesystem metadata, with a secondary source note |
+| Project/Project PI/Original files/Source path                                                | Dates & Provenance → Provenance                                        |
+
+The former generic Date is the parser's alias of embedded creation, not a separate
+acquisition date. A single original input and source path share an Original source
+row only when their complete absolute paths match exactly; both labeled fields
+remain in Details. Basename-only matches, relative paths, different full paths and
+multiple original files remain separate. All original files are retained. Paths show their
+basenames initially; keyboard-accessible chevrons integrated into property rows expose full paths in a
+full-width area beneath each property. Copy buttons copy each exact original
+timestamp or path and report success or clipboard failure.
+Property expansions are independent and survive Inspector tab and workspace
+switches for the current file. Opening a new file resets them. Clicking exact
+values or Copy never toggles the property.
+
+File Info main headings (including Subject & Trial when present) use `#B1DFE1`;
+nested metadata headings use `#C1CED7`. Shared, scoped color tokens also apply to
+Explorer metadata headings without changing its wider table layout.
+
+Timestamps use the shared `08 Oct 2026, 14:01:31` formatter, with UTC or an explicit
+offset when supplied. The narrow inspector places date and time on separate,
+right-aligned lines with tabular numerals. Subdued metadata headings and source
+notes keep the values prominent. Full-width details and tooltips retain original fractional
+seconds, text and offsets. Only creation fields with explicit, known offsets and
+exactly equal instants (including fractional precision) share one Created row.
+Timezone-naive local fields are never assigned an offset. In the reference H5,
+the local timezone is unspecified and local/UTC fractional seconds differ, so
+the two creation fields remain separately labelled. Independent JE_METADATA:CREATED
+and CREATED_LOCAL fields also remain explicitly distinguishable.
+The trial header selects the first valid embedded creation row from this same
+presentation model (original first, UTC when needed). It never uses filesystem
+modification dates or invents a C3D creation date.
+
+Explorer reuses these sections and formatting. A Section column distinguishes
+subsections where needed. Selecting or copying a metadata cell returns exact
+source values, including full paths and timestamp precision. Additional coordinate
+and schema details remain available. Native one-based C3D first-frame numbering
+is in Schema; the shared recording summary uses the normalized zero-based index.
 
 The Display tab contains visibility and force-display controls; individual
 platform cards and their signal shortcuts have been removed. Choose force,
@@ -29,9 +87,8 @@ platforms still produce their existing import warnings.
 - `MetaData/Location`: Lat and Lon, including valid zero coordinates.
 - `Trajectories@GlobalCoordinateSystem`: displayed only when supplied; the
   renderer's Z-up convention is not treated as an embedded coordinate system.
-- Date uses FileCreationLocal, falling back to FileCreationUTC. ISO timestamps
-  are spaced for readability without changing precision or timezone. Original
-  source strings remain intact.
+- Embedded creation uses FileCreationLocal and FileCreationUTC without guessing
+  their equivalence. Original source strings remain intact.
 - Body names come from normalized rigid bodies. EMG count comes only from the
   dedicated EMG group, not analog labels. IK/ID presence and variable counts come
   from `Data` dataset shapes and aligned Labels, excluding labelled time rows;

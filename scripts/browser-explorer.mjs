@@ -361,7 +361,7 @@ export async function verifyExplorer(page, format) {
     );
     await search.fill('Metadata');
     await explorer.locator('nav button').first().click();
-    assert.deepEqual(await table.locator('th').allTextContents(), ['Field', 'Value']);
+    assert.deepEqual((await table.locator('th').allTextContents()).slice(-2), ['Field', 'Value']);
   }
   await page.setViewportSize({ width: 1366, height: 768 });
   const box = await explorer.boundingBox();

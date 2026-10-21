@@ -8,6 +8,11 @@ it('keeps the public demo readable with generic subject and source metadata', as
   const file = new h5.File('reference-data/example_data.h5', 'r');
   try {
     const motion = parseH5Tree(file, 'example_data.h5');
+    expect(motion.source.info?.fileTimestamps).toMatchObject({
+      created: { status: 'missing' },
+      createdUTC: { status: 'missing' },
+      modified: { status: 'missing' },
+    });
     expect(motion.timeline.frameCount).toBe(394);
     expect(motion.markers.labels).toHaveLength(68);
     expect(motion.analogs).toHaveLength(56);

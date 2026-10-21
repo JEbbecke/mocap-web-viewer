@@ -138,7 +138,7 @@ it('shows C3D source frames one-based and retains invalid sample numbers', () =>
   expect([d.cell(0, 0), d.cell(0, 1), d.cell(0, 2), d.cell(0, 4)]).toEqual([0, 1, 37, 0]);
   expect(d.cell(123, 7)).toBe(false);
   expect(d.cell(123, 8)).toBe(-1);
-  const file = table(data, 'metadata:File');
+  const file = table(data, 'metadata:Schema');
   expect(copyRows(file, 0, file.count)).toContain('Source first frame (C3D one-based)\t37');
   const cropped = table(cropMotionData(data, 100, 200), 'marker:0');
   expect(cropped.count).toBe(100);
@@ -242,9 +242,9 @@ it('shows structured metadata without preservation trees and model variables wit
   expect(id.model?.unit).toBe('unknown');
   expect(ik.facts).toContainEqual(['Angular declaration', 'inDegrees=yes']);
   expect(ds.filter((d) => d.path[0] === 'IK Results')).toHaveLength(1);
-  const subject = table(motion, 'metadata:Subject');
+  const subject = table(motion, 'metadata:File');
   expect(copyRows(subject, 0, subject.count)).toContain('SYNTHETIC');
-  expect(ds.some((d) => d.name === 'Project')).toBe(true);
+  expect(ds.some((d) => d.name === 'Dates & Provenance')).toBe(true);
   expect(ds.some((d) => d.name === 'Schema')).toBe(true);
   expect(ds.some((d) => /sourceTree|C3DParameters|binary/i.test(d.name))).toBe(false);
 });

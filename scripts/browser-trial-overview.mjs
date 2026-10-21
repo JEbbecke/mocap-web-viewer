@@ -49,6 +49,9 @@ export async function verifyLongTrialFilename(page) {
   for (const viewport of [
     { width: 1440, height: 1000 },
     { width: 1366, height: 768 },
+    { width: 1024, height: 1000 },
+    { width: 390, height: 1000 },
+    { width: 320, height: 1000 },
   ]) {
     await page.setViewportSize(viewport);
     await verifyTrialOverview(page, { title: filename, filename });
@@ -58,6 +61,16 @@ export async function verifyLongTrialFilename(page) {
       'long filename truncates',
     );
     assert.equal(await title.evaluate((el) => getComputedStyle(el).textOverflow), 'ellipsis');
+    await page.getByRole('tab', { name: 'File Info', exact: true }).click();
+    const info = page.getByRole('tabpanel', { name: 'File Info', exact: true });
+    assert(
+      (await info.getByText(filename, { exact: true }).count()) > 0,
+      'full filename remains available in File Info',
+    );
+    assert(
+      await info.evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
+      'long File Info names wrap within the Inspector',
+    );
   }
   await page.getByRole('tab', { name: 'Data', exact: true }).click();
   await page.getByLabel('Search data').fill('B');
