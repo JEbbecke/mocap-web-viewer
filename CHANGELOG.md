@@ -10,6 +10,10 @@ branches describe the planned release until its tag is published.
 
 ### Changed
 
+- Restored the compact Timeline with shared playback/bar alignment, matching
+  two-row crop/event actions and panel-width responsive wrapping. The Event Editor
+  opens below the stable controls. Clearer crop selection/actions, concise tooltips
+  and safe inline event deletion with Keep event are preserved.
 - Display and File Info share restrained heading colors and spacing. Display
   settings and File Info main sections remain immediately accessible; Data keeps
   its compact collapsed defaults. Intentional UI text removals are preserved.

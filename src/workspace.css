@@ -888,8 +888,25 @@ dd {
 }
 .timeline-section {
   flex: none;
+  background: #16232e;
+  container: timeline-panel / inline-size;
+}
+.workspace:has(> .main-column > .timeline-section) {
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+@media (min-width: 761px) {
+  .workspace:has(> .main-column > .timeline-section) > .inspector {
+    position: sticky;
+    top: 0;
+  }
+  .main-column > .timeline-anchored-view {
+    flex: 0 0 var(--timeline-view-height);
+  }
 }
 .timeline-slider {
+  grid-row: 3;
+  align-self: center;
   position: relative;
   height: 28px;
   margin: 0 10px;
@@ -901,6 +918,13 @@ dd {
   top: 11px;
   height: 6px;
   border-radius: 3px;
+}
+.has-crop-selection .timeline-rail {
+  opacity: 0.45;
+}
+.has-crop-selection .timeline-included {
+  background: #8ce0c9;
+  box-shadow: 0 0 0 2px #8ce0c924;
 }
 .timeline-rail {
   width: 100%;
@@ -961,28 +985,69 @@ dd {
   outline-offset: 2px;
 }
 .crop-readout {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 3px 8px;
+  grid-row: 4;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content minmax(0, 1fr);
+  gap: 4px;
+  line-height: 14px;
   font-size: 10px;
   color: #a9c8c0;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
-.timeline-actions {
+.crop-readout > span {
+  min-width: 0;
+}
+.crop-readout > span:nth-child(2) {
+  text-align: center;
+}
+.crop-readout > span:last-child {
+  text-align: right;
+}
+.playback-settings {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex: none;
+  grid-column: 3;
+  grid-row: 3;
+  align-self: center;
+  white-space: nowrap;
+  min-width: 0;
+}
+.timeline-actions {
+  display: contents;
+}
+.crop-actions,
+.event-toolbar {
+  display: grid;
+  grid-template-rows: 24px 24px;
+  gap: 4px;
+  grid-row: 2 / 4;
+  min-width: 0;
 }
 .crop-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  grid-column: 4;
 }
-.timeline-actions button {
-  padding: 4px 8px;
+.event-toolbar {
+  grid-column: 5;
+}
+.crop-secondary {
+  min-width: 0;
+  display: flex;
+}
+.crop-secondary > button {
+  flex: 1;
+}
+.crop-actions button,
+.event-toolbar button,
+.event-toolbar select {
+  width: 100%;
+  min-width: 0;
+  height: 24px;
+  padding: 3px 6px;
   font-size: 11px;
+  line-height: 14px;
+  white-space: nowrap;
 }
 .scrubber:has(.timeline-slider) .events-track {
   left: 10px;
@@ -991,23 +1056,27 @@ dd {
   bottom: auto;
 }
 .timeline {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  padding: 14px 20px;
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) max-content 104px 132px;
+  grid-template-rows: 16px 28px 24px 14px;
+  column-gap: 10px;
+  padding: 6px 12px;
   background: #16232e;
-  border-top: 1px solid #2b3b49;
-  border-bottom: 1px solid #2b3b49;
+  border-block: 1px solid #2b3b49;
   flex: none;
-  min-height: 96px;
 }
 .transport {
+  grid-column: 1;
+  grid-row: 3;
+  align-self: center;
   display: flex;
   align-items: center;
   gap: 4px;
 }
 .transport button {
   padding: 5px 7px;
+  min-width: 28px;
+  min-height: 28px;
   border: 0;
   background: none;
   font-size: 17px;
@@ -1021,16 +1090,31 @@ dd {
   margin: 0 3px;
 }
 .scrubber {
-  flex: 1;
-  min-width: 80px;
+  grid-column: 2;
+  grid-row: 1 / 5;
+  display: grid;
+  grid-template-rows: subgrid;
+  min-width: 0;
   position: relative;
+  container-type: inline-size;
 }
 .time-labels {
-  display: flex;
-  justify-content: space-between;
+  grid-row: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  line-height: 16px;
+  white-space: nowrap;
   color: #829bac;
   font-size: 10px;
   font-variant-numeric: tabular-nums;
+}
+.time-labels > span:last-child {
+  text-align: right;
+}
+@container (max-width: 360px) {
+  .crop-readout {
+    font-size: 9px;
+  }
 }
 .time-labels strong {
   font-size: 12px;
@@ -1042,15 +1126,23 @@ dd {
   color: #829bac;
 }
 .speed-label {
-  display: flex;
-  flex-direction: column;
-  font-size: 9px;
-  gap: 5px;
-  color: #899fad;
+  display: inline-flex;
 }
 .speed-label select {
+  height: 24px;
   font-size: 11px;
   padding: 3px;
+}
+.playback-settings > .inline-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  margin: 0;
+  font-size: 11px;
+}
+.playback-settings input {
+  margin: 0;
 }
 .events-track {
   position: absolute;
@@ -1060,36 +1152,90 @@ dd {
   height: 4px;
 }
 .event-workspace {
-  margin: 0;
-  container-type: inline-size;
+  display: contents;
 }
-.event-toolbar {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  width: 150px;
+.event-unavailable {
+  grid-column: 1 / -1;
+  grid-row: 5;
+  padding-top: 4px;
   font-size: 10px;
   color: #b9cbd6;
 }
-.event-toolbar button,
-.event-toolbar select {
-  font-size: 11px;
-  padding: 4px 8px;
-}
-.event-toolbar select {
-  width: 100%;
-}
 .event-scroll {
-  margin: 2px 10px 0;
+  grid-row: 2;
+  align-self: end;
+  display: flex;
+  flex-direction: column;
+  /* Leave room for the full triangle at both ends of the shared time axis. */
+  margin: 0 4px;
+  padding-inline: 6px;
   overflow-y: auto;
   overflow-x: hidden;
-  max-height: 36px;
+  height: 24px;
 }
 .event-markers {
   position: relative;
-  margin: 0;
+  flex: none;
+  margin-top: auto;
   /* Keep the same axis width as the slider, even when the event strip scrolls. */
   width: calc(100cqw - 20px);
+}
+@container timeline-panel (max-width: 900px) {
+  .timeline {
+    grid-template-columns: max-content minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: 16px 28px 24px 14px 8px 24px 4px 24px;
+    column-gap: 8px;
+  }
+  .scrubber {
+    grid-column: 2 / -1;
+  }
+  .playback-settings {
+    grid-column: 1;
+    grid-row: 8;
+  }
+  .crop-actions {
+    grid-column: 2;
+    grid-row: 6 / 9;
+  }
+  .event-toolbar {
+    grid-column: 3;
+    grid-row: 6 / 9;
+  }
+  .event-unavailable {
+    grid-row: 9;
+  }
+}
+@container timeline-panel (max-width: 500px) {
+  .timeline {
+    grid-template-columns: max-content minmax(0, 1fr);
+    grid-template-rows: 16px 28px 24px 14px 8px 34px 8px 24px 4px 24px;
+  }
+  .scrubber {
+    grid-column: 1 / -1;
+  }
+  .transport {
+    grid-column: 1;
+    grid-row: 6;
+  }
+  .transport button {
+    padding-inline: 4px;
+  }
+  .playback-settings {
+    grid-column: 2;
+    grid-row: 6;
+    justify-self: end;
+  }
+  .crop-actions {
+    grid-column: 1;
+    grid-row: 8 / 11;
+  }
+  .event-toolbar {
+    grid-column: 2;
+    grid-row: 8 / 11;
+  }
+  .event-unavailable {
+    grid-row: 11;
+  }
 }
 .event-markers button {
   position: absolute;
@@ -1131,8 +1277,35 @@ dd {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  padding: 10px 0;
+  padding: 10px 20px;
   align-items: end;
+}
+.event-editor-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 32px;
+  flex: 0 1 440px;
+  max-width: 100%;
+}
+.event-delete-prompt {
+  flex: 1 1 80px;
+  min-width: 0;
+  max-width: 180px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 11px;
+  color: #c6d5de;
+}
+.event-delete-confirm {
+  color: #ffc0c0;
+  border-color: #875051;
+  background: #482b31;
+}
+.event-delete-confirm:hover {
+  background: #60363d;
 }
 .event-editor label {
   display: flex;
@@ -1493,12 +1666,8 @@ footer .privacy-dot {
   .viewport-title .muted {
     display: none;
   }
-  .timeline {
-    gap: 10px;
-    padding: 12px;
-  }
-  .event-toolbar {
-    width: 125px;
+  .event-editor {
+    padding-inline: 12px;
   }
   header {
     gap: 10px;
@@ -1508,12 +1677,6 @@ footer .privacy-dot {
     gap: 5px;
     padding-inline: 7px;
     font-size: 12px;
-  }
-  .transport button {
-    padding: 4px;
-  }
-  .timeline > .inline-check {
-    font-size: 10px;
   }
   .welcome {
     left: 5%;
@@ -1539,16 +1702,6 @@ footer .privacy-dot {
   }
   .workspace-nav button {
     padding: 8px;
-  }
-  .timeline {
-    flex-wrap: wrap;
-  }
-  .scrubber {
-    order: -1;
-    flex-basis: 100%;
-  }
-  .timeline-actions {
-    margin-left: auto;
   }
 }
 @media (max-width: 760px) {
@@ -1591,15 +1744,9 @@ footer .privacy-dot {
     max-height: 500px;
     border-left: 0;
   }
-  .timeline {
-    gap: 8px;
-  }
-  .event-toolbar {
-    width: 120px;
-  }
-  .transport button:first-child,
-  .transport button:last-child {
-    display: none;
+  .workspace:has(> .main-column > .timeline-section) {
+    overflow: visible;
+    scrollbar-gutter: auto;
   }
   .viewport-footer > span:last-child {
     display: none;

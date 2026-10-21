@@ -149,7 +149,7 @@ export async function verifyCropPreview(page) {
     () =>
       [...document.querySelectorAll('.plot-crop-muted')].filter((el) => !el.hidden).length === 4,
   );
-  await page.getByRole('button', { name: 'Crop', exact: true }).click();
+  await page.getByRole('button', { name: 'Apply crop', exact: true }).click();
   await page.waitForFunction(() =>
     [...document.querySelectorAll('.plot-crop-muted')].every((el) => el.hidden),
   );

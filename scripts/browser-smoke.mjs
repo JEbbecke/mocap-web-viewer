@@ -12,6 +12,7 @@ import { verifyFileMetadata } from './browser-file-metadata.mjs';
 import { verifyModelPlots } from './browser-model-plots.mjs';
 import { createModelTimingFixtures, verifyModelTiming } from './browser-model-timing.mjs';
 import { verifyCropPreview } from './browser-crop-preview.mjs';
+import { createTimelineFixture, verifyTimelineLayout } from './browser-timeline.mjs';
 import { verifyTrialOverview, verifyLongTrialFilename } from './browser-trial-overview.mjs';
 import * as h5 from 'h5wasm/node';
 import {
@@ -51,6 +52,7 @@ const currentH5 = JSON.parse(await readFile('tests/fixtures/current-h5.json', 'u
 await writeFile('.local/current-browser.h5', Buffer.from(currentH5.base64, 'base64'));
 // Synthetic metadata exercises all curated sections without participant data.
 await h5.ready;
+createTimelineFixture();
 createCoordinateSystemsFixture();
 createModelTimingFixtures();
 // Three-frame current-schema fixture for the shared C3D/H5 crop interaction checks.
@@ -1034,7 +1036,7 @@ try {
     );
     await page.getByRole('slider', { name: 'Crop start', exact: true }).press('ArrowRight');
     await page.getByRole('slider', { name: 'Crop end', exact: true }).press('Home');
-    await page.getByRole('button', { name: 'Crop', exact: true }).click();
+    await page.getByRole('button', { name: 'Apply crop', exact: true }).click();
     await verifyCroppedExplorer(page, label);
     await verifyModelPlots(page);
     const cropped = await save('cropped');
@@ -1211,7 +1213,7 @@ try {
       'preview stays in crop range',
     );
     if (extension === 'h5') await page.screenshot({ path: '.local/crop-selection.png' });
-    await page.getByRole('button', { name: 'Crop', exact: true }).click();
+    await page.getByRole('button', { name: 'Apply crop', exact: true }).click();
     assert(await undoButton.isDisabled(), 'crop clears undo history');
     assert.equal(
       await page.getByRole('slider', { name: 'Frame', exact: true }).getAttribute('aria-valuemax'),
@@ -1341,6 +1343,7 @@ try {
   await verifyCrossFormat(page, analyticsEvents);
   await verifyModelTiming(page);
   await verifyCropPreview(page);
+  await verifyTimelineLayout(page);
   await page.getByLabel('Open motion file').setInputFiles(resolve('.local/same-source.h5'));
   await page.waitForFunction(() => !document.body.textContent.includes('Reading your recording'));
   await verifyFileMetadata(page, {

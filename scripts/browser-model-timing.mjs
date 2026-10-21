@@ -130,7 +130,7 @@ export async function verifyModelTiming(page) {
     const end = page.getByRole('slider', { name: 'Crop end', exact: true });
     await end.press('Home');
     for (let i = 0; i < 9; i++) await end.press('ArrowRight');
-    await page.getByRole('button', { name: 'Crop', exact: true }).click();
+    await page.getByRole('button', { name: 'Apply crop', exact: true }).click();
     await verifyGeometry(page, independent);
     await page.getByLabel('Signal to plot', { exact: true }).selectOption('ik:0');
     await page.locator('.u-legend').getByText(/IK ·/).waitFor();

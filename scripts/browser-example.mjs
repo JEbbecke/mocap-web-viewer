@@ -77,7 +77,7 @@ export async function verifyExampleFile(browser, base, development) {
     await page.getByRole('button', { name: 'Data Visualizer', exact: true }).click();
     const cropStart = page.getByRole('slider', { name: 'Crop start', exact: true });
     await cropStart.press('ArrowRight');
-    await page.getByRole('button', { name: 'Crop', exact: true }).click();
+    await page.getByRole('button', { name: 'Apply crop', exact: true }).click();
     assert.equal(
       await page.getByRole('slider', { name: 'Frame', exact: true }).getAttribute('aria-valuemax'),
       '392',
