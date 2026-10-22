@@ -27,6 +27,61 @@ the header and is blocked during busy operations or an unapplied crop selection.
 
 Playback uses requestAnimationFrame and elapsed time at the actual point rate. Only the small timeline/inspector subscribe to frame changes; scene buffers and plot cursor update imperatively. Markers are instanced, connections use one line buffer. All positions keep lab XYZ; Three's camera uses Z up and grid lies on XY. Display GRF scale defaults to 1 mm/N. Temporary render coordinates use 0.001 scene units/mm; camera bounds, marker/plate buffers, COP and labels share this boundary without mutating MotionData. See [unit policy](UNITS.md) for scientific conversions and export semantics. Display threshold is configurable and never edits data.
 
+Camera framing separates spatial selection (`viewer/cameraBounds.ts`) from camera
+geometry and application (`viewer/cameraController.ts`). `CameraController` owns
+writes to the existing perspective camera and single Drei OrbitControls instance.
+`fitCameraToData()` selects bounds and calculates a view; `resetCameraView()` uses
+the established perspective/front/side/top directions with Z up. Both apply the
+result through `focusCameraOnPoint()`, which synchronizes camera position and orbit
+target, clears pending damping, updates projection/clipping and invalidates the
+render. Point focusing accepts scene coordinates and preserves the current
+camera-to-target offset by default. Future marker focus can resolve active-frame
+XYZ through `sceneLength()` and use this primitive on the same controller; no
+marker shortcut, context menu, tracking or additional controller exists yet.
+
+Initial framing uses one representative pose, starting at the active zero-based
+frame (source `firstFrame` is provenance). It seeks at least half the marker channels
+and at least three markers (all channels for one/two-marker recordings),
+checks four neighbouring frames on either side if needed, then at most twelve
+evenly distributed trial frames. If none is sufficient, the most populated
+candidate wins. This bounded search never combines the movement envelope. Marker
+validity, negative residuals and finite XYZ are checked; legitimate origins remain
+valid. With at least eight finite points, a single isolated point is excluded from
+camera bounds only if its radius from the coordinate-wise median exceeds the
+second-largest radius by more than 20 times. Small/coincident sets and multiple
+outliers remain intact because they provide insufficient evidence. This heuristic
+changes framing only and cannot classify every unusual valid spatial arrangement.
+The 14 mm selected-marker radius pads bounds. If markers are unavailable, valid
+rigid-body origins, then plate corners use the renderer's own sampling/pose rules at
+one candidate time. Body bounds include the existing 100 mm pose-axis length so
+the only body geometry remains visible even in a narrow viewport.
+Platforms never enlarge marker/body-based framing, and distant
+bodies never enlarge marker-based framing;
+scene decorations and force arrows are excluded. The separate full-trial marker
+picking sphere remains necessary for raycasting during playback.
+
+The fit projects all eight bounding-box corners into the requested orientation.
+Perspective distance satisfies horizontal and vertical FOV limits including depth
+and camera zoom, with a configurable default 1.2 framing margin and a 0.3 scene-unit
+minimum distance for degenerate poses. The helper also supports orthographic zoom;
+the live camera type is unchanged. Clipping expands for fitted depth while retaining
+the existing far plane so manual zoom-out and the ground grid remain usable.
+Orbit constraints remain in place; the distance ceiling grows
+only if necessary to contain unusually large data or a narrow viewport.
+
+Successful `setData()` atomically activates data and increments the existing camera
+command revision. The synchronous layout effect consumes that revision once, with
+no deferred fit; stale worker replies are already rejected at import. Edits, crops,
+undo, playback, marker/display changes and R3F resize updates do not increment it.
+Empty fits are consumed too and leave the previous safe view intact. Reset and
+presets explicitly request a fresh fit at the current frame; restoring the original
+trial follows the existing `setData()` activation workflow. R3F alone owns normal
+aspect/projection resizing. No fit runs in the playback/render loop. Camera tests
+live in `tests/camera.test.ts`; `node scripts/browser-camera.mjs` runs focused Chrome
+checks with a development-only probe generated under ignored `.local/`, including
+the bundled example and available local C3D references. Reports/screenshots also
+stay under `.local/`; no probe is part of the production bundle.
+
 Plotting materializes a time column and selected component columns, with nulls for gaps. Viewer selects one signal per pane; Explorer selects plottable columns from one dataset, including complete time series beyond the visible table window. Those arrays duplicate selected signals only, are memoized across playback frames, and are released when selection changes. The implementation does not create copies of every analog/force stream at marker rate. C3D marker positions use Float32; H5 marker positions retain Float64, with Float32 buffers for GPU rendering. Force calculations and original-rate analog signals use Float64. Full-series plots consume memory proportional to selected samples; table virtualization does not remove this cost.
 
 Optional [local coordinate systems](LOCAL_COORDINATE_SYSTEMS.md)

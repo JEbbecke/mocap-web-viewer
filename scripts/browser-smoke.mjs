@@ -1307,6 +1307,14 @@ try {
     const plates = page.getByRole('checkbox', { name: 'Force plates', exact: true });
     const frame = page.getByRole('slider', { name: 'Frame', exact: true });
     const canvas = page.locator('.viewport canvas');
+    // Initial fit intentionally prioritizes this fixture's single marker. Zoom
+    // out through the existing controls to inspect the distant plate's full path.
+    await canvas.evaluate((element) => {
+      for (let i = 0; i < 65; i++)
+        element.dispatchEvent(
+          new WheelEvent('wheel', { deltaY: 1, bubbles: true, cancelable: true }),
+        );
+    });
     await frame.press('Home');
     await plates.uncheck();
     await page.waitForTimeout(250);

@@ -142,6 +142,14 @@ export async function verifyCoordinateSystems(page) {
     .setInputFiles(resolve('.local/local-coordinate-systems.h5'));
   await page.waitForFunction(() => !document.body.textContent.includes('Reading your recording'));
   assert.equal(await page.getByRole('alert').count(), 0);
+  // Marker-based fitting excludes these off-marker helpers. Use normal zoom
+  // navigation to frame their movement for the rendering/media assertions below.
+  await page.locator('.viewport canvas').evaluate((element) => {
+    for (let i = 0; i < 35; i++)
+      element.dispatchEvent(
+        new WheelEvent('wheel', { deltaY: 1, bubbles: true, cancelable: true }),
+      );
+  });
   await page.getByRole('tab', { name: 'Display', exact: true }).click();
   const plate = page.getByRole('checkbox', {
     name: 'Force platform coordinate systems',
