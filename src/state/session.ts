@@ -146,8 +146,8 @@ export function setData(data: MotionData, sourceFile: File | null = null) {
     explorerDataset: '',
     explorerColumns: null,
     assumeGlobal: false,
+    camera: { preset: 'perspective', revision: useSession.getState().camera.revision + 1 },
   });
-  setCamera('perspective');
 }
 export function toggleMarker(index: number) {
   useSession.setState((s) => {

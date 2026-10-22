@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { Canvas, useThree, type ThreeEvent } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
@@ -14,33 +14,22 @@ import type { ImageExportRequest } from './imageExport';
 import { markerFrameAt, useScientificFrame } from './scientificScene';
 import { VideoExportBridge } from './VideoExportBridge';
 import type { VideoExportRequest } from './videoExport';
+import { CameraController } from './cameraController';
 import {
   createPlatformCoordinateSystem,
   createRigidBodyCoordinateSystem,
 } from './localCoordinateSystems';
 
-function bounds(data: MotionData) {
+// Picking needs the full marker travel envelope, independently of camera framing.
+function markerPickingBounds(data: MotionData) {
   const box = new THREE.Box3(),
     v = new THREE.Vector3();
   const p = data.markers.positions;
   for (let i = 0; i < data.markers.valid.length; i++)
-    if (data.markers.valid[i])
-      box.expandByPoint(v.fromArray(p, i * 3).multiplyScalar(SCENE_UNITS_PER_MM));
-  // Moving plates can travel outside the marker envelope. Fit their full recorded path.
-  for (const plate of data.forcePlatforms) {
-    const values = plate.corners?.values;
-    if (values)
-      for (let i = 0; i < values.length; i += 3) {
-        v.fromArray(values, i).multiplyScalar(SCENE_UNITS_PER_MM);
-        if ([v.x, v.y, v.z].every(Number.isFinite)) box.expandByPoint(v);
-      }
-  }
-  for (const body of data.rigidBodies ?? []) {
-    for (let i = 0; i < body.position.values.length; i += 3) {
-      v.fromArray(body.position.values, i).multiplyScalar(SCENE_UNITS_PER_MM);
+    if (data.markers.valid[i]) {
+      v.fromArray(p, i * 3).multiplyScalar(SCENE_UNITS_PER_MM);
       if ([v.x, v.y, v.z].every(Number.isFinite)) box.expandByPoint(v);
     }
-  }
   if (box.isEmpty()) box.set(new THREE.Vector3(-1, -1, 0), new THREE.Vector3(1, 1, 2));
   return {
     center: box.getCenter(new THREE.Vector3()),
@@ -48,25 +37,21 @@ function bounds(data: MotionData) {
   };
 }
 function Camera({ data }: { data: MotionData }) {
-  const { camera } = useThree(),
+  const { camera, invalidate, size } = useThree(),
     controls = useRef<OrbitControlsImpl>(null),
+    controller = useRef<CameraController | null>(null),
     view = useSession((s) => s.camera);
-  const extent = useMemo(() => bounds(data), [data]);
-  useEffect(() => {
-    camera.up.set(0, 0, 1);
-    const offset: Record<CameraPreset, number[]> = {
-      perspective: [1.3, -1.8, 1.0],
-      front: [2, 0, 0],
-      side: [0, -2, 0],
-      top: [0, -0.001, 2],
-    };
-    camera.position
-      .copy(extent.center)
-      .add(new THREE.Vector3(...offset[view.preset]).multiplyScalar(extent.size * 0.65));
-    camera.lookAt(extent.center);
-    controls.current?.target.copy(extent.center);
-    controls.current?.update();
-  }, [camera, extent, view]);
+  useLayoutEffect(() => {
+    if (!controls.current || size.width <= 0 || size.height <= 0) return;
+    if (!(camera instanceof THREE.PerspectiveCamera || camera instanceof THREE.OrthographicCamera))
+      return;
+    if (!controller.current || controller.current.camera !== camera)
+      controller.current = new CameraController(camera, controls.current, invalidate);
+    // Synchronous, before the first paint; no delayed fit can overwrite navigation.
+    // R3F owns projection/aspect on resize. Rechecking the consumed request does
+    // no bounds work and does not move the camera, including after data edits.
+    controller.current.applyRequest(data, useSession.getState().frame, view);
+  }, [camera, data, view, invalidate, size.width, size.height]);
   return (
     <OrbitControls
       ref={controls}
@@ -83,7 +68,10 @@ function Markers({ data }: { data: MotionData }) {
     matrix = useMemo(() => new THREE.Matrix4(), []),
     color = useMemo(() => new THREE.Color(), []);
   const count = data.markers.labels.length;
-  const extent = useMemo(() => bounds(data), [data]);
+  const extent = useMemo(
+    () => markerPickingBounds(data),
+    [data.markers.positions, data.markers.valid],
+  );
   useEffect(() => {
     if (ref.current)
       ref.current.boundingSphere = new THREE.Sphere(extent.center, extent.size / 2 + 0.03);
