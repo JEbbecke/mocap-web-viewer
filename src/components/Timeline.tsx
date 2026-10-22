@@ -1,8 +1,15 @@
 import { applyCrop, restoreOriginal, setFrame, togglePlay, useSession } from '../state/session';
 import type { MotionData } from '../motion/types';
+import type { Ref } from 'react';
 import { EventControls, EventEditor, TimelineEvents } from './EventEditor';
 
-export function Timeline({ data }: { data: MotionData }) {
+export function Timeline({
+  data,
+  controlsRef,
+}: {
+  data: MotionData;
+  controlsRef?: Ref<HTMLDivElement>;
+}) {
   const frame = useSession((s) => s.frame),
     playing = useSession((s) => s.playing),
     selection = useSession((s) => s.cropSelection),
@@ -13,7 +20,7 @@ export function Timeline({ data }: { data: MotionData }) {
     busy = useSession((s) => s.busy);
   return (
     <section className="timeline-section" aria-label="Timeline">
-      <div className="timeline">
+      <div ref={controlsRef} className="timeline">
         <div className="transport" role="group" aria-label="Playback">
           <button
             aria-label="Jump to beginning"

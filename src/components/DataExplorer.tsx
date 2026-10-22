@@ -1,5 +1,8 @@
 import { independentModelMessage } from '../motion/modelTiming';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { ResizeHandle } from '../layout/ResizeHandle';
+import { clampPanel, panelBounds } from '../layout/geometry';
+import { useElementSize, useMediaQuery } from '../layout/useElementSize';
 import type { MotionData } from '../motion/types';
 import { setFrame, useSession } from '../state/session';
 import {
@@ -609,7 +612,30 @@ function ModelTable({ dataset, data }: { dataset: Dataset; data: MotionData }) {
   );
 }
 
-export function DataExplorer({ data, onClose }: { data: MotionData; onClose: () => void }) {
+export function DataExplorer({
+  data,
+  onClose,
+  preferredWidth,
+  onWidthChange,
+}: {
+  data: MotionData;
+  onClose: () => void;
+  preferredWidth: number | null;
+  onWidthChange: (value: number | null) => void;
+}) {
+  const body = useRef<HTMLDivElement>(null);
+  const size = useElementSize(body);
+  const desktop = useMediaQuery('(min-width: 761px)');
+  const wide = useMediaQuery('(min-width: 1101px)');
+  const bounds = panelBounds(
+    desktop ? 180 : 130,
+    Math.min(520, size.width - (desktop ? 360 : 160)),
+  );
+  const width = clampPanel(
+    preferredWidth ?? (wide ? 250 : desktop ? 210 : 160),
+    bounds.min,
+    bounds.max,
+  );
   const datasets = useMemo(() => explorerDatasets(data), [data]);
   const [query, setQuery] = useState(''),
     [follow, setFollow] = useState(false);
@@ -633,8 +659,13 @@ export function DataExplorer({ data, onClose }: { data: MotionData; onClose: () 
   }, [onClose]);
   return (
     <section className="data-explorer" aria-label="Data Explorer">
-      <div className="explorer-body">
-        <nav className="explorer-navigation" aria-label="Explorer datasets">
+      <div className="explorer-body" ref={body}>
+        <nav
+          id="explorer-navigation"
+          className="explorer-navigation"
+          aria-label="Explorer datasets"
+          style={{ width }}
+        >
           <input
             className="search"
             type="search"
@@ -654,6 +685,15 @@ export function DataExplorer({ data, onClose }: { data: MotionData; onClose: () 
           />
           {!matches.length && <p className="small muted">No matching datasets.</p>}
         </nav>
+        <ResizeHandle
+          axis="horizontal"
+          label="Explorer navigation width"
+          controls="explorer-navigation"
+          value={width}
+          {...bounds}
+          onChange={onWidthChange}
+          onReset={() => onWidthChange(null)}
+        />
         <div
           className={`explorer-detail${dataset?.path[0] === 'Metadata' ? ' explorer-metadata' : ''}`}
         >

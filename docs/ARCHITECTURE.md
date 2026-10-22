@@ -198,3 +198,34 @@ refs. Arrays materialize only when data/selected components change; playback upd
 the shared chart cursor imperatively. No second plot system, dependency or scientific
 state/export changes are introduced. Explorer's compact flex layout reserves a
 usable table and chart region with `min-height: 0` and the existing panel toggle.
+
+Workspace resizing lives in `src/layout/`: `ResizeHandle` provides named ARIA
+separators, pointer capture, animation-frame batching, cancellation/blur/unmount
+cleanup and keyboard controls. Arrow keys move the boundary by 10px (Shift: 40px);
+Home or double-click resets its default. `useElementSize` observes owning containers;
+pure geometry helpers clamp effective sizes without overwriting preferences.
+`App` owns separate in-memory Visualizer Inspector width, Explorer navigation width
+and per-workspace Signal Inspector heights. Explorer replaces the Trial Inspector
+with its existing navigation tree; it has no Split Plot feature. The shared mounted
+`SignalPlot` owns the Visualizer's split ratio, retained across toggles, workspace
+switches and file loads. No browser storage, analytics or scientific session writes
+are involved.
+
+The Inspector starts at its existing 310px/270px breakpoint default, bounded by
+260–560px and a 400px central workspace reserve. Explorer starts at 250px/210px/160px,
+bounded by 180–520px (130px minimum on narrow screens) and a 360px table reserve
+(160px on narrow screens). Signal Inspector retains the existing 254px Visualizer
+and 28% Explorer defaults, with 180–720px bounds further constrained by the measured
+Timeline controls and the existing 210px Viewer / 300px Explorer minimum. Very short desktop
+windows retain workspace scrolling. Opening Event Editor consumes Viewer/table
+space first; any temporary clamp is reversed when space returns. At the existing
+760px stacking breakpoint desktop Inspector/height splitters disappear. Each split
+plot retains 250px minimum width and internal scrolling when both cannot fit; its
+splitter is shown only when both minimums fit. Ratio constraints also preserve the
+original preference through temporary narrowing. Existing R3F, uPlot and Timeline
+ResizeObservers update rendering geometry without camera fit or selection resets.
+
+`tests/layout-resize.test.ts` covers geometry and separator semantics;
+`node scripts/browser-workspace-resize.mjs` checks live dragging, keyboard/reset,
+collapse/expand, per-workspace preferences, split ratios, cleanup, data/camera
+invariance and desktop/narrow layouts. Reports/screenshots stay under `.local/`.

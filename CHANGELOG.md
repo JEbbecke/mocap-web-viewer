@@ -78,6 +78,10 @@ branches describe the planned release until its tag is published.
 
 ### Added
 
+- Drag separators resize the Trial Inspector, Signal Inspector and Split Plot
+  widths. Data Visualizer and Data Explorer share pointer and keyboard resizing,
+  with independent workspace dimensions retained in memory during navigation.
+  Collapse/Expand restores custom sizes; double-click or Home resets a separator.
 - Landing-page **Load Example File** action using the existing H5 import pipeline,
   with download/import loading states, cancellation, retryable errors and one
   anonymous load event. Vite serves the unchanged demo as a separate static asset
