@@ -1,0 +1,58 @@
+.resize-handle {
+  position: relative;
+  z-index: 4;
+  flex-shrink: 0;
+  touch-action: none;
+  user-select: none;
+}
+.resize-handle::after {
+  content: '';
+  position: absolute;
+  background: #334553;
+}
+.resize-horizontal {
+  width: 8px;
+  flex-basis: 8px;
+  margin-inline: -4px;
+  cursor: col-resize;
+}
+.resize-horizontal::after {
+  inset: 0 auto 0 4px;
+  width: 1px;
+}
+.resize-vertical {
+  height: 6px;
+  flex-basis: 6px;
+  cursor: row-resize;
+}
+.resize-vertical::after {
+  inset: 2px 0 auto;
+  height: 1px;
+}
+.resize-handle:hover::after {
+  background: #789a9c;
+}
+.resize-handle.is-resizing::after,
+.resize-handle:focus-visible::after {
+  background: #8ce0c9;
+}
+.resize-handle:focus-visible {
+  outline: 1px solid #8ce0c9;
+  outline-offset: -1px;
+}
+html[data-panel-resize],
+html[data-panel-resize] * {
+  user-select: none !important;
+}
+html[data-panel-resize='horizontal'] * {
+  cursor: col-resize !important;
+}
+html[data-panel-resize='vertical'] * {
+  cursor: row-resize !important;
+}
+@media (min-width: 761px) {
+  .workspace > .inspector:not(.is-collapsed),
+  .workspace > .empty-inspector:not(.is-collapsed) {
+    width: var(--trial-inspector-width);
+  }
+}

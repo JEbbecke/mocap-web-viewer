@@ -1592,6 +1592,10 @@ dd {
   flex: 1 1 auto;
   overflow: hidden;
 }
+.plot-target .uplot {
+  /* Keep the legend's existing horizontal scrolling inside the observed pane width. */
+  width: 100%;
+}
 #signal-panel-content {
   flex: 1 1 auto;
   min-height: 0;
@@ -1606,9 +1610,14 @@ dd {
   overflow-x: auto;
   flex: 1 1 auto;
   min-height: 0;
+  min-width: 0;
 }
 .plot-panes.is-split {
-  grid-template-columns: repeat(2, minmax(250px, 1fr));
+  grid-template-columns: minmax(250px, 1fr) 0 minmax(250px, 1fr);
+}
+.plot-divider {
+  display: flex;
+  min-width: 0;
 }
 .signal-pane {
   min-width: 0;
@@ -2074,6 +2083,9 @@ footer .privacy-dot {
   width: 25%;
   justify-self: start;
   min-width: 0;
+}
+.plot-panes.is-split .signal-selector {
+  min-width: min(140px, 100%);
 }
 .signal-model-note {
   padding-inline: 20px;

@@ -1,4 +1,7 @@
-import { Component, useEffect, useRef, useState, type ReactNode } from 'react';
+import { Component, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { ResizeHandle } from './layout/ResizeHandle';
+import { clampPanel, panelBounds } from './layout/geometry';
+import { useElementSize, useMediaQuery } from './layout/useElementSize';
 import { Viewer3D } from './viewer/Viewer3D';
 import { Inspector } from './components/Inspector';
 import { Timeline } from './components/Timeline';
@@ -50,6 +53,43 @@ export function App() {
     [showExplorer, setShowExplorer] = useState(false),
     [dragging, setDragging] = useState(false);
   const visitTracked = useRef(false);
+  const workspace = useRef<HTMLDivElement>(null);
+  const column = useRef<HTMLDivElement>(null);
+  const timeline = useRef<HTMLDivElement>(null);
+  const workspaceSize = useElementSize(workspace);
+  const columnSize = useElementSize(column);
+  const timelineSize = useElementSize(timeline, !!data);
+  const desktop = useMediaQuery('(min-width: 761px)');
+  const wide = useMediaQuery('(min-width: 1101px)');
+  const [inspectorWidth, setInspectorWidth] = useState<number | null>(null);
+  const [explorerWidth, setExplorerWidth] = useState<number | null>(null);
+  const [plotHeights, setPlotHeights] = useState<{
+    visualizer: number | null;
+    explorer: number | null;
+  }>({ visualizer: null, explorer: null });
+  const activeWorkspace = data && showExplorer ? 'explorer' : 'visualizer';
+  // Reserve the stable Timeline controls. Event Editor borrows Viewer/table space;
+  // very short windows scroll rather than shrinking the preferred plot for editing.
+  const plotBounds = panelBounds(
+    180,
+    Math.max(
+      180,
+      Math.min(720, columnSize.height - timelineSize.height - (showExplorer ? 300 : 210) - 6),
+    ),
+  );
+  const plotHeight = clampPanel(
+    plotHeights[activeWorkspace] ?? (showExplorer ? columnSize.height * 0.28 : 254),
+    plotBounds.min,
+    plotBounds.max,
+  );
+  const changePlotHeight = (value: number | null) =>
+    setPlotHeights((previous) => ({ ...previous, [activeWorkspace]: value }));
+  const inspectorBounds = panelBounds(260, Math.min(560, workspaceSize.width - 400));
+  const effectiveInspectorWidth = clampPanel(
+    inspectorWidth ?? (wide ? 310 : 270),
+    inspectorBounds.min,
+    inspectorBounds.max,
+  );
 
   useEffect(startClock, []);
   useEffect(() => {
@@ -242,10 +282,19 @@ export function App() {
           </ul>
         </details>
       ) : null}
-      <div className={`workspace ${data && showExplorer ? 'is-exploring' : ''}`}>
-        <div className="main-column">
+      <div
+        ref={workspace}
+        className={`workspace ${data && showExplorer ? 'is-exploring' : ''}`}
+        style={{ '--trial-inspector-width': `${effectiveInspectorWidth}px` } as CSSProperties}
+      >
+        <div className="main-column" ref={column}>
           {data && showExplorer && (
-            <DataExplorer data={data} onClose={() => setShowExplorer(false)} />
+            <DataExplorer
+              data={data}
+              onClose={() => setShowExplorer(false)}
+              preferredWidth={explorerWidth}
+              onWidthChange={setExplorerWidth}
+            />
           )}
           <div className="viewer-workspace" hidden={!!data && showExplorer}>
             <div className="scene-wrap">
@@ -285,16 +334,42 @@ export function App() {
           </div>
           {data && (
             <>
-              <Timeline data={data} />
+              <Timeline data={data} controlsRef={timeline} />
+              {desktop && showPlot && (
+                <ResizeHandle
+                  key={activeWorkspace}
+                  axis="vertical"
+                  label="Signal Inspector height"
+                  controls="signal-panel"
+                  value={plotHeight}
+                  {...plotBounds}
+                  sign={-1}
+                  onChange={changePlotHeight}
+                  onReset={() => changePlotHeight(null)}
+                />
+              )}
               <SignalPlot
                 data={data}
                 collapsed={!showPlot}
                 explorer={showExplorer}
+                height={desktop ? plotHeight : undefined}
                 onToggle={() => setShowPlot((value) => !value)}
               />
             </>
           )}
         </div>
+        {desktop && showSidebar && !(data && showExplorer) && (
+          <ResizeHandle
+            axis="horizontal"
+            label="Trial Inspector width"
+            controls="trial-inspector"
+            value={effectiveInspectorWidth}
+            {...inspectorBounds}
+            sign={-1}
+            onChange={setInspectorWidth}
+            onReset={() => setInspectorWidth(null)}
+          />
+        )}
         {data ? (
           <Inspector
             data={data}

@@ -1,4 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import { ResizeHandle } from '../layout/ResizeHandle';
+import { splitSizes } from '../layout/geometry';
+import { useElementSize } from '../layout/useElementSize';
 import { SignalChart } from './SignalChart';
 import { useModelSeries } from './useModelSeries';
 import { ColumnSignals } from './ColumnSignals';
@@ -14,17 +17,28 @@ export function SignalPlot({
   collapsed,
   onToggle,
   explorer = false,
+  height,
 }: {
   data: MotionData;
   collapsed: boolean;
   onToggle: () => void;
   explorer?: boolean;
+  height?: number;
 }) {
   const [split, setSplit] = useState(false);
+  const [splitRatio, setSplitRatio] = useState(0.5);
+  const panes = useRef<HTMLDivElement>(null);
+  const paneSize = useElementSize(panes, !collapsed);
+  const splitActive = split && !explorer;
+  const { left: leftWidth, resizable: splitResizable } = splitSizes(paneSize.width, splitRatio);
   const [secondSelection, setSecondSelection] = useState('marker');
   const selection = useSession((s) => s.plot);
   return (
-    <section id="signal-panel" className={`plot-panel ${collapsed ? 'is-collapsed' : ''}`}>
+    <section
+      id="signal-panel"
+      className={`plot-panel ${collapsed ? 'is-collapsed' : ''}`}
+      style={!collapsed && height !== undefined ? { height, flexBasis: height } : undefined}
+    >
       <div className="panel-heading">
         <span>SIGNAL INSPECTOR</span>
         <span className="muted">
@@ -51,13 +65,37 @@ export function SignalPlot({
       </div>
       <div id="signal-panel-content" hidden={collapsed}>
         {!collapsed && (
-          <div className={`plot-panes ${split && !explorer ? 'is-split' : ''}`}>
+          <div
+            ref={panes}
+            className={`plot-panes ${splitActive ? 'is-split' : ''}`}
+            style={
+              splitActive && splitResizable
+                ? { gridTemplateColumns: `${leftWidth}px 0 minmax(250px, 1fr)` }
+                : undefined
+            }
+          >
             {explorer ? (
               <ColumnSignals data={data} />
             ) : (
               <SignalPane data={data} selection={selection} onSelection={selectPlot} />
             )}
-            {split && !explorer && (
+            {splitActive && (
+              <div className="plot-divider">
+                {splitResizable && (
+                  <ResizeHandle
+                    axis="horizontal"
+                    label="Split plot widths"
+                    controls="signal-panel-content"
+                    value={leftWidth}
+                    min={250}
+                    max={paneSize.width - 250}
+                    onChange={(value) => setSplitRatio(value / paneSize.width)}
+                    onReset={() => setSplitRatio(0.5)}
+                  />
+                )}
+              </div>
+            )}
+            {splitActive && (
               <SignalPane
                 data={data}
                 selection={secondSelection}
