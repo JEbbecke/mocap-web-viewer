@@ -15,7 +15,11 @@ export function editC3DParameters(source: ArrayBuffer, groupName: string) {
     const jumpAt = pos + 2 + n;
     const jump = input.getInt16(jumpAt, little);
     const end = jump ? jumpAt + jump : limit;
-    const name = new TextDecoder().decode(new Uint8Array(source, pos + 2, n)).toUpperCase();
+    const name = new TextDecoder()
+      .decode(new Uint8Array(source, pos + 2, n))
+      .replace(/\0/g, '')
+      .trim()
+      .toUpperCase();
     records.push({ id, name, bytes: new Uint8Array(source.slice(pos, end)) });
     pos = end;
     if (!jump) break;
@@ -103,5 +107,11 @@ export function editC3DParameters(source: ArrayBuffer, groupName: string) {
     const index = records.findIndex((r) => r.id === group && r.name === name);
     if (index >= 0) records.splice(index, 1);
   };
-  return { parameter, finish, remove, replacements };
+  const removeGroup = () => {
+    const ids = new Set(records.filter((r) => r.id < 0 && r.name === groupName).map((r) => -r.id));
+    for (let i = records.length - 1; i >= 0; i--)
+      if (ids.has(Math.abs(records[i].id))) records.splice(i, 1);
+    replacements.clear();
+  };
+  return { parameter, finish, remove, removeGroup, replacements };
 }

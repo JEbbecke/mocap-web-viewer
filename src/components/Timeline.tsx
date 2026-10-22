@@ -66,7 +66,7 @@ export function Timeline({ data }: { data: MotionData }) {
             <span>
               Frame {frame + 1} / {data.timeline.frameCount}
             </span>
-            <span>{(data.timeline.frameCount / data.timeline.rate).toFixed(3)} s</span>
+            <span>{data.timeline.duration.toFixed(3)} s</span>
           </div>
           <TimelineEvents data={data} />
         </div>

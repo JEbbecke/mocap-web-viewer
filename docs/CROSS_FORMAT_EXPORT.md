@@ -2,7 +2,7 @@
 
 Open **Export** next to **Open file** in the header and choose **Export C3D** or
 **Export H5** to export the current recording. The source format is listed first
-and marked **(source)**. Same-format export uses the existing source-preserving path immediately.
+and marked **(source)**. Same-format export of complete imports uses the existing source-preserving path immediately.
 Cross-format export first shows **Will export**, **Changed or omitted**, and any
 errors. The **Changed or omitted** list shows changed representations before
 omissions; concrete compatibility issues are reported without repeating a generic
@@ -13,22 +13,30 @@ Review the report and choose **Export C3D/H5**, or use Cancel/Escape to leave th
 recording unchanged. Export is disabled while a crop selection is awaiting Crop
 or Cancel crop, and while an import/export is running.
 
+Partial C3D imports use the same preview for both C3D and H5 output. **Changed or
+omitted** lists the actual omitted Rotation signal count and explains that those
+signals will be absent from the output. The existing Export button remains enabled
+when supported data passes validation. C3D output removes the unsupported Rotation
+payload and parameter group; H5 contains only the supported imported data. No
+additional modal or checkbox is used, and cropping/editing retains the limitation.
+
 Conversion uses the current edited/cropped MotionData. Format selection, review
 and export do not enter undo history or change scientific arrays/dirty state.
 The immutable source file stays intact. Cross-format names replace the extension:
 `trial.c3d` → `trial.h5`, `trial.h5/hdf5` → `trial.c3d`. Same-format names keep
-`_copy`, `_edited` or `_cropped` as before. Processing and export are local.
+`_copy`, `_edited` or `_cropped` as before; unedited partial C3D imports use
+`_exported` because their output omits source data. Processing and export are local.
 **Export prepared** means the browser received the generated file; it does not
 confirm a completed disk save or clear Modified.
 
 ## Four export paths
 
-| Path      | Writer and preservation                                                                                                                                                                                    | Main limits                                                                                                                                                                                                      |
-| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| C3D → C3D | Source-preserving: unchanged output is byte-identical; modified output copies raw point/analog records, encoding, units, calibration and unrelated parameters, updating selected frames, labels and events | Supported C3D encodings only; guarded baseline intervals, EVENT dimensions, parameter capacity and unknown trailing records; proprietary temporal parameters need review                                         |
-| H5 → H5   | Source-preserving: unchanged output is byte-identical; modified output copies the institute hierarchy and supported raw dtypes/attributes, slicing known clocks and applying label/event edits             | Unknown temporal datasets or unsupported HDF5 storage/types can block modified export; chunks/maxshape and unused string padding can change                                                                      |
-| C3D → H5  | Fresh current institute schema from normalized imported data, with float64 trajectories/analogs, global force quantities, events, explicit clocks and limited subject/provenance metadata                  | Unimported camera bits, raw/vendor parameter trees and acquisition representation are not copied; the fourth trajectory component is NaN; external current institute-reader interoperability requires validation |
-| H5 → C3D  | Fresh Intel/IEEE float32 C3D, current labels/events, compatible analogs, validated original TYPE-2/3/4 plates or a per-plate TYPE-2 fallback, plus JE_METADATA                                             | Aligned regular grids and capacity limits; no moving/unresolved plates; residual quantization, possible COP/free-moment loss, omitted quality/bodies/models and unrelated raw trees                              |
+| Path      | Writer and preservation                                                                                                                                                                                                                               | Main limits                                                                                                                                                                                                      |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| C3D → C3D | Source-preserving for supported records: unchanged complete imports are byte-identical; partial imports remove Rotation records/parameters after review; edits retain raw point/analog records, encoding, units, calibration and unrelated parameters | Supported C3D encodings only; guarded baseline intervals, EVENT dimensions, parameter capacity and unknown trailing records; proprietary temporal parameters need review                                         |
+| H5 → H5   | Source-preserving: unchanged output is byte-identical; modified output copies the institute hierarchy and supported raw dtypes/attributes, slicing known clocks and applying label/event edits                                                        | Unknown temporal datasets or unsupported HDF5 storage/types can block modified export; chunks/maxshape and unused string padding can change                                                                      |
+| C3D → H5  | Fresh current institute schema from normalized imported data, with float64 trajectories/analogs, global force quantities, events, explicit clocks and limited subject/provenance metadata                                                             | Unimported camera bits, raw/vendor parameter trees and acquisition representation are not copied; the fourth trajectory component is NaN; external current institute-reader interoperability requires validation |
+| H5 → C3D  | Fresh Intel/IEEE float32 C3D, current labels/events, compatible analogs, validated original TYPE-2/3/4 plates or a per-plate TYPE-2 fallback, plus JE_METADATA                                                                                        | Aligned regular grids and capacity limits; no moving/unresolved plates; residual quantization, possible COP/free-moment loss, omitted quality/bodies/models and unrelated raw trees                              |
 
 Same-format limits are detailed in [cropping/export](CROPPING_EXPORT.md).
 The matrix below describes conversion of supported imported fields; it does not

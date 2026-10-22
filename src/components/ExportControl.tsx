@@ -114,7 +114,7 @@ export function ExportControl({ data, disabled }: { data: MotionData; disabled: 
                   setMenuOpen(false);
                   setFormat(target);
                   trigger.current?.focus();
-                  if (target === sourceFormat) exportFile(target);
+                  if (target === sourceFormat && !data.source.partialImport) exportFile(target);
                   else setReview(true);
                 }}
               >
@@ -143,10 +143,11 @@ export function ExportControl({ data, disabled }: { data: MotionData; disabled: 
         >
           <h2 id={`${id}-heading`}>Export as {format}</h2>
           <p>
-            C3D and H5 support different feature sets. Data may be omitted or changed during
-            conversion. Use the source format to preserve source-specific content.
+            {data.source.partialImport
+              ? 'This export contains the supported imported data. Review the omitted source data below and keep the original file to preserve it.'
+              : 'C3D and H5 support different feature sets. Data may be omitted or changed during conversion. Use the source format to preserve source-specific content.'}
             <br />
-            Review the conversion before exporting.
+            Review the export details before exporting.
           </p>
           <div className="conversion-details">
             <h3>Will export</h3>

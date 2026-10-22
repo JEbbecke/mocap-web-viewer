@@ -6,6 +6,7 @@ import { writeC3DEvents } from './c3dEvents';
 import { writeC3DLabels } from './c3dLabels';
 import { parseDataLabelKey } from '../motion/dataLabels';
 import { labels as parameterLabels } from '../importers/c3d/parameters';
+import { editC3DParameters } from './c3dParameters';
 
 /** Source-preserving crop serializer. Never requantizes scientific samples.
  * Raw values and POINT/ANALOG units stay together, even for m/cm sources that
@@ -19,9 +20,19 @@ export function exportC3D(
   analogLabels?: string[],
   dataLabels?: Record<string, string>,
 ): ArrayBuffer {
+  // Validate the immutable source before any parameter writer can relocate it.
+  const original = parseC3D(source, 'source.c3d');
+  if (original.source.partialImport) {
+    // The importer verified that this block immediately follows all supported
+    // records, with only zero alignment padding in between. Keep their raw bytes
+    // and units, and remove the complete unsupported payload and parameter group.
+    const supported = source.slice(0, original.source.partialImport.rotation.byteOffset);
+    const editor = editC3DParameters(supported, 'ROTATION');
+    editor.removeGroup();
+    source = editor.finish();
+  }
   if (labels !== undefined) source = writeC3DLabels(source, labels);
   if (analogLabels !== undefined) source = writeC3DLabels(source, analogLabels, 'ANALOG');
-  const original = parseC3D(source, 'source.c3d');
   if (dataLabels && Object.keys(dataLabels).length) {
     const { params } = readParameters(new DataView(source));
     const old = parameterLabels(params, 'FORCE_PLATFORM:LABELS');
@@ -101,6 +112,7 @@ export function exportC3D(
   // Baseline recalculation using an incomplete interval would change forces in other readers.
   const zero = nums(p, 'FORCE_PLATFORM:ZERO');
   if (
+    number(p, 'FORCE_PLATFORM:USED', 0) > 0 &&
     zero.length === 2 &&
     zero[1] > 0 &&
     zero[1] >= zero[0] &&

@@ -23,6 +23,14 @@ moving geometry, crop clocks, event edits, all data-label collections, history,
 File Info, Data sidebar, Explorer paging/copying, current H5 preservation, both
 cross-format paths, force-channel reuse/fallback and conversion-loss reporting.
 Malformed structures and unsupported obsolete H5 layouts must fail explicitly.
+Generated Rotation fixtures cover verified separate sections, malformed layouts,
+explicit omission warnings, supported-subset C3D/H5 round trips and source
+provenance through cropping/editing. Optional local C3D tests read both Xsens
+examples as well as the standard Qualisys file and compare supported samples
+against an independent byte scanner. Timing tests retain the Xsens files' declared
+240 Hz even though the data provider confirmed 60 Hz acquisition: playback follows
+source metadata and applies no automatic correction. They cover 60–240 Hz clocks,
+rendering-rate independence, speed multipliers, events, plots, crops and exports.
 Synthetic empty-category tests accept absent/empty optional current-H5 groups
 while rejecting inconsistent populated dimensions, labels, units and clocks.
 Browser smoke opens H5 with empty EMG, checks its absence from Data/Explorer and

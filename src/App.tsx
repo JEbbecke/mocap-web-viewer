@@ -229,7 +229,11 @@ export function App() {
         <details className="warnings">
           <summary>
             {data.warnings.length} import {data.warnings.length === 1 ? 'note' : 'notes'}{' '}
-            <span>Review data conventions</span>
+            <span>
+              {data.source.partialImport
+                ? 'File loaded with limitations: rotation data was not imported'
+                : 'Review data conventions'}
+            </span>
           </summary>
           <ul>
             {data.warnings.map((w, i) => (
