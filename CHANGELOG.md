@@ -10,6 +10,10 @@ branches describe the planned release until its tag is published.
 
 ### Changed
 
+- Timeline events use two context-aware lanes with Left above Right and General
+  events as yellow diamonds in available space. Display's optional Compact event
+  markers checkbox uses one lane. Both modes cluster only local visual collisions,
+  adapt to track width and retain keyboard-accessible selection of original events.
 - Event Editor fits content-sized fields and right-aligned, stable Save/Cancel/Delete
   slots into one desktop row, with panel-width responsive wrapping. Subtle input
   focus and consistent labels accompany Add-only autofocus. Opening it takes height from

@@ -14,6 +14,11 @@ import { createModelTimingFixtures, verifyModelTiming } from './browser-model-ti
 import { verifyCropPreview } from './browser-crop-preview.mjs';
 import { createTimelineFixture, verifyTimelineLayout } from './browser-timeline.mjs';
 import { verifyEventEditor } from './browser-event-editor.mjs';
+import {
+  createClusterFixtures,
+  openTimelineEvent,
+  verifyEventClusters,
+} from './browser-event-clusters.mjs';
 import { verifyTrialOverview, verifyLongTrialFilename } from './browser-trial-overview.mjs';
 import * as h5 from 'h5wasm/node';
 import {
@@ -55,6 +60,7 @@ await writeFile('.local/current-browser.h5', Buffer.from(currentH5.base64, 'base
 await h5.ready;
 createTimelineFixture();
 createTimelineFixture('.local/event-editor-fast.h5', 120, false, 100000);
+createClusterFixtures();
 createCoordinateSystemsFixture();
 createModelTimingFixtures();
 // Three-frame current-schema fixture for the shared C3D/H5 crop interaction checks.
@@ -853,7 +859,7 @@ try {
   await page.getByLabel('Time (s)', { exact: true }).fill('0.015');
   await page.getByLabel('Context', { exact: true }).fill('Right');
   await page.getByRole('button', { name: 'Save event', exact: true }).click();
-  await page.getByRole('button', { name: 'Edit event Synthetic added event', exact: true }).click();
+  await openTimelineEvent(page, 'Synthetic added event');
   await page.getByLabel('Event label', { exact: true }).fill('Synthetic edited event');
   await page.getByLabel('Time (s)', { exact: true }).fill('0.02');
   await page.screenshot({ path: '.local/event-editor.png' });
@@ -1347,6 +1353,7 @@ try {
   await verifyCropPreview(page);
   await verifyTimelineLayout(page);
   await verifyEventEditor(page);
+  await verifyEventClusters(page);
   await page.getByLabel('Open motion file').setInputFiles(resolve('.local/same-source.h5'));
   await page.waitForFunction(() => !document.body.textContent.includes('Reading your recording'));
   await verifyFileMetadata(page, {

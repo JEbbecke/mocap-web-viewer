@@ -1,14 +1,9 @@
 import { useLayoutEffect, useRef, useState } from 'react';
-import { TimelineSlider } from './TimelineSlider';
 import type { MotionData } from '../motion/types';
-import {
-  eventEditingAvailable,
-  eventContextAvailable,
-  eventSourceFrame,
-  timelineEvents,
-} from '../motion/events';
+import { eventEditingAvailable, eventContextAvailable, eventSourceFrame } from '../motion/events';
 import { editSessionEvent, openSessionEvent, useSession } from '../state/session';
 import { eventTimeValue, formatEventTime } from './eventTime';
+export { TimelineEvents } from './TimelineEvents';
 
 export function EventControls({ data }: { data: MotionData }) {
   const selected = useSession((s) => s.eventEditor?.index ?? null);
@@ -395,46 +390,5 @@ export function EventEditor({ data }: { data: MotionData }) {
       </div>
       {feedback('form')}
     </form>
-  );
-}
-
-/** Marker lanes and the slider retain the same shared percentage axis. */
-export function TimelineEvents({ data }: { data: MotionData }) {
-  const selected = useSession((s) => s.eventEditor?.index ?? null);
-  const scroll = useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => {
-    const strip = scroll.current!;
-    strip.scrollTop = strip.scrollHeight - strip.clientHeight;
-  }, [data.events]);
-  const entries = timelineEvents(data);
-  // Greedy lanes keep close markers separate; the track scrolls vertically for dense trials.
-  const lanes: number[] = [];
-  const markers = entries.map((entry) => {
-    let lane = lanes.findIndex((end) => entry.percent >= end);
-    if (lane < 0) lane = lanes.length;
-    lanes[lane] = entry.percent + 2;
-    return { ...entry, lane };
-  });
-  return (
-    <div className="event-workspace">
-      <div className="event-scroll" aria-label="Timeline events" ref={scroll}>
-        <div className="event-markers" style={{ height: Math.max(1, lanes.length) * 12 }}>
-          {markers.map(({ event, index, percent, lane }) => (
-            <button
-              key={index}
-              className={`${selected === index ? 'selected-event' : ''} event-context-${event.context.trim().toLowerCase() === 'left' ? 'left' : ['right', 'rigth'].includes(event.context.trim().toLowerCase()) ? 'right' : 'other'}`}
-              style={{ left: `${percent}%`, bottom: lane * 12 }}
-              title={`${event.context} ${event.label} · ${event.time} s`}
-              aria-label={`Edit event ${event.label}`}
-              aria-pressed={selected === index}
-              onClick={() => openSessionEvent(index)}
-            >
-              <span className="event-pin" aria-hidden="true" />
-            </button>
-          ))}
-        </div>
-      </div>
-      <TimelineSlider data={data} />
-    </div>
   );
 }

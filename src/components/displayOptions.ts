@@ -23,6 +23,7 @@ export function displayOptions(data: MotionData): [DisplayKey, string][] {
     ['forces', 'Ground reaction forces'],
     ['cop', 'Centre of pressure'],
     ['labels', 'Marker labels'],
+    ['compactEventMarkers', 'Compact event markers'],
     ['grid', 'Ground grid'],
     ['axes', 'Coordinate axes'],
   ];

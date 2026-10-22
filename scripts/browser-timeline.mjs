@@ -6,6 +6,7 @@ import { spawn } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { verifyEventEditor } from './browser-event-editor.mjs';
+import { createClusterFixtures, verifyEventClusters } from './browser-event-clusters.mjs';
 
 export function createTimelineFixture(
   filename = '.local/timeline-ui.h5',
@@ -488,7 +489,7 @@ export async function verifyTimelineLayout(page) {
   const alignment = await page.locator('.event-markers').evaluate((strip) => {
     const rail = document.querySelector('.timeline-slider').getBoundingClientRect();
     return [...strip.querySelectorAll('button')].every((marker) => {
-      const pin = marker.querySelector('.event-pin').getBoundingClientRect();
+      const pin = (marker.querySelector('.event-pin') ?? marker).getBoundingClientRect();
       return (
         Math.abs(
           pin.left +
@@ -498,17 +499,27 @@ export async function verifyTimelineLayout(page) {
       );
     });
   });
-  assert(alignment, 'close marker lanes keep their temporal positions');
-  const denseMarker = page.getByRole('button', { name: 'Edit event Close 7', exact: true });
+  assert(alignment, 'individual pins and cluster centers retain the shared temporal axis');
+  const denseMarker = page
+    .locator('.event-markers .event-cluster[data-event-lane="1"]')
+    .filter({ hasText: /^4$/ });
   await denseMarker.focus();
   const markerBounds = await denseMarker.boundingBox();
   const stripBounds = await page.locator('.event-scroll').boundingBox();
   assert(
     markerBounds.y >= stripBounds.y &&
       markerBounds.y + markerBounds.height <= stripBounds.y + stripBounds.height,
-    'dense marker lanes remain keyboard accessible',
+    'dense cluster remains visible and keyboard accessible',
   );
-  await layout('focused dense marker');
+  await denseMarker.press('Enter');
+  const denseEvent = page
+    .locator('.event-cluster-popup')
+    .getByRole('button', { name: /^Edit event Close 7,/ });
+  await denseEvent.focus();
+  await denseEvent.press('Enter');
+  assert.equal(await page.getByLabel('Event label', { exact: true }).inputValue(), 'Close 7');
+  await editor.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await layout('focused dense cluster');
   await writeFile('.local/timeline-layout-report.json', JSON.stringify(reports, null, 2));
   console.log(
     'Timeline UI passed: six states, crop/cancel/restore, inline safe deletion, source frames, fields/history and marker geometry.',
@@ -521,6 +532,7 @@ if (resolve(process.argv[1] ?? '') === fileURLToPath(import.meta.url)) {
   await h5.ready;
   createTimelineFixture();
   createTimelineFixture('.local/event-editor-fast.h5', 120, false, 100000);
+  createClusterFixtures();
   const server = spawn(
     process.execPath,
     [
@@ -559,8 +571,10 @@ if (resolve(process.argv[1] ?? '') === fileURLToPath(import.meta.url)) {
     page.on('pageerror', (error) => errors.push(error.message));
     await page.goto('http://127.0.0.1:4174/', { waitUntil: 'networkidle' });
     try {
-      if (!process.argv.includes('--editor-only')) await verifyTimelineLayout(page);
-      await verifyEventEditor(page);
+      if (!process.argv.includes('--editor-only') && !process.argv.includes('--clusters-only'))
+        await verifyTimelineLayout(page);
+      if (!process.argv.includes('--clusters-only')) await verifyEventEditor(page);
+      if (!process.argv.includes('--editor-only')) await verifyEventClusters(page);
       assert.deepEqual(errors, []);
     } catch (error) {
       await page.screenshot({ path: '.local/timeline-failure.png', fullPage: true });

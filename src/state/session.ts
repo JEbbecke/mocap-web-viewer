@@ -28,6 +28,7 @@ export type DisplayKey =
   | 'forces'
   | 'cop'
   | 'labels'
+  | 'compactEventMarkers'
   | 'grid'
   | 'axes';
 export type CameraPreset = 'perspective' | 'front' | 'side' | 'top';
@@ -89,6 +90,7 @@ export const useSession = create<Session>(() => ({
     forces: true,
     cop: true,
     labels: false,
+    compactEventMarkers: false,
     grid: true,
     axes: true,
   },

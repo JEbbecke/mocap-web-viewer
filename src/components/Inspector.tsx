@@ -72,7 +72,14 @@ export function Inspector({
             <h4>Scene layers</h4>
             <div className="display-options">
               {displayOptions(data).map(([key, label]) => (
-                <label key={key}>
+                <label
+                  key={key}
+                  title={
+                    key === 'compactEventMarkers'
+                      ? 'Display events in one row and cluster only overlapping markers.'
+                      : undefined
+                  }
+                >
                   <input
                     type="checkbox"
                     checked={display[key]}
