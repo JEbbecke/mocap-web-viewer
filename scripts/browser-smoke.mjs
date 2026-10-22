@@ -54,6 +54,7 @@ await writeFile('.local/current-browser.h5', Buffer.from(currentH5.base64, 'base
 // Synthetic metadata exercises all curated sections without participant data.
 await h5.ready;
 createTimelineFixture();
+createTimelineFixture('.local/event-editor-fast.h5', 120, false, 100000);
 createCoordinateSystemsFixture();
 createModelTimingFixtures();
 // Three-frame current-schema fixture for the shared C3D/H5 crop interaction checks.

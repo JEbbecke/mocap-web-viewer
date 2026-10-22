@@ -8,6 +8,7 @@ import {
   timelineEvents,
 } from '../motion/events';
 import { editSessionEvent, openSessionEvent, useSession } from '../state/session';
+import { eventTimeValue, formatEventTime } from './eventTime';
 
 export function EventControls({ data }: { data: MotionData }) {
   const selected = useSession((s) => s.eventEditor?.index ?? null);
@@ -57,6 +58,7 @@ export function EventEditor({ data }: { data: MotionData }) {
   const [description, setDescription] = useState(''),
     [subject, setSubject] = useState('');
   const [time, setTime] = useState('0');
+  const originalTime = useRef({ value: 0, text: '0' });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [pendingRequest, setPendingRequest] = useState<typeof request>(null);
   const [deleteRequest, setDeleteRequest] = useState<typeof request>(null);
@@ -86,7 +88,7 @@ export function EventEditor({ data }: { data: MotionData }) {
       setPendingRequest(null);
       if (restoreFocus.current) {
         const target = returnFocus.current;
-        (target?.isConnected
+        (target?.isConnected && target.checkVisibility() && !target.matches(':disabled')
           ? target
           : document.querySelector<HTMLElement>('.event-toolbar > button')
         )?.focus({ preventScroll: true });
@@ -121,7 +123,9 @@ export function EventEditor({ data }: { data: MotionData }) {
         : data.events[index];
     setLabel(event.label);
     setContext(event.context);
-    setTime(String(event.time));
+    const formattedTime = formatEventTime(event.time, data.timeline.rate);
+    originalTime.current = { value: event.time, text: formattedTime };
+    setTime(formattedTime);
     setDescription('description' in event ? (event.description ?? '') : '');
     setSubject('subject' in event ? (event.subject ?? '') : '');
     activeDraft.current = {
@@ -132,16 +136,17 @@ export function EventEditor({ data }: { data: MotionData }) {
         event.context,
         'description' in event ? (event.description ?? '') : '',
         'subject' in event ? (event.subject ?? '') : '',
-        String(event.time),
+        formattedTime,
       ],
     };
     setErrors({});
     setPendingRequest(null);
     setDeleteRequest(null);
-    labelInput.current?.focus({ preventScroll: true });
+    if (index === 'new') labelInput.current?.focus({ preventScroll: true });
     // Draft values deliberately do not repopulate fields during typing or playback.
   }, [request, data]);
   if (selected === null) return null;
+  const numericTime = eventTimeValue(time, originalTime.current);
   const selectedEvent = selected === 'new' ? null : data.events[selected];
   const close = () => {
     restoreFocus.current = true;
@@ -187,7 +192,7 @@ export function EventEditor({ data }: { data: MotionData }) {
           editSessionEvent(
             selected === 'new' ? 'add' : 'update',
             selected === 'new' ? -1 : selected,
-            { label, context, description, subject, time: Number(time) },
+            { label, context, description, subject, time: numericTime },
           );
           close();
         } catch (err) {
@@ -227,7 +232,7 @@ export function EventEditor({ data }: { data: MotionData }) {
               type="number"
               step="any"
               {...validation('time')}
-              title={time}
+              title={`Exact event time: ${numericTime} s`}
               value={time}
               onChange={(e) => setTime(e.target.value)}
               required
@@ -244,7 +249,7 @@ export function EventEditor({ data }: { data: MotionData }) {
               title={`Source frame (recording starts at ${eventSourceFrame(data, 0)})`}
               aria-invalid={errors.time ? true : undefined}
               aria-describedby={errors.time ? 'event-time-error' : undefined}
-              value={Number.isFinite(Number(time)) ? eventSourceFrame(data, Number(time)) : ''}
+              value={Number.isFinite(numericTime) ? eventSourceFrame(data, numericTime) : ''}
               onChange={(e) =>
                 setTime(
                   e.target.value === ''
@@ -294,7 +299,12 @@ export function EventEditor({ data }: { data: MotionData }) {
           )}
         </div>
       </div>
-      <div className="event-editor-actions" role="group" aria-label="Event actions">
+      <div
+        className="event-editor-actions"
+        data-confirming={confirmDelete || !!pendingRequest}
+        role="group"
+        aria-label="Event actions"
+      >
         {pendingRequest ? (
           <>
             <span className="event-delete-prompt" role="status">

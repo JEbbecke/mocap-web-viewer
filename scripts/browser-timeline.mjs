@@ -11,12 +11,13 @@ export function createTimelineFixture(
   filename = '.local/timeline-ui.h5',
   firstFrame = 120,
   edges = false,
+  rate = 100,
 ) {
   const file = new h5.File(resolve(filename), 'w');
   try {
     file.create_group('MetaData').create_group('Project');
     const trajectories = file.create_group('Trajectories');
-    trajectories.create_attribute('SamplingFrequency', 100);
+    trajectories.create_attribute('SamplingFrequency', rate);
     trajectories.create_attribute('StartFrame', firstFrame);
     const labeled = trajectories.create_group('Labeled');
     labeled.create_attribute('Labels', ['Synthetic marker']);
@@ -35,13 +36,14 @@ export function createTimelineFixture(
       names.unshift('Start edge');
       names.push('End edge');
     }
+    const eventTimes = times.map((time) => (time * 100) / rate);
     for (const [name, data] of Object.entries({
       Name: names,
       Context: times.map((_, i) => (i % 2 ? 'Left' : 'Right')),
       Description: times.map(() => 'Description'),
       Subject: times.map(() => 'Synthetic'),
-      Time: Float64Array.from(times, (time) => firstFrame / 100 + time),
-      Frame: Int32Array.from(times, (time) => firstFrame + Math.round(time * 100)),
+      Time: Float64Array.from(eventTimes, (time) => firstFrame / rate + time),
+      Frame: Int32Array.from(eventTimes, (time) => firstFrame + Math.round(time * rate)),
       GenericFlag: new Int32Array(times.length),
       IconID: new Int32Array(times.length),
     }))
@@ -75,7 +77,7 @@ export async function verifyTimelineLayout(page) {
   const end = page.getByRole('slider', { name: 'Crop end', exact: true });
   const frame = page.getByRole('slider', { name: 'Frame', exact: true });
   const geometry = async () => {
-    // Compare viewport coordinates at one scroll position across all states.
+    // The Viewer now donates editor space; controls retain their panel-local geometry.
     await page.evaluate(() => {
       window.scrollTo(0, 0);
       document.querySelector('.workspace').scrollTop = 0;
@@ -84,6 +86,7 @@ export async function verifyTimelineLayout(page) {
       () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
     );
     return page.locator('.timeline').evaluate((row) => {
+      const panel = row.getBoundingClientRect();
       const selectors = [
         '.transport',
         '.time-labels',
@@ -98,7 +101,7 @@ export async function verifyTimelineLayout(page) {
       return Object.fromEntries(
         selectors.map((selector) => {
           const bounds = row.querySelector(selector).getBoundingClientRect();
-          return [selector, [bounds.x, bounds.y, bounds.width, bounds.height]];
+          return [selector, [bounds.x - panel.x, bounds.y - panel.y, bounds.width, bounds.height]];
         }),
       );
     });
@@ -517,6 +520,7 @@ if (resolve(process.argv[1] ?? '') === fileURLToPath(import.meta.url)) {
   await mkdir('.local', { recursive: true });
   await h5.ready;
   createTimelineFixture();
+  createTimelineFixture('.local/event-editor-fast.h5', 120, false, 100000);
   const server = spawn(
     process.execPath,
     [

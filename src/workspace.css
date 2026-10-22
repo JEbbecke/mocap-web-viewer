@@ -901,8 +901,11 @@ dd {
     position: sticky;
     top: 0;
   }
-  .main-column > .timeline-anchored-view {
-    flex: 0 0 var(--timeline-view-height);
+  .main-column > .viewer-workspace {
+    min-height: 210px;
+  }
+  .main-column > .data-explorer {
+    min-height: 300px;
   }
 }
 .timeline-slider {
@@ -1276,35 +1279,29 @@ dd {
 }
 .event-editor {
   display: grid;
+  grid-template-columns: minmax(160px, 200px) 100px 100px 120px minmax(180px, 1fr) 140px 280px;
   gap: 8px;
   padding: 8px 12px;
   border-top: 1px solid var(--metadata-separator);
 }
-.event-editor-fields {
-  display: grid;
-  grid-template-columns: minmax(430px, 1.1fr) minmax(424px, 1fr);
-  gap: 12px;
-}
+.event-editor-fields,
 .event-editor-identity,
 .event-editor-metadata {
-  display: grid;
-  align-items: start;
-  gap: 10px;
-}
-.event-editor-identity {
-  grid-template-columns: minmax(140px, 1fr) 160px 110px;
-}
-.event-editor-metadata {
-  grid-template-columns: minmax(104px, 0.8fr) minmax(180px, 2fr) minmax(120px, 1fr);
+  display: contents;
 }
 .event-editor-actions {
-  display: flex;
+  display: grid;
+  grid-template-columns: max-content max-content 82px;
   align-items: center;
   justify-content: end;
   gap: 8px;
   min-height: 28px;
-  width: min(100%, 440px);
+  align-self: end;
+  width: min(100%, 280px);
   justify-self: end;
+}
+.event-editor-actions[data-confirming='true'] {
+  grid-template-columns: minmax(0, 1fr) max-content max-content;
 }
 .event-editor-actions button {
   flex: none;
@@ -1352,6 +1349,11 @@ dd {
   min-width: 0;
   color: var(--metadata-label);
 }
+.event-editor .event-field > label {
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 14px;
+}
 .event-editor input {
   width: 100%;
   min-width: 0;
@@ -1368,6 +1370,15 @@ dd {
   padding: 4px 7px;
   font-variant-numeric: tabular-nums;
 }
+.event-editor input:focus {
+  border-color: #76bfb2;
+  outline: none;
+  box-shadow: none;
+}
+.event-editor input:focus-visible {
+  outline: 1px solid #76bfb2;
+  outline-offset: -1px;
+}
 .event-editor input[aria-invalid='true'] {
   border-color: #d78a93;
 }
@@ -1376,10 +1387,41 @@ dd {
   font-size: 11px;
   overflow-wrap: anywhere;
 }
-@container timeline-panel (max-width: 920px) {
-  .event-editor-fields {
-    grid-template-columns: minmax(0, 1fr);
+.event-editor > .event-field-error {
+  grid-column: 1 / -1;
+}
+@container timeline-panel (max-width: 1200px) {
+  .event-editor {
+    grid-template-columns: minmax(0, 1fr) 280px;
+  }
+  .event-editor-identity,
+  .event-editor-metadata {
+    display: grid;
+    align-items: start;
     gap: 8px;
+  }
+  .event-editor-identity {
+    grid-template-columns: minmax(160px, 200px) 100px 100px;
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .event-editor-metadata {
+    grid-template-columns: minmax(110px, 120px) minmax(180px, 300px) minmax(120px, 140px);
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+  .event-editor-actions {
+    grid-column: 2;
+    grid-row: 1;
+  }
+}
+@container timeline-panel (max-width: 700px) {
+  .event-editor {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .event-editor-actions {
+    grid-column: 1;
+    grid-row: 3;
   }
 }
 @container timeline-panel (max-width: 500px) {
@@ -1410,12 +1452,12 @@ dd {
 }
 .plot-panel {
   --signal-plot-background: #111d27;
-  flex: 0 1 254px;
+  flex: 0 0 254px;
   min-height: 180px;
   display: flex;
   flex-direction: column;
   background: var(--signal-plot-background);
-  height: 244px;
+  height: 254px;
 }
 .panel-heading {
   display: flex;
@@ -1745,9 +1787,6 @@ footer .privacy-dot {
   .viewport-title .muted {
     display: none;
   }
-  .event-editor {
-    padding-inline: 12px;
-  }
   header {
     gap: 10px;
     padding-inline: 16px;
@@ -1764,9 +1803,6 @@ footer .privacy-dot {
   .welcome > span {
     display: block;
     margin: 12px 0 0;
-  }
-  .plot-panel {
-    height: 228px;
   }
   .panel-heading > .muted {
     display: none;
@@ -1883,14 +1919,6 @@ footer .privacy-dot {
 }
 .brand-mark circle {
   fill: currentColor;
-}
-.plot-panel {
-  height: 254px;
-}
-@media (max-width: 1100px) {
-  .plot-panel {
-    height: 254px;
-  }
 }
 .history-controls {
   display: flex;

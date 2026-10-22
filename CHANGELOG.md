@@ -10,10 +10,12 @@ branches describe the planned release until its tag is published.
 
 ### Changed
 
-- Event Editor uses compact, panel-width responsive identity/timing and metadata
-  fields, grouped Save/Cancel/Delete actions, inline validation and predictable
-  keyboard focus. Switching events protects unsaved input; inline deletion and
-  the stabilized Timeline controls remain intact.
+- Event Editor fits content-sized fields and right-aligned, stable Save/Cancel/Delete
+  slots into one desktop row, with panel-width responsive wrapping. Subtle input
+  focus and consistent labels accompany Add-only autofocus. Opening it takes height from
+  the Viewer while preserving the Signal Inspector. Clean event time presentation
+  retains exact timestamps on unchanged saves; validation, focus, unsaved-input
+  protection and inline deletion remain intact.
 - Restored the compact Timeline with shared playback/bar alignment, matching
   two-row crop/event actions and panel-width responsive wrapping. The Event Editor
   opens below the stable controls. Clearer crop selection/actions, concise tooltips

@@ -1,56 +1,7 @@
-import { useLayoutEffect, useRef } from 'react';
 import { applyCrop, restoreOriginal, setFrame, togglePlay, useSession } from '../state/session';
 import type { MotionData } from '../motion/types';
 import { EventControls, EventEditor, TimelineEvents } from './EventEditor';
 
-/** Keep the existing viewer allocation when the editor grows below the control row. */
-function useTimelineAnchor(editing: boolean) {
-  const section = useRef<HTMLElement>(null);
-  useLayoutEffect(() => {
-    if (!editing) return;
-    const parent = section.current!.parentElement!;
-    const core = section.current!.firstElementChild!;
-    let anchored: HTMLElement | undefined;
-    const release = () => {
-      anchored?.style.removeProperty('--timeline-view-height');
-      anchored?.classList.remove('timeline-anchored-view');
-    };
-    const anchor = () => {
-      release();
-      const view = [...parent.children].find(
-        (child) =>
-          child instanceof HTMLElement &&
-          !child.hidden &&
-          (child.classList.contains('viewer-workspace') ||
-            child.classList.contains('data-explorer')),
-      ) as HTMLElement | undefined;
-      if (!view) return;
-      // Measure the normal allocation before paint, including after a panel resize
-      // or workspace switch. The editor then grows below that allocation.
-      const height = section.current!.style.height;
-      section.current!.style.height = `${core.getBoundingClientRect().height}px`;
-      const viewHeight = view.getBoundingClientRect().height;
-      section.current!.style.height = height;
-      view.style.setProperty('--timeline-view-height', `${viewHeight}px`);
-      view.classList.add('timeline-anchored-view');
-      anchored = view;
-    };
-    const resize = new ResizeObserver(anchor);
-    const children = new MutationObserver(anchor);
-    resize.observe(parent);
-    resize.observe(core);
-    const plot = parent.querySelector('.plot-panel');
-    if (plot) resize.observe(plot);
-    children.observe(parent, { childList: true });
-    anchor();
-    return () => {
-      resize.disconnect();
-      children.disconnect();
-      release();
-    };
-  }, [editing]);
-  return section;
-}
 export function Timeline({ data }: { data: MotionData }) {
   const frame = useSession((s) => s.frame),
     playing = useSession((s) => s.playing),
@@ -59,11 +10,9 @@ export function Timeline({ data }: { data: MotionData }) {
     dirty = useSession((s) => s.dirty),
     speed = useSession((s) => s.speed),
     loop = useSession((s) => s.loop),
-    busy = useSession((s) => s.busy),
-    editing = useSession((s) => !!s.eventEditor);
-  const section = useTimelineAnchor(editing);
+    busy = useSession((s) => s.busy);
   return (
-    <section className="timeline-section" aria-label="Timeline" ref={section}>
+    <section className="timeline-section" aria-label="Timeline">
       <div className="timeline">
         <div className="transport" role="group" aria-label="Playback">
           <button
