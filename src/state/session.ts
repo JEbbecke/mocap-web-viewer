@@ -375,7 +375,9 @@ export function exportFile(target?: ExportFormat) {
                 data.source.analogLabelsEdited ||
                 Object.keys(data.source.dataLabels ?? {}).length
                 ? '_edited.$1'
-                : '_copy.$1',
+                : data.source.partialImport
+                  ? '_exported.$1'
+                  : '_copy.$1',
             );
     document.body.append(link);
     link.click();

@@ -8,6 +8,27 @@ branches describe the planned release until its tag is published.
 
 ## [Unreleased]
 
+### Fixed
+
+- Timeline's recording end-time readout now uses the last sample timestamp,
+  `(frames - 1) / rate`, matching File Info and signal plots. Exclusive crop
+  boundaries retain their existing `frames / rate` convention; playback rates
+  and source timing metadata are unchanged.
+- C3D files with a verified, separate 17-float Rotation extension can load their
+  Point/Analog data. Omitted rotations are recorded as a partial import and shown
+  in the persistent import notes. C3D/H5 export remains available after reviewing
+  the omitted source data in the existing Export dialog, including after cropping
+  or editing. Exported C3D files omit Rotation records and their parameter group.
+  Unknown, inconsistent or truncated rotation layouts still fail explicitly.
+
+### Notes
+
+- The data provider confirmed that the supplied Xsens recordings were acquired at
+  60 Hz but exported with incorrect 240 Hz C3D metadata. JE Motion Lab correctly
+  follows the declared source rate, including on export. No automatic rate
+  correction, resampling or effective-rate override is applied; the source-file
+  timing error has not been repaired within the application.
+
 ### Changed
 
 - Motion capture loads automatically fit the 3D camera to a representative valid

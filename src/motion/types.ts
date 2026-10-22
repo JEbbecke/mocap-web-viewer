@@ -65,6 +65,21 @@ export interface MotionData {
     format: string;
     originalPositionUnit: string;
     metadata: Record<string, unknown>;
+    /** Supported samples loaded, but source records remain unavailable. Survives crops/edits. */
+    partialImport?: {
+      omitted: 'C3D_ROTATION';
+      rotation: {
+        signals: number;
+        labels: string[];
+        rate: number;
+        ratio: number;
+        frames: number;
+        dataStartBlock: number;
+        byteOffset: number;
+        byteLength: number;
+        encoding: 'column-major-4x4+reliability-float32';
+      };
+    };
     /** Curated embedded metadata; raw metadata and original File remain intact. */
     info?: RecordingInfo;
     /** Browser file facts, separate from embedded recording/provenance metadata. */
