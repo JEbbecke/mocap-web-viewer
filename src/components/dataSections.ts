@@ -1,5 +1,6 @@
 import { independentModelMessage } from '../motion/modelTiming';
 import type { MotionData } from '../motion/types';
+import { markerSourceId } from '../motion/markerIdentity';
 import { metadataText } from '../motion/metadata';
 import type { DataLabelTarget } from '../motion/dataLabels';
 import { modelPlotDescriptors } from '../plots/modelSeries';
@@ -67,7 +68,7 @@ export function dataSections(data: MotionData): DataSection[] {
     {
       name: 'Markers',
       entries: data.markers.labels.map((name, marker) => ({
-        id: `marker:${marker}`,
+        id: `marker:${markerSourceId(data, marker)}`,
         name,
         marker,
       })),

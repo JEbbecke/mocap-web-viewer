@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { MotionData } from '../motion/types';
+import type { MotionData, Vec3 } from '../motion/types';
 import type { ColumnSelection } from '../explorer/selection';
 import { cropMotionData } from '../motion/crop';
 import { croppedFilename } from '../exporters';
@@ -12,6 +12,8 @@ import {
   type EditHistory,
 } from '../motion/history';
 import { renameMarkerCommand } from '../motion/markerLabels';
+import { deleteMarkerCommand } from '../motion/markerDeletion';
+import { markerIndex, markerSourceId, markerSourceIds } from '../motion/markerIdentity';
 import { renameAnalogCommand } from '../motion/analogLabels';
 import { renameDataCommand, type DataLabelTarget } from '../motion/dataLabels';
 import { trackEvent } from '../analytics';
@@ -33,6 +35,15 @@ export type DisplayKey =
   | 'axes';
 export type CameraPreset = 'perspective' | 'front' | 'side' | 'top';
 interface Session {
+  markerMenu: {
+    marker: number;
+    data: MotionData;
+    x: number;
+    y: number;
+    sampleAvailable: boolean;
+  } | null;
+  markerRename: { marker: number; data: MotionData } | null;
+  viewerReady: boolean;
   eventEditor: { index: number | 'new' } | null;
   history: EditHistory<MotionData>;
   dirty: boolean;
@@ -55,13 +66,16 @@ interface Session {
   forceScale: number; // display mm per N, never a scientific force conversion
   threshold: number;
   assumeGlobal: boolean;
-  camera: { preset: CameraPreset; revision: number };
+  camera: { preset: CameraPreset; revision: number; point?: Vec3 };
   connectionSet: string;
   plot: string;
   explorerDataset: string;
   explorerColumns: ColumnSelection | null;
 }
 export const useSession = create<Session>(() => ({
+  markerMenu: null,
+  markerRename: null,
+  viewerReady: false,
   eventEditor: null,
   history: emptyHistory(),
   dirty: false,
@@ -127,6 +141,8 @@ export function setCamera(preset: CameraPreset) {
 export function setData(data: MotionData, sourceFile: File | null = null) {
   cancelImport();
   useSession.setState({
+    markerMenu: null,
+    markerRename: null,
     eventEditor: null,
     history: emptyHistory(),
     dirty: false,
@@ -248,6 +264,8 @@ export function applyCrop() {
     const cropped = cropMotionData(data, cropSelection.start, cropSelection.end);
     useSession.setState({
       data: cropped,
+      markerMenu: null,
+      markerRename: null,
       eventEditor: null,
       history: emptyHistory(true),
       dirty: true,
@@ -294,12 +312,87 @@ export function renameSessionMarker(marker: number, input: string) {
   const command = renameMarkerCommand(data, marker, input);
   if (command) commitEdit(command);
 }
-export function commitEdit(command: EditCommand<MotionData>) {
-  const { data, originalData, busy, history } = useSession.getState();
+interface DeletedMarkerView {
+  id: number;
+  selected: boolean;
+  hidden: boolean;
+  plot?: string;
+  explorerDataset?: string;
+  explorerColumns?: ColumnSelection | null;
+}
+type SessionEditCommand = EditCommand<MotionData> & { deletedMarkerView?: DeletedMarkerView };
+
+/** Reconcile mutable UI positions by immutable identities in the same edit transaction. */
+function markerViewChanges(
+  before: MotionData,
+  after: MotionData,
+  s: Session,
+  restore?: DeletedMarkerView,
+): Partial<Session> {
+  if (markerSourceIds(before).join(',') === markerSourceIds(after).join(',')) return {};
+  const selectedId =
+    s.selected < 0 || s.selected >= before.markers.labels.length
+      ? -1
+      : markerSourceId(before, s.selected);
+  let selected = markerIndex(after, selectedId);
+  const hidden = new Set(
+    [...s.hidden].flatMap((index) => {
+      if (index < 0 || index >= before.markers.labels.length) return [];
+      const next = markerIndex(after, markerSourceId(before, index));
+      return next < 0 ? [] : [next];
+    }),
+  );
+  const exists = (reference: string) => {
+    const match = /^marker:(\d+)$/.exec(reference);
+    return !match || markerIndex(after, Number(match[1])) >= 0;
+  };
+  let plot = exists(s.plot) ? s.plot : 'none';
+  let explorerDataset = exists(s.explorerDataset) ? s.explorerDataset : '';
+  let explorerColumns =
+    s.explorerColumns && exists(s.explorerColumns.datasetId) ? s.explorerColumns : null;
+  if (restore) {
+    const index = markerIndex(after, restore.id);
+    if (index >= 0) {
+      if (restore.selected && selected < 0) selected = index;
+      if (restore.hidden) hidden.add(index);
+      if (restore.plot && plot === 'none') plot = restore.plot;
+      if (restore.explorerDataset && !explorerDataset) {
+        explorerDataset = restore.explorerDataset;
+        explorerColumns = restore.explorerColumns ?? null;
+      }
+    }
+  }
+  return { selected, hidden, plot, explorerDataset, explorerColumns };
+}
+
+export function deleteSessionMarker(marker: number) {
+  const s = useSession.getState();
+  if (!s.data || s.busy) return false;
+  const command: SessionEditCommand = deleteMarkerCommand(s.data, marker);
+  const id = markerSourceId(s.data, marker),
+    reference = `marker:${id}`;
+  command.deletedMarkerView = {
+    id,
+    selected: s.selected === marker,
+    hidden: s.hidden.has(marker),
+    plot: s.plot === reference ? s.plot : undefined,
+    explorerDataset: s.explorerDataset === reference ? reference : undefined,
+    explorerColumns: s.explorerColumns?.datasetId === reference ? s.explorerColumns : null,
+  };
+  commitEdit(command);
+  return true;
+}
+
+export function commitEdit(command: SessionEditCommand) {
+  const state = useSession.getState();
+  const { data, originalData, busy, history } = state;
   if (!data || busy) return;
   const next = executeEdit(history, data, command);
   useSession.setState({
+    ...markerViewChanges(data, next.value, state),
     data: next.value,
+    markerMenu: null,
+    markerRename: null,
     eventEditor: null,
     history: next.history,
     dirty: next.history.revision !== next.history.cleanRevision,
@@ -322,12 +415,23 @@ export function redoEdit() {
   moveHistory('redo');
 }
 function moveHistory(direction: 'undo' | 'redo') {
-  const { data, history, busy } = useSession.getState();
+  const state = useSession.getState();
+  const { data, history, busy } = state;
   if (!data || busy) return;
   const next = travelHistory(history, data, direction);
   if (next.history === history) return;
   useSession.setState({
+    ...markerViewChanges(
+      data,
+      next.value,
+      state,
+      direction === 'undo'
+        ? (history.past.at(-1)?.command as SessionEditCommand | undefined)?.deletedMarkerView
+        : undefined,
+    ),
     data: next.value,
+    markerMenu: null,
+    markerRename: null,
     eventEditor: null,
     history: next.history,
     dirty: next.history.revision !== next.history.cleanRevision,
@@ -371,6 +475,7 @@ export function exportFile(target?: ExportFormat) {
           : sourceFile.name.replace(
               /\.(c3d|h5|hdf5)$/i,
               data.source.eventsEdited ||
+                data.source.markersEdited ||
                 data.source.labelsEdited ||
                 data.source.analogLabelsEdited ||
                 Object.keys(data.source.dataLabels ?? {}).length
@@ -396,7 +501,8 @@ export function exportFile(target?: ExportFormat) {
     start: data.source.crop?.start ?? 0,
     end: data.source.crop?.end ?? data.timeline.frameCount,
     events: data.source.eventsEdited ? data.events : undefined,
-    labels: data.source.labelsEdited ? data.markers.labels : undefined,
+    labels: data.source.labelsEdited || data.source.markersEdited ? data.markers.labels : undefined,
+    markerIndices: data.source.markersEdited ? data.markers.sourceIndices : undefined,
     analogLabels: data.source.analogLabelsEdited ? data.analogs.map((a) => a.name) : undefined,
     dataLabels: data.source.dataLabels,
     target,

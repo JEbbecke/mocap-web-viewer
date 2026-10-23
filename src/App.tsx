@@ -11,13 +11,13 @@ import {
   cancelImport,
   openFile,
   openExampleFile,
-  setFrame,
-  togglePlay,
   undoEdit,
   redoEdit,
   useSession,
 } from './state/session';
-import { handleHistoryShortcut } from './state/shortcuts';
+import { handleApplicationShortcut } from './state/shortcuts';
+import { closeMarkerInteractions } from './state/markerCommands';
+import { MarkerRenameDialog } from './components/MarkerRenameDialog';
 import { PanelToggle } from './components/PanelToggle';
 import { DataExplorer } from './components/DataExplorer';
 import { ExportControl } from './components/ExportControl';
@@ -99,33 +99,15 @@ export function App() {
     void trackEvent('visit');
   }, []);
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (handleHistoryShortcut(e)) return;
-      if (e.defaultPrevented || e.isComposing || e.ctrlKey || e.metaKey || e.altKey) return;
-      if (
-        (e.target as HTMLElement).closest('input,select,textarea,button,[contenteditable="true"]')
-      )
-        return;
-      const s = useSession.getState();
-      if (!s.data || s.busy) return;
-      if (e.code === 'Space') {
-        e.preventDefault();
-        togglePlay();
-      } else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
-        e.preventDefault();
-        useSession.setState({ playing: false });
-        setFrame(s.frame + (e.key === 'ArrowRight' ? 1 : -1));
-      } else if (e.key === 'Home') {
-        e.preventDefault();
-        setFrame(0);
-      } else if (e.key === 'End') {
-        e.preventDefault();
-        setFrame(s.data.timeline.frameCount - 1);
-      }
-    };
+    const onKey = (e: KeyboardEvent) =>
+      handleApplicationShortcut(e, {
+        viewerActive: !showExplorer,
+        closeExplorer: () => setShowExplorer(false),
+      });
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [showExplorer]);
+  useEffect(closeMarkerInteractions, [showExplorer]);
   const open = () => input.current?.click();
   return (
     <main
@@ -153,6 +135,7 @@ export function App() {
         if (file) openFile(file);
       }}
     >
+      <MarkerRenameDialog />
       <header>
         <div className="brand-mark">
           <svg viewBox="0 0 32 32" aria-hidden="true">
@@ -291,7 +274,6 @@ export function App() {
           {data && showExplorer && (
             <DataExplorer
               data={data}
-              onClose={() => setShowExplorer(false)}
               preferredWidth={explorerWidth}
               onWidthChange={setExplorerWidth}
             />

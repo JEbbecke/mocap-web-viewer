@@ -15,6 +15,9 @@ import { markerFrameAt, useScientificFrame } from './scientificScene';
 import { VideoExportBridge } from './VideoExportBridge';
 import type { VideoExportRequest } from './videoExport';
 import { CameraController } from './cameraController';
+import { markerScenePosition } from './markerPosition';
+import { openSelectedMarkerMenu, selectMarker } from '../state/markerCommands';
+import { MarkerContextMenu } from '../components/MarkerContextMenu';
 import {
   createPlatformCoordinateSystem,
   createRigidBodyCoordinateSystem,
@@ -36,11 +39,47 @@ function markerPickingBounds(data: MotionData) {
     size: Math.max(0.8, box.getSize(new THREE.Vector3()).length()),
   };
 }
-function Camera({ data }: { data: MotionData }) {
+function Camera({ data, active }: { data: MotionData; active: boolean }) {
   const { camera, invalidate, size } = useThree(),
     controls = useRef<OrbitControlsImpl>(null),
     controller = useRef<CameraController | null>(null),
     view = useSession((s) => s.camera);
+  useLayoutEffect(() => {
+    const ready = active && size.width > 0 && size.height > 0 && !!controls.current;
+    useSession.setState({ viewerReady: ready });
+    return () => {
+      useSession.setState({ viewerReady: false });
+    };
+  }, [active, camera, size.width, size.height]);
+  useEffect(() => {
+    const orbit = controls.current;
+    if (!orbit?.domElement) return;
+    // OrbitControls otherwise cancels every native context menu. Suspend only its
+    // contextmenu callback during dispatch; marker raycasting decides cancellation.
+    let enabled: boolean | undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const restore = () => {
+      if (enabled !== undefined) orbit.enabled = enabled;
+      enabled = undefined;
+      clearTimeout(timer);
+    };
+    const nativeMenu = () => {
+      restore();
+      enabled = orbit.enabled;
+      orbit.enabled = false;
+      // A microtask can run between native event listeners. Restore after bubbling,
+      // with a task fallback if another consumer stops native propagation.
+      timer = setTimeout(restore, 0);
+    };
+    const element = orbit.domElement;
+    element.addEventListener('contextmenu', nativeMenu, true);
+    window.addEventListener('contextmenu', restore);
+    return () => {
+      restore();
+      element.removeEventListener('contextmenu', nativeMenu, true);
+      window.removeEventListener('contextmenu', restore);
+    };
+  }, []);
   useLayoutEffect(() => {
     if (!controls.current || size.width <= 0 || size.height <= 0) return;
     if (!(camera instanceof THREE.PerspectiveCamera || camera instanceof THREE.OrthographicCamera))
@@ -82,12 +121,33 @@ function Markers({ data }: { data: MotionData }) {
       event.delta > 4 ||
       event.instanceId == null ||
       s.hidden.has(event.instanceId) ||
-      !data.markers.valid[s.frame * count + event.instanceId]
+      !s.display.markers ||
+      !markerScenePosition(data, s.frame, event.instanceId)
     )
       return;
     event.stopPropagation();
-    useSession.setState({ selected: event.instanceId, plot: 'marker' });
+    selectMarker(event.instanceId);
   };
+  const contextMenu = (event: ThreeEvent<MouseEvent>) => {
+    const s = useSession.getState();
+    if (
+      event.delta > 4 ||
+      event.instanceId == null ||
+      s.busy ||
+      !s.display.markers ||
+      s.hidden.has(event.instanceId) ||
+      !markerScenePosition(data, s.frame, event.instanceId)
+    )
+      return;
+    event.stopPropagation();
+    event.nativeEvent.preventDefault();
+    (event.nativeEvent.target as HTMLElement)
+      .closest<HTMLElement>('.viewport')
+      ?.focus({ preventScroll: true });
+    selectMarker(event.instanceId);
+    openSelectedMarkerMenu(event.nativeEvent.clientX, event.nativeEvent.clientY);
+  };
+  const point = useMemo(() => new THREE.Vector3(), []);
   useScientificFrame(data, (time, state, object) => {
     if (!ref.current) return;
     const mesh = object(ref.current);
@@ -95,15 +155,11 @@ function Markers({ data }: { data: MotionData }) {
     const { selected, hidden, display } = state;
     mesh.visible = display.markers;
     for (let i = 0; i < count; i++) {
-      const index = frame * count + i,
-        show = data.markers.valid[index] && !hidden.has(i),
+      const position = markerScenePosition(data, frame, i, point),
+        show = !!position && !hidden.has(i),
         r = show ? (i === selected ? 0.014 : 0.009) : 0;
       matrix.makeScale(r, r, r);
-      matrix.setPosition(
-        sceneLength(data.markers.positions[index * 3]) || 0,
-        sceneLength(data.markers.positions[index * 3 + 1]) || 0,
-        sceneLength(data.markers.positions[index * 3 + 2]) || 0,
-      );
+      matrix.setPosition(position ?? point.set(0, 0, 0));
       mesh.setMatrixAt(i, matrix);
       mesh.setColorAt(
         i,
@@ -125,6 +181,7 @@ function Markers({ data }: { data: MotionData }) {
       args={[undefined, undefined, count]}
       frustumCulled={false}
       onClick={click}
+      onContextMenu={contextMenu}
     >
       <sphereGeometry args={[1, 12, 8]} />
       <meshStandardMaterial roughness={0.55} />
@@ -217,16 +274,12 @@ function MarkerLabels({ data }: { data: MotionData }) {
     [group],
   );
   useScientificFrame(data, (time, state, resolve) => {
-    const { hidden, display } = state,
-      n = data.markers.labels.length;
+    const { hidden, display } = state;
     const frame = markerFrameAt(data, time);
     resolve(group).children.forEach((sprite, i) => {
-      const index = frame * n + i;
-      sprite.visible = display.markers && !hidden.has(i) && !!data.markers.valid[index];
-      sprite.position
-        .fromArray(data.markers.positions, index * 3)
-        .multiplyScalar(SCENE_UNITS_PER_MM)
-        .addScalar(0.014);
+      const position = markerScenePosition(data, frame, i, sprite.position);
+      sprite.visible = display.markers && !hidden.has(i) && !!position;
+      if (position) sprite.position.addScalar(0.014);
     });
   });
   return <primitive object={group} />;
@@ -513,7 +566,7 @@ export function Viewer3D({ data, active = true }: { data: MotionData | null; act
   const imageExport = useRef<ImageExportRequest | null>(null);
   const videoExport = useRef<VideoExportRequest | null>(null);
   return (
-    <div className="viewport">
+    <div className="viewport" tabIndex={0} aria-label="3D Viewer">
       <Canvas
         frameloop={active ? 'always' : 'never'}
         camera={{ position: [2, -3, 2], up: [0, 0, 1], near: 0.005, far: 2000, fov: 42 }}
@@ -533,7 +586,7 @@ export function Viewer3D({ data, active = true }: { data: MotionData | null; act
         <VideoExportBridge request={videoExport} data={data} />
         {data ? (
           <>
-            <Camera data={data} />
+            <Camera data={data} active={active} />
             <Markers data={data} />
             <Connections data={data} />
             <MarkerLabels data={data} />
@@ -544,6 +597,7 @@ export function Viewer3D({ data, active = true }: { data: MotionData | null; act
           <OrbitControls makeDefault />
         )}
       </Canvas>
+      {active && <MarkerContextMenu />}
       <div className="viewport-title">
         <span className="live-dot" /> LAB SPACE <span className="muted">XYZ · mm · Z up</span>
       </div>

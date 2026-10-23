@@ -31,6 +31,7 @@ export function LabelEditor({
     >
       <input
         autoFocus
+        onFocus={(event) => event.currentTarget.select()}
         aria-label={`New label for ${name}`}
         value={draft}
         aria-invalid={!!validation}

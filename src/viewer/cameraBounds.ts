@@ -2,6 +2,7 @@ import { Box3, Vector3 } from 'three';
 import type { MotionData } from '../motion/types';
 import { sample } from '../motion/math';
 import { sceneLength } from './scale';
+import { markerScenePosition } from './markerPosition';
 import {
   createRigidBodyCoordinateSystem,
   LOCAL_COORDINATE_AXIS_LENGTH_MM,
@@ -55,14 +56,8 @@ export function dataCameraBounds(data: MotionData, initialFrame = 0): Box3 | nul
   for (const frame of frames) {
     const points: Vector3[] = [];
     for (let marker = 0; marker < count; marker++) {
-      const index = frame * count + marker;
-      if (!data.markers.valid[index] || (data.markers.residuals?.[index] ?? 0) < 0) continue;
-      const point = new Vector3(
-        sceneLength(data.markers.positions[index * 3]),
-        sceneLength(data.markers.positions[index * 3 + 1]),
-        sceneLength(data.markers.positions[index * 3 + 2]),
-      );
-      if (finite(point)) points.push(point);
+      const point = markerScenePosition(data, frame, marker);
+      if (point) points.push(point);
     }
     if (points.length > best.length) best = points;
     if (points.length >= required && points.length) break;

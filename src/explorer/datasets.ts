@@ -1,5 +1,6 @@
 import { independentModelMessage, type ModelView } from '../motion/modelTiming';
 import type { MotionData, Series } from '../motion/types';
+import { markerSourceId } from '../motion/markerIdentity';
 import { eventSourceFrame } from '../motion/events';
 import { metadataText } from '../motion/metadata';
 import { fileInfoSections, type InfoRow } from '../components/fileInfoSections';
@@ -150,7 +151,7 @@ export function explorerDatasets(data: MotionData): Dataset[] {
               ).join(', '),
       ]);
     datasets.push({
-      id: `marker:${m}`,
+      id: `marker:${markerSourceId(data, m)}`,
       name,
       path: ['Trajectories'],
       count: data.timeline.frameCount,

@@ -19,7 +19,7 @@ The viewer screenshot is a historical capture whose footer displays `v0.4.0`; th
 3. Play, step or scrub the timeline. Select a signal in the signal inspector; use **Split plots** for two independent selections sharing the playback cursor.
 4. Click a timeline event to edit it, or use **Add Event** and the Events selector beside Crop at the right of the timeline. New events use the current playback position. Supported fields depend on the source format.
 5. In **Data**, double-click any marker, analog, force-platform, rigid-body, EMG, IK or ID label (or use its pencil) to rename it. Clicking an event seeks to its frame and opens the timeline event editor. Header **Undo / Redo** covers all label renames and committed event edits; text inputs keep native undo.
-6. Drag the timeline's start/end handles, preview the interval and choose **Crop**. Open **Export** next to **Open file** and choose **Export C3D** or **Export H5**. The source format is listed first; conversion to the other format shows **Will export**, **Changed or omitted** (changes first) and any blocking errors. **Restore original** discards crops, label renames and event edits; the source file remains unchanged. Cropping clears undo/redo history.
+6. Drag the timeline's start/end handles, preview the interval and choose **Crop**. Open **Export** next to **Open file** and choose **Export C3D** or **Export H5**. The source format is listed first; conversion to the other format shows **Will export**, **Changed or omitted** (changes first) and any blocking errors. **Restore original** discards crops, marker deletions, label renames and event edits; the source file remains unchanged. Cropping clears undo/redo history.
 7. Use the header's **Data Explorer** button to inspect numerical tables and metadata. **Data Viewer** switches back to the 3D workspace. Select cells, rows or columns to copy exact values, or copy the full selected dataset. Click headers to plot complete numeric time-series columns in the shared Signal Inspector; Ctrl/Cmd toggles columns, Shift selects a range, and Ctrl/Cmd+Shift adds a range. Viewer and Explorer selections persist separately when switching views.
 8. Open **Export media** beside the camera controls. **Export image…** creates a PNG at viewport, 1920 × 1080 or 3840 × 2160 resolution. **Export video…** creates a browser-local WebM of the current recorded sample span, including applied crops, at 30/60 fps and 1×, 0.5× or 0.25× speed. Both offer the optional JE Motion Lab watermark. Video depends on runtime encoder support; image export remains available. See [image export](docs/IMAGE_EXPORT.md) and [video export](docs/VIDEO_EXPORT.md).
 
@@ -41,7 +41,7 @@ Open the local URL printed by Vite, normally http://127.0.0.1:5173. On Windows P
 ## Features
 
 - [Data Explorer](docs/DATA_EXPLORER.md): a wide, read-only workspace for numerical marker, analog, force-platform, event, rigid-body, EMG and IK/ID inspection, structured metadata, dataset search and exact-value copying. Tables use bounded row windows; H5 model variables load local sample pages on demand.
-- Inline relabeling for all non-event Data-tab collections, including generated trajectory names, with validation and C3D/H5 round trips. Events use their existing editor. Undo/redo retains up to 100 label/event actions: **Ctrl/Cmd+Z**, **Ctrl/Cmd+Shift+Z**, or **Ctrl+Y** to redo on Windows. See [data labels and history](docs/DATA_EDITING.md) for identity, connections, format limits and lifecycle rules.
+- Inline relabeling for all non-event Data-tab collections, including generated trajectory names, with validation and C3D/H5 round trips. Events use their existing editor. Undo/redo retains up to 100 marker-deletion/label/event actions: **Ctrl/Cmd+Z**, **Ctrl/Cmd+Shift+Z**, or **Ctrl+Y** to redo on Windows. See [data labels and history](docs/DATA_EDITING.md) for identity, connections, format limits and lifecycle rules.
 - Data Viewer offers **Split plots** for two independent signal selections and zoom ranges, including IK/ID. Data Explorer reuses the same chart for selected numeric columns across the full underlying series. Both follow the playback cursor; clicking a plot scrubs the recording. Crop preview de-emphasizes samples outside the selected interval without changing data. On narrow windows, the split area scrolls horizontally.
 
 - Local `.c3d`, `.h5`, and `.hdf5` loading in a cancellable Web Worker.
@@ -61,6 +61,14 @@ Open the local URL printed by Vite, normally http://127.0.0.1:5173. On Windows P
 - Explicit scientific units: positions/residuals/COP in mm, force in N, moments in Nm. See the [unit policy](docs/UNITS.md) for import/export boundaries and rendering scale. Display arrow scale defaults to 1 mm/N; threshold defaults to 10 N and changes display only.
 
 Keyboard: **Space** play/pause, **← / →** step, **Home / End** first/last frame, when focus is outside a form control. The timeline shows ordinal frames starting at 1; Data Explorer also exposes source frame numbers and raw marker coordinates.
+
+Select a marker in the Viewer or Inspector and press **C** to make its current
+position the fixed camera orbit pivot. **Ctrl+Shift+U** renames it; right-clicking a
+3D marker opens the same actions. **F** fits/resets the scene and **Shift+F10** opens
+the selected marker menu. **Delete** removes its complete trajectory with Undo/Redo
+and C3D/H5 export support; the last marker and unsupported dependencies are protected.
+Text fields, menus, buttons, plots and resize handles retain their
+own keyboard behavior. See [marker controls](docs/DATA_EDITING.md#marker-interaction-and-keyboard-controls).
 
 ## Supported formats and limits
 
@@ -101,13 +109,13 @@ local File → Worker → C3DImporter / H5Importer → MotionData
 
 `MotionData` contains contiguous typed arrays with validity, original-rate signals, explicit units, independent geometry timing and provenance. Scene objects share one normalized render path; local-frame helpers require a declared pose or an established source corner convention. Workers transfer buffers back and terminate to release parser/WASM memory. The small timeline subscribes to frame changes; 3D buffers and plot cursor update imperatively.
 
-| Location                                           | Responsibility                                                            |
-| -------------------------------------------------- | ------------------------------------------------------------------------- |
-| `src/importers/`, `src/exporters/`, `src/workers/` | Format parsing, source-preserving export, semantic conversion and workers |
-| `src/motion/`                                      | Shared data model, timing, crop, label/event edits and undo/redo          |
-| `src/state/`, `src/playback/`                      | In-memory session and playback clock                                      |
-| `src/viewer/`, `src/plots/`, `src/components/`     | 3D scene, signal inspector, timeline and editing controls                 |
-| `tests/`, `scripts/`, `docs/`                      | Synthetic fixtures, validation tools and technical documentation          |
+| Location                                           | Responsibility                                                                    |
+| -------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `src/importers/`, `src/exporters/`, `src/workers/` | Format parsing, source-preserving export, semantic conversion and workers         |
+| `src/motion/`                                      | Shared data model, timing, crop, marker deletion, label/event edits and undo/redo |
+| `src/state/`, `src/playback/`                      | In-memory session and playback clock                                              |
+| `src/viewer/`, `src/plots/`, `src/components/`     | 3D scene, signal inspector, timeline and editing controls                         |
+| `tests/`, `scripts/`, `docs/`                      | Synthetic fixtures, validation tools and technical documentation                  |
 
 See [architecture](docs/ARCHITECTURE.md), [parser decisions](docs/PARSERS.md), and [validation](docs/VALIDATION.md).
 

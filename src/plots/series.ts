@@ -1,5 +1,6 @@
 import type uPlot from 'uplot';
 import type { MotionData, Series } from '../motion/types';
+import { markerIndex } from '../motion/markerIdentity';
 import { sampleTime } from '../explorer/datasets';
 
 export interface PlotData {
@@ -39,8 +40,7 @@ export function columnPlotData(
 
 export function plotSeries(data: MotionData, selection: string, marker: number): PlotData {
   if (selection.startsWith('marker:')) {
-    const index = Number(selection.split(':')[1]);
-    if (Number.isInteger(index) && index >= 0 && index < data.markers.labels.length) marker = index;
+    marker = markerIndex(data, Number(selection.split(':')[1]));
     selection = 'marker';
   }
   if (selection === 'marker') {
@@ -49,7 +49,7 @@ export function plotSeries(data: MotionData, selection: string, marker: number):
     const times = Array.from({ length: n }, (_, i) => i / data.timeline.rate);
     const components = [0, 1, 2].map((a) =>
       Array.from({ length: n }, (_, i) =>
-        data.markers.valid[i * m + marker]
+        marker >= 0 && marker < m && data.markers.valid[i * m + marker]
           ? data.markers.positions[(i * m + marker) * 3 + a]
           : null,
       ),

@@ -614,12 +614,10 @@ function ModelTable({ dataset, data }: { dataset: Dataset; data: MotionData }) {
 
 export function DataExplorer({
   data,
-  onClose,
   preferredWidth,
   onWidthChange,
 }: {
   data: MotionData;
-  onClose: () => void;
   preferredWidth: number | null;
   onWidthChange: (value: number | null) => void;
 }) {
@@ -647,16 +645,6 @@ export function DataExplorer({
     }));
   const matches = useMemo(() => filterDatasets(datasets, query), [datasets, query]);
   const dataset = datasets.find((d) => d.id === selected) ?? datasets[0];
-  useEffect(() => {
-    const key = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onClose();
-        event.preventDefault();
-      }
-    };
-    window.addEventListener('keydown', key);
-    return () => window.removeEventListener('keydown', key);
-  }, [onClose]);
   return (
     <section className="data-explorer" aria-label="Data Explorer">
       <div className="explorer-body" ref={body}>

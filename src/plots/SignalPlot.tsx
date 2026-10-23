@@ -6,6 +6,7 @@ import { SignalChart } from './SignalChart';
 import { useModelSeries } from './useModelSeries';
 import { ColumnSignals } from './ColumnSignals';
 import type { MotionData } from '../motion/types';
+import { markerIndex, markerSourceId } from '../motion/markerIdentity';
 import { independentModelMessage } from '../motion/modelTiming';
 import { selectPlot, useSession } from '../state/session';
 import { plotSeries } from './series';
@@ -139,7 +140,7 @@ function SignalPane({
     (Number.isInteger(Number(index)) &&
       Number(index) >= 0 &&
       (kind === 'marker'
-        ? Number(index) < data.markers.labels.length
+        ? markerIndex(data, Number(index)) >= 0
         : kind === 'analog'
           ? Number(index) < data.analogs.length
           : kind === 'signal'
@@ -148,7 +149,7 @@ function SignalPane({
               Number(index) < data.forcePlatforms.length &&
               (['force', 'moment', 'cop'].includes(field) ||
                 (field === 'freeMoment' && !!data.forcePlatforms[Number(index)].freeMoment))));
-  const selection = valid ? requestedSelection : 'marker';
+  const selection = valid ? requestedSelection : kind === 'marker' ? 'none' : 'marker';
   const graph = useMemo(() => {
     if (selection === 'none') return null;
     if (!model) return plotSeries(data, selection, selected);
@@ -177,10 +178,12 @@ function SignalPane({
           onChange={onSelection}
         >
           <option value="none">No signal</option>
-          <option value="marker">Marker · {data.markers.labels[selected]}</option>
+          <option value="marker">
+            Marker · {data.markers.labels[selected] ?? 'None selected'}
+          </option>
           <optgroup label="Markers">
             {data.markers.labels.map((label, i) => (
-              <option key={i} value={`marker:${i}`}>
+              <option key={markerSourceId(data, i)} value={`marker:${markerSourceId(data, i)}`}>
                 {label}
               </option>
             ))}

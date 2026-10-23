@@ -88,6 +88,10 @@ export interface MotionData {
     crop?: { start: number; end: number };
     eventsEdited?: boolean;
     labelsEdited?: boolean;
+    /** A source-column subset is active; serialize raw retained columns in this order. */
+    markersEdited?: boolean;
+    /** An undocumented source dependency prevents safe trajectory deletion. */
+    markerDeletionIssue?: string;
     analogLabelsEdited?: boolean;
     /** Small label overrides keyed by collection and stable in-memory index. */
     dataLabels?: Record<string, string>;
@@ -99,6 +103,8 @@ export interface MotionData {
   timeline: { rate: number; frameCount: number; firstFrame: number; duration: number };
   markers: {
     labels: string[];
+    /** Immutable original source-column identities; omitted means 0..count-1. */
+    sourceIndices?: number[];
     /** Imported labels anchor built-in preset links to stable source-column indices. */
     connectionLabels?: string[];
     positions: Float32Array | Float64Array; // [frame, marker, xyz]

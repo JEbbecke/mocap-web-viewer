@@ -7,6 +7,9 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import assert from 'node:assert/strict';
 import * as h5 from 'h5wasm/node';
+import { verifyMarkerInteractions } from './browser-marker-interactions.mjs';
+import { verifyMarkerDeletion } from './browser-marker-deletion.mjs';
+const browserChannel = process.env.BROWSER_CHANNEL || 'chrome';
 
 await mkdir('.local', { recursive: true });
 await writeFile(
@@ -17,7 +20,20 @@ import { Vector3 } from 'three';
 import { CameraController } from '../src/viewer/cameraController';
 import { dataCameraBounds } from '../src/viewer/cameraBounds';
 import { useSession } from '../src/state/session';
+import { markerScenePosition } from '../src/viewer/markerPosition';
 export * from '../src/state/session';
+export * from '../src/state/markerCommands';
+export function markerPoint(marker) {
+  const root = _roots.get(document.querySelector('.viewport canvas')).store.getState();
+  const s = useSession.getState();
+  const point = markerScenePosition(s.data, s.frame, marker);
+  if (!point) return null;
+  const world = point.toArray();
+  const ndc = point.project(root.camera);
+  const rect = root.gl.domElement.getBoundingClientRect();
+  return { world, x: rect.left + (ndc.x + 1) * rect.width / 2,
+    y: rect.top + (1 - ndc.y) * rect.height / 2 };
+}
 export const attempts = [];
 export function settleControls() {
   const { controls } = _roots.get(document.querySelector('.viewport canvas')).store.getState();
@@ -128,7 +144,7 @@ try {
     });
   });
   browser = await chromium.launch({
-    channel: process.env.BROWSER_CHANNEL || 'chrome',
+    channel: browserChannel,
     headless: true,
     args: ['--enable-unsafe-swiftshader'],
   });
@@ -257,6 +273,8 @@ try {
   framed(metres);
   for (const key of ['position', 'target'])
     mm[key].forEach((v, i) => assert(Math.abs(v - metres[key][i]) < 1e-6));
+  await verifyMarkerInteractions(page);
+  await verifyMarkerDeletion(page);
   for (const [i, file] of [
     'reference-data/example_data.h5',
     '.local/camera-small.c3d',
@@ -277,24 +295,28 @@ try {
     });
   }
   if (existsSync('reference-data/XSENSE_example.c3d')) {
-    const previous = await snapshot();
-    await load(
-      'reference-data/XSENSE_example.c3d',
-      /Nonstandard C3D rotation records are not supported/,
+    await load('reference-data/XSENSE_example.c3d');
+    framed(await snapshot());
+    assert.equal(
+      await page.evaluate(
+        () => window.cameraProbe.useSession.getState().data.source.partialImport?.omitted,
+      ),
+      'C3D_ROTATION',
     );
-    equalPose(previous, await snapshot(), 'unsupported reference import');
+    assert.match(await page.locator('body').innerText(), /rotation data was not imported/);
     results.push({
       fixture: 'XSENSE_example.c3d',
-      importRejected: 'existing nonstandard rotation-record restriction',
-      cameraPreserved: true,
+      partialImport: 'existing C3D_ROTATION limitation preserved',
+      warningVisible: true,
     });
   }
   assert.deepEqual(errors, [], 'no runtime errors');
   await writeFile(
-    '.local/camera-browser-report.json',
+    `.local/camera-browser-${browserChannel}-report.json`,
     JSON.stringify(
       {
         passed: true,
+        browser: browserChannel,
         errors,
         results,
         checked: [
@@ -310,6 +332,8 @@ try {
           'mm/m equivalence',
           'H5/C3D switching',
           'StrictMode once-only fit',
+          'marker focus/context menu/rename/shortcuts',
+          'full marker deletion/history/C3D/H5 round trips',
         ],
       },
       null,
@@ -319,6 +343,7 @@ try {
   console.log('Camera browser checks passed; screenshots/report in .local/.');
 } catch (error) {
   const page = browser?.contexts()[0]?.pages()[0];
+  if (page) await page.screenshot({ path: '.local/camera-browser-failure.png' }).catch(() => {});
   await writeFile(
     '.local/camera-browser-failure.json',
     JSON.stringify(

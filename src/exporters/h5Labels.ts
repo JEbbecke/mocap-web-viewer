@@ -1,6 +1,7 @@
 import type * as H5 from 'h5wasm';
 import type { MotionData } from '../motion/types';
 import { parseDataLabelKey } from '../motion/dataLabels';
+import { POINT_REFERENCE_LISTS } from '../importers/c3d/markerMetadata';
 
 /** Resolve UI indices against imported source identities, never mutable names. */
 export function h5LabelUpdates(
@@ -11,6 +12,20 @@ export function h5LabelUpdates(
   analogs?: string[],
 ) {
   const updates = new Map<string, Record<string, string | string[]>>();
+  if (markers && markers.length === motion.markers.labels.length) {
+    const raw = (input.get('Trajectories/Labeled') as H5.Group | null)?.attrs.Labels?.value;
+    const previous = Array.isArray(raw) ? (raw as string[]) : typeof raw === 'string' ? [raw] : [];
+    for (const name of POINT_REFERENCE_LISTS) {
+      const path = `/MetaData/C3DParameters/POINT/${name}`;
+      const values = (input.get(path) as H5.Group | null)?.attrs.value?.value;
+      if (!Array.isArray(values) || values.some((value) => typeof value !== 'string')) continue;
+      const next = (values as string[]).map((value) => {
+        const index = previous.indexOf(value);
+        return index >= 0 && previous.lastIndexOf(value) === index ? markers[index] : value;
+      });
+      if (next.some((value, i) => value !== values[i])) updates.set(path, { value: next });
+    }
+  }
   for (const [kind, labels] of [
     ['POINT', markers],
     ['ANALOG', analogs],
