@@ -6,6 +6,9 @@ import { validateEvent } from '../motion/events';
 import { booleanTemplate } from './h5BooleanTemplate';
 import { h5LabelUpdates } from './h5Labels';
 import { modelClock, modelTimeRow } from '../motion/modelTiming';
+import { validateMarkerSubset } from '../motion/markerIdentity';
+import { h5MarkerDeletionIssue } from '../importers/h5/markerMetadata';
+import { h5MarkerMetadata, selectMarkerAxis } from './h5Markers';
 
 type Library = typeof H5;
 type Writable = Parameters<H5.Group['create_dataset']>[0]['data'];
@@ -35,8 +38,14 @@ export function writeCroppedH5(
   labels?: string[],
   analogLabels?: string[],
   dataLabels?: Record<string, string>,
+  markerIndices?: number[],
 ) {
   const motion = sourceMotion ?? parseH5Tree(input, 'source.h5');
+  if (markerIndices) {
+    validateMarkerSubset(markerIndices, motion.markers.labels.length);
+    const issue = h5MarkerDeletionIssue(input, motion.markers.labels.length);
+    if (issue) throw new Error(issue);
+  }
   const storedLabels = (path: string) => {
     const value = (input.get(path) as H5.Group | null)?.attrs.Labels?.value;
     return Array.isArray(value) ? (value as string[]) : typeof value === 'string' ? [value] : [];
@@ -44,9 +53,15 @@ export function writeCroppedH5(
   const originalMarkers = storedLabels('Trajectories/Labeled');
   // Imported display labels may have been trimmed/disambiguated. Preserve every
   // untouched source label instead of rewriting unrelated aliases on a rename.
-  const exportedMarkers = labels?.map((label, i) =>
-    label === motion.markers.labels[i] ? originalMarkers[i] : label,
+  const activeLabels = labels ?? markerIndices?.map((index) => motion.markers.labels[index]);
+  const exportedMarkers = activeLabels?.map((label, i) =>
+    label === motion.markers.labels[markerIndices?.[i] ?? i]
+      ? originalMarkers[markerIndices?.[i] ?? i]
+      : label,
   );
+  const markerMetadata = markerIndices
+    ? h5MarkerMetadata(input, motion.markers.labels.length, markerIndices, exportedMarkers!)
+    : undefined;
   const originalAnalogs = storedLabels('Analog');
   const exportedAnalogs = analogLabels?.map((label, i) =>
     label === motion.analogs[i]?.name ? originalAnalogs[i] : label,
@@ -54,8 +69,9 @@ export function writeCroppedH5(
   const labelUpdates = h5LabelUpdates(input, motion, dataLabels, exportedMarkers, exportedAnalogs);
   const renamedMember = (name: string) => {
     const index = originalMarkers.indexOf(name);
+    if (markerIndices && index >= 0 && !markerIndices.includes(index)) return undefined;
     return exportedMarkers && index >= 0 && originalMarkers.lastIndexOf(name) === index
-      ? exportedMarkers[index]
+      ? exportedMarkers[markerIndices ? markerIndices.indexOf(index) : index]
       : name;
   };
   if (
@@ -67,9 +83,9 @@ export function writeCroppedH5(
       'H5 analog labels must match source columns and contain nonempty text without null characters.',
     );
   if (
-    labels &&
-    (labels.length !== motion.markers.labels.length ||
-      labels.some((label) => !label.trim() || label.includes('\0')))
+    activeLabels &&
+    (activeLabels.length !== (markerIndices?.length ?? motion.markers.labels.length) ||
+      activeLabels.some((label) => !label.trim() || label.includes('\0')))
   )
     throw new Error(
       'H5 marker labels must match source columns and contain nonempty text without null characters.',
@@ -106,6 +122,21 @@ export function writeCroppedH5(
   const slices = new Map<string, { axis: number; start: number; end: number }>();
   const clocks = new Map<string, Float64Array>();
   const updates = new Map<string, Record<string, number>>();
+  if (markerIndices) {
+    updates.set('/Trajectories/Labeled', { NumLabeled: markerIndices.length });
+    const bodies = input.get('RigidBodies');
+    if (bodies instanceof h5.Group)
+      for (const name of bodies.keys()) {
+        const body = bodies.get(name) as H5.Group;
+        const members = body.get('Markers');
+        if (members instanceof h5.Dataset && Array.isArray(members.value)) {
+          const length = (members.value as string[]).filter(
+            (member) => renamedMember(member) !== undefined,
+          ).length;
+          if ('NumMarkers' in body.attrs) updates.set(body.path, { NumMarkers: length });
+        }
+      }
+  }
   if (cropping)
     updates.set('/Trajectories', {
       NumFrames: end - start,
@@ -151,7 +182,7 @@ export function writeCroppedH5(
       changes.StartFrame = first + selection.start * step;
       if ('EndFrame' in group.attrs) changes.EndFrame = changes.StartFrame + (n - 1) * step;
     }
-    updates.set(group.path, changes);
+    updates.set(group.path, { ...updates.get(group.path), ...changes });
   };
   const primitive = (dtype: H5.Dataset['dtype'], path: string) => {
     if (typeof dtype !== 'string' || !/^(?:[<>|]?[bhiqefdBHIQ]|S\d*|A\d*)$/.test(dtype))
@@ -163,6 +194,20 @@ export function writeCroppedH5(
     const changes = updates.get(source.path) ?? {};
     const labelChanges = labelUpdates.get(source.path) ?? {};
     for (const [name, attr] of Object.entries(source.attrs)) {
+      const markerChange = markerMetadata?.attributes.get(`${source.path}@${name}`);
+      if (markerChange) {
+        const dtype = primitive(attr.dtype, `${source.path}@${name}`);
+        target.create_attribute(
+          name,
+          markerChange.value as Writable,
+          markerChange.shape,
+          Array.isArray(markerChange.value) &&
+            markerChange.value.some((value) => typeof value === 'string')
+            ? undefined
+            : dtype,
+        );
+        continue;
+      }
       if (attr.metadata.type === 8) {
         const seeded = target.attrs[name];
         if (!seeded || seeded.metadata.type !== 8)
@@ -182,7 +227,7 @@ export function writeCroppedH5(
             : undefined;
       if (editedLabels && name === 'Labels') {
         // Variable-length UTF-8 avoids truncating labels stored in fixed-width source attributes.
-        target.create_attribute(name, editedLabels, attr.shape);
+        target.create_attribute(name, editedLabels, [editedLabels.length]);
         continue;
       }
       const dtype = primitive(attr.dtype, `${source.path}@${name}`);
@@ -340,6 +385,7 @@ export function writeCroppedH5(
     copyAttrs(source, target);
     for (const name of source.keys()) {
       const entity = source.get(name)!;
+      if (entity instanceof h5.Group && markerMetadata?.skipGroups.has(entity.path)) continue;
       if (entity instanceof h5.Group)
         copy(entity, (target.get(name) as H5.Group | null) ?? target.create_group(name));
       else if (entity instanceof h5.Dataset) {
@@ -353,8 +399,25 @@ export function writeCroppedH5(
           shape[selection.axis] = selection.end - selection.start;
         } else data = entity.value;
         if (data === null) throw new Error(`${entity.path}: unreadable dataset.`);
-        if (labels && /^\/RigidBodies\/[^/]+\/Markers$/.test(entity.path) && Array.isArray(data))
-          data = data.map((name) => (typeof name === 'string' ? renamedMember(name) : name));
+        if (
+          markerIndices &&
+          entity.path.startsWith('/Trajectories/Labeled/') &&
+          entity.path !== '/Trajectories/Labeled/Time'
+        ) {
+          data = selectMarkerAxis(data as ArrayLike<unknown>, shape, 0, markerIndices);
+          shape[0] = markerIndices.length;
+        }
+        if (
+          (activeLabels || markerIndices) &&
+          /^\/RigidBodies\/[^/]+\/Markers$/.test(entity.path) &&
+          Array.isArray(data)
+        ) {
+          data = data.flatMap((name) => {
+            const value = typeof name === 'string' ? renamedMember(name) : name;
+            return value === undefined ? [] : [value];
+          });
+          shape[0] = data.length;
+        }
         if (
           entity.path.startsWith('/Events/') &&
           motion.source.eventSchema &&
@@ -533,6 +596,7 @@ export async function exportH5(
   labels?: string[],
   analogLabels?: string[],
   dataLabels?: Record<string, string>,
+  markerIndices?: number[],
 ): Promise<ArrayBuffer> {
   const h5 = await import('h5wasm');
   const { FS } = await h5.ready;
@@ -548,12 +612,25 @@ export async function exportH5(
       end === motion.timeline.frameCount &&
       events === undefined &&
       labels === undefined &&
+      markerIndices === undefined &&
       analogLabels === undefined &&
       !Object.keys(dataLabels ?? {}).length
     )
       return await file.arrayBuffer();
     output = createH5Output(h5, input, '/output.h5');
-    writeCroppedH5(h5, input, output, start, end, events, motion, labels, analogLabels, dataLabels);
+    writeCroppedH5(
+      h5,
+      input,
+      output,
+      start,
+      end,
+      events,
+      motion,
+      labels,
+      analogLabels,
+      dataLabels,
+      markerIndices,
+    );
     output.close();
     output = undefined;
     return (FS.readFile('/output.h5') as Uint8Array).slice().buffer;

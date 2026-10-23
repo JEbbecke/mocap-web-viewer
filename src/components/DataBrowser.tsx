@@ -10,6 +10,7 @@ import {
   useSession,
 } from '../state/session';
 import { LabelEditor } from './LabelEditor';
+import { selectMarker } from '../state/markerCommands';
 import { dataSections, filterDataSections } from './dataSections';
 
 function Section({
@@ -126,11 +127,10 @@ export function DataBrowser({
                 ) : (
                   <>
                     <button
+                      data-marker-select
                       title={entry.name}
                       onDoubleClick={() => beginRename(entry.id)}
-                      onClick={() =>
-                        useSession.setState({ selected: entry.marker, plot: 'marker' })
-                      }
+                      onClick={() => selectMarker(entry.marker!)}
                     >
                       <span
                         className={entry.name.startsWith('L') ? 'marker-dot left' : 'marker-dot'}

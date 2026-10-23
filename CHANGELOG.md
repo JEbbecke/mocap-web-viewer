@@ -8,6 +8,27 @@ branches describe the planned release until its tag is published.
 
 ## [Unreleased]
 
+### Added
+
+- Right-click a 3D trajectory marker for a keyboard-accessible Focus/Rename/Delete
+  menu. Selection is shared with the Trial Inspector; the menu stays inside the
+  browser viewport and closes on selection, file or workspace changes.
+- **C** centers the existing camera orbit on the selected marker's valid position
+  at the current frame, preserving orientation and distance. The pivot stays fixed
+  during playback. **F** invokes the existing scene reset/fit; **Shift+F10** opens
+  the selected marker's menu without a pointer.
+- **Ctrl+Shift+U** opens the shared label editor for the selected marker, with the
+  existing validation, undo/redo and export path. **Delete** or the menu's Delete
+  action removes the complete selected trajectory and quality metadata across all
+  frames as one undoable edit. Stable source identities preserve other marker
+  selections and plots. C3D/H5 exports compact source marker records, counts,
+  labels, descriptions and supported references while preserving remaining samples,
+  analogs, forces, events and clocks. The last trajectory and undocumented source
+  dependencies are protected with a specific disabled reason.
+- Unified keyboard dispatch preserves Space playback, arrow-key frame stepping,
+  Home/End and history bindings while protecting editable fields, menus, dialogs,
+  plots, Data Explorer navigation, buttons and keyboard panel resizing.
+
 ### Fixed
 
 - Timeline's recording end-time readout now uses the last sample timestamp,

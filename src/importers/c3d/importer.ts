@@ -7,6 +7,7 @@ import { extractPlatforms } from './forces';
 import { c3dRecordingInfo } from './metadata';
 import { omittedRotations } from './rotation';
 import { partialImportNotice } from '../../motion/importLimitations';
+import { c3dMarkerDeletionIssue } from './markerMetadata';
 
 export function parseC3D(buffer: ArrayBuffer, name: string): MotionData {
   const view = new DataView(buffer),
@@ -146,6 +147,9 @@ export function parseC3D(buffer: ArrayBuffer, name: string): MotionData {
     source: {
       format: 'C3D',
       originalPositionUnit: unit,
+      ...(c3dMarkerDeletionIssue(p, count)
+        ? { markerDeletionIssue: c3dMarkerDeletionIssue(p, count) }
+        : {}),
       ...(partialImport ? { partialImport } : {}),
       info: c3dRecordingInfo(p),
       metadata: {

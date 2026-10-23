@@ -7,6 +7,7 @@ import { writeC3DLabels } from './c3dLabels';
 import { parseDataLabelKey } from '../motion/dataLabels';
 import { labels as parameterLabels } from '../importers/c3d/parameters';
 import { editC3DParameters } from './c3dParameters';
+import { writeC3DMarkerSelection } from './c3dMarkers';
 
 /** Source-preserving crop serializer. Never requantizes scientific samples.
  * Raw values and POINT/ANALOG units stay together, even for m/cm sources that
@@ -19,9 +20,24 @@ export function exportC3D(
   labels?: string[],
   analogLabels?: string[],
   dataLabels?: Record<string, string>,
+  markerIndices?: number[],
 ): ArrayBuffer {
   // Validate the immutable source before any parameter writer can relocate it.
   const original = parseC3D(source, 'source.c3d');
+  if (markerIndices !== undefined) {
+    const supported = original.source.partialImport
+      ? exportC3D(source, 0, original.timeline.frameCount)
+      : source;
+    return exportC3D(
+      writeC3DMarkerSelection(supported, markerIndices, labels),
+      start,
+      end,
+      events,
+      undefined,
+      analogLabels,
+      dataLabels,
+    );
+  }
   if (original.source.partialImport) {
     // The importer verified that this block immediately follows all supported
     // records, with only zero alignment padding in between. Keep their raw bytes

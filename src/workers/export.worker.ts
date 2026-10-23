@@ -15,12 +15,24 @@ self.onmessage = async (
     labels?: string[];
     analogLabels?: string[];
     dataLabels?: Record<string, string>;
+    markerIndices?: number[];
     target?: ExportFormat;
     data?: MotionData;
   }>,
 ) => {
   try {
-    const { file, start, end, events, labels, analogLabels, dataLabels, target, data } = event.data;
+    const {
+      file,
+      start,
+      end,
+      events,
+      labels,
+      analogLabels,
+      dataLabels,
+      markerIndices,
+      target,
+      data,
+    } = event.data;
     const sourceFormat = /\.c3d$/i.test(file.name) ? 'C3D' : 'H5';
     if (target && target !== sourceFormat) {
       if (!data || data.source.format !== sourceFormat)
@@ -31,8 +43,17 @@ self.onmessage = async (
     }
     const buffer =
       sourceFormat === 'C3D'
-        ? exportC3D(await file.arrayBuffer(), start, end, events, labels, analogLabels, dataLabels)
-        : await exportH5(file, start, end, events, labels, analogLabels, dataLabels);
+        ? exportC3D(
+            await file.arrayBuffer(),
+            start,
+            end,
+            events,
+            labels,
+            analogLabels,
+            dataLabels,
+            markerIndices,
+          )
+        : await exportH5(file, start, end, events, labels, analogLabels, dataLabels, markerIndices);
     self.postMessage({ buffer }, { transfer: [buffer] });
   } catch (error) {
     self.postMessage({ error: error instanceof Error ? error.message : 'Export failed.' });

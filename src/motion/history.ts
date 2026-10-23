@@ -1,4 +1,5 @@
-/** Commands retain small edit payloads, never a recording or scientific arrays. */
+/** Commands retain edit payloads, never a full recording. Trajectory deletion
+ * retains the removed samples only; label/event commands retain small metadata. */
 export interface EditCommand<T> {
   readonly description: string;
   apply(value: T): T;

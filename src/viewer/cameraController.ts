@@ -1,6 +1,6 @@
 import { Box3, OrthographicCamera, PerspectiveCamera, Vector3 } from 'three';
 import type { OrbitControls } from 'three-stdlib';
-import type { MotionData } from '../motion/types';
+import type { MotionData, Vec3 } from '../motion/types';
 import type { CameraPreset } from '../state/session';
 import { dataCameraBounds } from './cameraBounds';
 
@@ -162,10 +162,11 @@ export class CameraController {
   applyRequest(
     data: MotionData,
     frame: number,
-    request: { preset: CameraPreset; revision: number },
+    request: { preset: CameraPreset; revision: number; point?: Vec3 },
   ): boolean {
     if (request.revision <= this.handledRevision) return false;
     this.handledRevision = request.revision;
+    if (request.point) return this.focusCameraOnPoint(new Vector3(...request.point));
     return this.resetCameraView(data, frame, request.preset);
   }
 }

@@ -1,12 +1,13 @@
 import type { MotionData } from './types';
 import type { EditCommand } from './history';
 import { validateLabel } from './labelValidation';
+import { markerIndex, markerSourceId } from './markerIdentity';
 
 export function validateMarkerLabel(data: MotionData, marker: number, input: string) {
   return validateLabel(data.markers.labels, marker, input, data.source.format, 'marker');
 }
 
-/** Marker index is the stable source-column identity: edits/crops never reorder columns. */
+/** Capture immutable source identity; the current array position may change on deletion. */
 export function renameMarkerCommand(
   data: MotionData,
   marker: number,
@@ -14,6 +15,7 @@ export function renameMarkerCommand(
 ): EditCommand<MotionData> | null {
   const label = validateMarkerLabel(data, marker, input);
   const oldLabel = data.markers.labels[marker];
+  const id = markerSourceId(data, marker);
   if (label === oldLabel) return null;
   const editedBefore = data.source.labelsEdited;
   const memberships = data.rigidBodies?.map((body) =>
@@ -21,7 +23,9 @@ export function renameMarkerCommand(
   );
   const change = (current: MotionData, value: string, edited: boolean | undefined): MotionData => {
     const labels = [...current.markers.labels];
-    labels[marker] = value;
+    const index = markerIndex(current, id);
+    if (index < 0) throw new Error('Marker no longer exists.');
+    labels[index] = value;
     return {
       ...current,
       source: { ...current.source, labelsEdited: edited },

@@ -2040,6 +2040,60 @@ footer .privacy-dot {
   width: 28px;
   padding: 4px;
 }
+.marker-context-menu {
+  position: fixed;
+  right: auto;
+  z-index: 1000;
+  width: 290px;
+  max-width: calc(100vw - 16px);
+  max-height: calc(100vh - 16px);
+  overflow: auto;
+}
+.marker-menu-heading {
+  padding: 7px 9px 10px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid #334252;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #becdda;
+}
+.marker-context-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-start;
+}
+.marker-context-menu button span {
+  font-size: inherit;
+  color: inherit;
+}
+.marker-context-menu kbd {
+  margin-left: auto;
+  font: inherit;
+  font-size: 11px;
+  color: #899cac;
+}
+.marker-menu-icon {
+  width: 14px;
+  text-align: center;
+}
+.marker-context-menu .marker-menu-delete {
+  color: #efb1a9;
+}
+.marker-rename-dialog {
+  width: min(480px, calc(100vw - 32px));
+}
+.marker-rename-dialog .label-rename {
+  flex-wrap: wrap;
+}
+.marker-rename-dialog input {
+  min-width: 120px;
+}
+.viewport:focus-visible {
+  outline: 2px solid #7edec8;
+  outline-offset: -2px;
+}
 .label-rename {
   display: flex;
   flex: 1;
