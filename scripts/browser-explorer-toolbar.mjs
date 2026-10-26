@@ -141,6 +141,12 @@ export async function verifyExplorerToolbar(page) {
   await page.keyboard.press('Enter');
   assert.equal(await menu.count(), 0);
   assert(await focused(trigger));
+  // The menu closes before the asynchronous clipboard write finishes. Wait for
+  // enabled actions before checking ArrowUp's last-item focus; busy menus are
+  // deliberately focusable containers with no enabled items (covered below).
+  await page.waitForFunction(
+    () => document.querySelector('.explorer-copy-trigger')?.getAttribute('aria-busy') === 'false',
+  );
   await trigger.press('ArrowUp');
   assert(await focused(item(names[3])));
   await page.keyboard.press('Escape');
@@ -189,8 +195,11 @@ export async function verifyExplorerToolbar(page) {
     for (const name of names)
       assert(await item(name).isDisabled(), 'copy scopes are disabled while copying');
     await page.keyboard.press('ArrowDown');
+    assert(await focused(menu), 'busy menu retains focus without selecting disabled actions');
     await page.keyboard.press('Escape');
     assert(await focused(trigger), 'busy menu retains an accessible dismissal target');
+    await trigger.press('ArrowDown');
+    assert(await focused(menu), 'a pending copy can be reopened without enabling actions');
   } finally {
     await page.evaluate(() => {
       window.finishPendingCopy?.();
@@ -202,6 +211,13 @@ export async function verifyExplorerToolbar(page) {
   await page.waitForFunction(
     () => document.querySelector('.explorer-copy-trigger')?.getAttribute('aria-busy') === 'false',
   );
+  await page.keyboard.press('End');
+  assert(
+    await focused(item(names[3])),
+    'an open busy menu becomes navigable when copying finishes',
+  );
+  await page.keyboard.press('Escape');
+  assert(await focused(trigger), 'Escape restores the Copy trigger after a pending copy');
 
   const frame = page.getByRole('slider', { name: 'Frame', exact: true });
   const originalFrame = await frame.getAttribute('aria-valuenow');

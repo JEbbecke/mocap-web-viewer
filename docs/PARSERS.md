@@ -111,8 +111,10 @@ and sampling-rate metadata are preserved. Supported-subset C3D/H5 exports also
 retain the declared rate, so the supplied files' incorrect physical timing remains
 until corrected upstream. The application does not claim to repair that timing
 error. `QTM_Example.c3d` is a separate standard Qualisys recording at 200 Hz;
-both `XSENSE_example.c3d` and `XSENSE_example_2.c3d` are used for local Xsens
-validation without adding their bytes to Git or deployment assets.
+`XSENSE_example.c3d` and `XSENSE_example_2.c3d` supplied the historical local Xsens
+validation. Current optional checks run only when those ignored inputs are
+available and must otherwise be reported as skipped. No reference bytes enter
+Git or deployment assets; portable Rotation regressions use a synthetic encoder.
 
 ## HDF5
 

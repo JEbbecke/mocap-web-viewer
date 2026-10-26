@@ -87,7 +87,7 @@ other browser/OS combinations require manual verification.
 ## Data identity and history
 
 The new name appears immediately in search, selection, inspector, 3D labels and
-plot selectors. Visibility and both plot selections retain their marker indices.
+plot selectors. Visibility and both plot selections retain their marker identities.
 Immutable source-column identities survive renaming, deletion and cropping. Current
 array positions can shift after deletion; selection and visibility are reconciled
 in the same edit transaction, while explicit plot/Explorer IDs use source identities.

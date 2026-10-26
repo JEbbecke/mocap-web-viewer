@@ -10,7 +10,7 @@ raw-tree omission notice. Accepted surveyed-corner deviations and omitted H5
 event-frame provenance/icons/flags do not get separate warnings. The introductory
 format-differences notice and this mapping still apply. Errors disable exporting.
 Review the report and choose **Export C3D/H5**, or use Cancel/Escape to leave the
-recording unchanged. Export is disabled while a crop selection is awaiting Crop
+recording unchanged. Export is disabled while a crop selection is awaiting Apply crop
 or Cancel crop, and while an import/export is running.
 
 Partial C3D imports use the same preview for both C3D and H5 output. **Changed or
