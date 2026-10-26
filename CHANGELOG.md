@@ -52,6 +52,10 @@ branches describe the planned release until its tag is published.
 
 ### Changed
 
+- Decluttered Data Explorer selection guidance and moved dataset details into an
+  anchored, keyboard-accessible popover that preserves table layout and scrolling.
+  Empty Signal Inspectors now use a compact layout while retaining preferred plot
+  heights and explicit Collapse/Expand state.
 - Refined desktop workspace switcher spacing and height beside the header branding.
 - Motion capture loads automatically fit the 3D camera to a representative valid
   pose for useful initial framing. Reset and view presets share a reusable camera

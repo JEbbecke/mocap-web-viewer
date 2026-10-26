@@ -105,7 +105,7 @@ async function verifyHeaderPlots(page, table) {
     0,
     'categorical validity is selectable but not plotted',
   );
-  await plot.getByText('Select a numeric signal column to plot.').waitFor();
+  await plot.getByText('Select a numeric column to plot.').waitFor();
   await header('X [mm]').focus();
   await header('X [mm]').press('Enter');
   await header('Z [mm]').focus();
