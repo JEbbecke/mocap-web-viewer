@@ -96,13 +96,14 @@
   gap: 12px;
   flex: none;
   margin-bottom: 6px;
+  flex-wrap: wrap;
 }
 .explorer-dataset-heading {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 10px;
-  flex: 1;
+  flex: 1 1 160px;
   min-width: 0;
 }
 .explorer-dataset-heading > div {
@@ -110,6 +111,7 @@
   align-items: baseline;
   gap: 8px;
   min-width: 0;
+  flex-wrap: wrap;
 }
 .explorer-dataset-heading p {
   color: #8eb5c5;
@@ -122,9 +124,46 @@
   font-weight: 500;
   overflow-wrap: anywhere;
 }
-.explorer-dataset-heading label {
+.explorer-dataset-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-left: auto;
+  max-width: 100%;
+}
+.explorer-dataset-controls label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   white-space: nowrap;
   font-size: 11px;
+}
+.explorer-copy-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.explorer-copy-trigger svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+}
+.explorer-copy-menu {
+  position: fixed;
+  right: auto;
+  z-index: 1000;
+  width: 230px;
+  min-width: 0;
+  max-width: calc(100vw - 16px);
+  overflow: auto;
+  font-size: 11px;
+}
+.explorer-copy-menu button {
+  white-space: normal;
 }
 .explorer-details-trigger {
   display: inline-flex;

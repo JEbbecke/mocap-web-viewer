@@ -109,11 +109,18 @@ export async function verifyInspectorTabs(page) {
         await page.locator('header').evaluate((el) => el.getBoundingClientRect().height),
         width <= 760 ? 65 : 76,
       );
-      if (width >= 1024)
+      if (width >= 1024) {
+        // React's media-query update follows the browser viewport resize.
+        await page.waitForFunction(
+          (expected) =>
+            document.querySelector('.inspector')?.getBoundingClientRect().width === expected,
+          width <= 1100 ? 270 : 310,
+        );
         assert.equal(
           await page.locator('.inspector').evaluate((el) => el.getBoundingClientRect().width),
           width <= 1100 ? 270 : 310,
         );
+      }
       await page
         .locator('.inspector')
         .screenshot({ path: `.local/inspector-display-${width}.png` });

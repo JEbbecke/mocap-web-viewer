@@ -4,11 +4,13 @@ import { spawn } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
+import { verifyExplorerToolbar } from './browser-explorer-toolbar.mjs';
 
 /** Live geometry and interaction checks using the unchanged bundled demo H5. */
 export async function verifyExplorerPolish(page) {
   const original = page.viewportSize();
   await page.setViewportSize({ width: 1920, height: 1080 });
+  await verifyExplorerToolbar(page);
   const explorer = page.getByRole('region', { name: 'Data Explorer', exact: true });
   const search = explorer.getByLabel('Search explorer datasets');
   const table = explorer.locator('table');
@@ -189,7 +191,7 @@ export async function verifyExplorerPolish(page) {
     assert.equal(await popup.count(), 0);
     assert(
       await explorer
-        .getByRole('button', { name: 'Copy selected cell(s)', exact: true })
+        .getByRole('button', { name: 'Copy', exact: true })
         .evaluate((el) => document.activeElement === el),
       'Tab resumes toolbar order',
     );

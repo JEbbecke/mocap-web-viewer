@@ -34,6 +34,7 @@ import {
 } from '../explorer/selection';
 import './dataExplorer.css';
 import { DatasetDetails } from './DatasetDetails';
+import { ExplorerCopyMenu } from './ExplorerCopyMenu';
 
 function Navigation({
   datasets,
@@ -198,41 +199,51 @@ function NumericalTable({
         <span className="explorer-selection-count">
           {count ? `${count.toLocaleString()} selected` : ''}
         </span>
-        <button
-          disabled={!selected || copying}
-          onClick={() => bounded && copy(() => copySelectedCells(dataset, bounded))}
-        >
-          Copy selected cell(s)
-        </button>
-        <button
-          disabled={!selected || copying}
-          title="Copy every row in all columns containing selected cells, including other model pages."
-          onClick={() =>
-            bounded &&
-            copy(() =>
-              prepareTableCopy
-                ? prepareTableCopy(selectedColumns(bounded))
-                : copySelectedColumns(dataset, bounded),
-            )
-          }
-        >
-          Copy selected column(s)
-        </button>
-        <button
-          disabled={!selected || copying}
-          onClick={() => bounded && copy(() => copySelectedRows(dataset, bounded))}
-        >
-          Copy selected row(s)
-        </button>
-        <button
-          disabled={!dataset.count || copying}
-          title="Copy every row and column in this dataset, including rows outside the viewport and other model pages."
-          onClick={() =>
-            copy(() => (prepareTableCopy ? prepareTableCopy() : copyFullTable(dataset)))
-          }
-        >
-          Copy full table
-        </button>
+        <ExplorerCopyMenu busy={copying}>
+          <button
+            role="menuitem"
+            tabIndex={-1}
+            disabled={!selected || copying}
+            onClick={() => bounded && copy(() => copySelectedCells(dataset, bounded))}
+          >
+            Copy selected cell(s)
+          </button>
+          <button
+            role="menuitem"
+            tabIndex={-1}
+            disabled={!selected || copying}
+            title="Copy every row in all columns containing selected cells, including other model pages."
+            onClick={() =>
+              bounded &&
+              copy(() =>
+                prepareTableCopy
+                  ? prepareTableCopy(selectedColumns(bounded))
+                  : copySelectedColumns(dataset, bounded),
+              )
+            }
+          >
+            Copy selected column(s)
+          </button>
+          <button
+            role="menuitem"
+            tabIndex={-1}
+            disabled={!selected || copying}
+            onClick={() => bounded && copy(() => copySelectedRows(dataset, bounded))}
+          >
+            Copy selected row(s)
+          </button>
+          <button
+            role="menuitem"
+            tabIndex={-1}
+            disabled={!dataset.count || copying}
+            title="Copy every row and column in this dataset, including rows outside the viewport and other model pages."
+            onClick={() =>
+              copy(() => (prepareTableCopy ? prepareTableCopy() : copyFullTable(dataset)))
+            }
+          >
+            Copy full table
+          </button>
+        </ExplorerCopyMenu>
         {dataset.seek && (
           <button disabled={!selected} onClick={seek}>
             Seek to event
@@ -691,6 +702,8 @@ export function DataExplorer({
                     <p>{dataset.path.join(' / ')}</p>
                     <h3>{dataset.name}</h3>
                   </div>
+                </div>
+                <div className="explorer-dataset-controls">
                   {(dataset.current || dataset.model) && (
                     <label>
                       <input
@@ -702,8 +715,8 @@ export function DataExplorer({
                       Follow playback
                     </label>
                   )}
+                  {!!dataset.facts.length && <DatasetDetails key={dataset.id} dataset={dataset} />}
                 </div>
-                {!!dataset.facts.length && <DatasetDetails key={dataset.id} dataset={dataset} />}
               </div>
               {dataset.model ? (
                 <ModelTable key={dataset.id} dataset={dataset} data={data} />

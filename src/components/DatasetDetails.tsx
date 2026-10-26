@@ -54,7 +54,7 @@ export function DatasetDetails({ dataset }: { dataset: Dataset }) {
     const observer = new ResizeObserver(place);
     observer.observe(panel);
     observer.observe(anchor);
-    observer.observe(anchor.parentElement!);
+    observer.observe(anchor.closest('.explorer-dataset-info')!);
     window.addEventListener('resize', place);
     window.addEventListener('scroll', place, true);
     document.addEventListener('pointerdown', outside, true);
