@@ -50,6 +50,7 @@ header {
 .workspace-nav {
   display: flex;
   flex: none;
+  margin-left: 8px;
   gap: 2px;
   padding: 3px;
   border: 1px solid #334252;
@@ -61,7 +62,7 @@ header {
   align-items: center;
   justify-content: center;
   gap: 7px;
-  padding: 7px 10px;
+  padding: 6px 10px;
   border-color: transparent;
   background: transparent;
   color: #b3c3d1;
@@ -1901,8 +1902,12 @@ footer .privacy-dot {
     gap: 10px;
     padding-inline: 16px;
   }
+  .workspace-nav {
+    margin-left: 0;
+  }
   .workspace-nav button {
     gap: 5px;
+    padding-block: 7px;
     padding-inline: 7px;
     font-size: 12px;
   }

@@ -52,6 +52,7 @@ branches describe the planned release until its tag is published.
 
 ### Changed
 
+- Refined desktop workspace switcher spacing and height beside the header branding.
 - Motion capture loads automatically fit the 3D camera to a representative valid
   pose for useful initial framing. Reset and view presets share a reusable camera
   controller with world-point targeting for future marker focusing; ordinary
