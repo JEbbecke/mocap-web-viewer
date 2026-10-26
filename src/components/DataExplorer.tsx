@@ -33,6 +33,8 @@ import {
   type CellSelection,
 } from '../explorer/selection';
 import './dataExplorer.css';
+import { DatasetDetails } from './DatasetDetails';
+import { ExplorerCopyMenu } from './ExplorerCopyMenu';
 
 function Navigation({
   datasets,
@@ -194,53 +196,63 @@ function NumericalTable({
     <>
       <div className="explorer-table-tools">
         <span>{dataset.count.toLocaleString()} rows · read-only</span>
-        <button
-          disabled={!selected || copying}
-          onClick={() => bounded && copy(() => copySelectedCells(dataset, bounded))}
-        >
-          Copy selected cell(s)
-        </button>
-        <button
-          disabled={!selected || copying}
-          title="Copy every row in all columns containing selected cells, including other model pages."
-          onClick={() =>
-            bounded &&
-            copy(() =>
-              prepareTableCopy
-                ? prepareTableCopy(selectedColumns(bounded))
-                : copySelectedColumns(dataset, bounded),
-            )
-          }
-        >
-          Copy selected column(s)
-        </button>
-        <button
-          disabled={!selected || copying}
-          onClick={() => bounded && copy(() => copySelectedRows(dataset, bounded))}
-        >
-          Copy selected row(s)
-        </button>
-        <button
-          disabled={!dataset.count || copying}
-          title="Copy every row and column in this dataset, including rows outside the viewport and other model pages."
-          onClick={() =>
-            copy(() => (prepareTableCopy ? prepareTableCopy() : copyFullTable(dataset)))
-          }
-        >
-          Copy full table
-        </button>
+        <span className="explorer-selection-count">
+          {count ? `${count.toLocaleString()} selected` : ''}
+        </span>
+        <ExplorerCopyMenu busy={copying}>
+          <button
+            role="menuitem"
+            tabIndex={-1}
+            disabled={!selected || copying}
+            onClick={() => bounded && copy(() => copySelectedCells(dataset, bounded))}
+          >
+            Copy selected cell(s)
+          </button>
+          <button
+            role="menuitem"
+            tabIndex={-1}
+            disabled={!selected || copying}
+            title="Copy every row in all columns containing selected cells, including other model pages."
+            onClick={() =>
+              bounded &&
+              copy(() =>
+                prepareTableCopy
+                  ? prepareTableCopy(selectedColumns(bounded))
+                  : copySelectedColumns(dataset, bounded),
+              )
+            }
+          >
+            Copy selected column(s)
+          </button>
+          <button
+            role="menuitem"
+            tabIndex={-1}
+            disabled={!selected || copying}
+            onClick={() => bounded && copy(() => copySelectedRows(dataset, bounded))}
+          >
+            Copy selected row(s)
+          </button>
+          <button
+            role="menuitem"
+            tabIndex={-1}
+            disabled={!dataset.count || copying}
+            title="Copy every row and column in this dataset, including rows outside the viewport and other model pages."
+            onClick={() =>
+              copy(() => (prepareTableCopy ? prepareTableCopy() : copyFullTable(dataset)))
+            }
+          >
+            Copy full table
+          </button>
+        </ExplorerCopyMenu>
         {dataset.seek && (
           <button disabled={!selected} onClick={seek}>
             Seek to event
           </button>
         )}
-        <span role="status">{status}</span>
+        <span role="status" title={status}>
+          {status}
+        </span>
       </div>
-      <p className="explorer-selection-help">
-        Click a cell · Shift-click a range · Ctrl/Cmd-click to add or remove cells · Click a header
-        to select columns (Ctrl/Cmd toggles, Shift selects a range)
-        {count ? ` · ${count.toLocaleString()} selected` : ''}
-      </p>
       <div
         className="explorer-scroll"
         ref={viewport}
@@ -431,10 +443,7 @@ function NumericalTable({
             <span>{exactCell(dataset.cell(selected.row, selected.column))}</span>
           </>
         ) : (
-          <span>
-            Select a cell to inspect its exact value. Text selection and Ctrl/Cmd+C are also
-            available.
-          </span>
+          <span className="muted">No cell selected.</span>
         )}
       </div>
     </>
@@ -693,6 +702,8 @@ export function DataExplorer({
                     <p>{dataset.path.join(' / ')}</p>
                     <h3>{dataset.name}</h3>
                   </div>
+                </div>
+                <div className="explorer-dataset-controls">
                   {(dataset.current || dataset.model) && (
                     <label>
                       <input
@@ -704,20 +715,8 @@ export function DataExplorer({
                       Follow playback
                     </label>
                   )}
+                  {!!dataset.facts.length && <DatasetDetails key={dataset.id} dataset={dataset} />}
                 </div>
-                {!!dataset.facts.length && (
-                  <details className="explorer-facts">
-                    <summary>Units, clock and dataset details</summary>
-                    <dl>
-                      {dataset.facts.map(([key, value]) => (
-                        <div key={key}>
-                          <dt>{key}</dt>
-                          <dd>{value}</dd>
-                        </div>
-                      ))}
-                    </dl>
-                  </details>
-                )}
               </div>
               {dataset.model ? (
                 <ModelTable key={dataset.id} dataset={dataset} data={data} />

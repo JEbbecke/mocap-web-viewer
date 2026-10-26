@@ -19,12 +19,14 @@ export function SignalPlot({
   onToggle,
   explorer = false,
   height,
+  empty = false,
 }: {
   data: MotionData;
   collapsed: boolean;
   onToggle: () => void;
   explorer?: boolean;
   height?: number;
+  empty?: boolean;
 }) {
   const [split, setSplit] = useState(false);
   const [splitRatio, setSplitRatio] = useState(0.5);
@@ -37,14 +39,16 @@ export function SignalPlot({
   return (
     <section
       id="signal-panel"
-      className={`plot-panel ${collapsed ? 'is-collapsed' : ''}`}
+      className={`plot-panel ${collapsed ? 'is-collapsed' : ''}${empty ? ' is-empty' : ''}`}
       style={!collapsed && height !== undefined ? { height, flexBasis: height } : undefined}
     >
       <div className="panel-heading">
         <span>SIGNAL INSPECTOR</span>
-        <span className="muted">
-          Scroll or drag to zoom · Click to scrub · Double-click to reset
-        </span>
+        {!explorer && (
+          <span className="muted">
+            Scroll or drag to zoom · Click to scrub · Double-click to reset
+          </span>
+        )}
         <div className="plot-view-controls">
           {!explorer && (
             <button

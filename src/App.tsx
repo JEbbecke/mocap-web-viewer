@@ -6,6 +6,7 @@ import { Viewer3D } from './viewer/Viewer3D';
 import { Inspector } from './components/Inspector';
 import { Timeline } from './components/Timeline';
 import { SignalPlot } from './plots/SignalPlot';
+import { useExplorerPlotSelection } from './plots/explorerPlotSelection';
 import { startClock } from './playback/clock';
 import {
   cancelImport,
@@ -68,6 +69,11 @@ export function App() {
     explorer: number | null;
   }>({ visualizer: null, explorer: null });
   const activeWorkspace = data && showExplorer ? 'explorer' : 'visualizer';
+  const { columns: explorerPlotColumns } = useExplorerPlotSelection(data);
+  const explorerEmpty = !!data && showExplorer && !explorerPlotColumns.length;
+  // Empty layout has its own temporary size; it never writes the expanded preference.
+  const [emptyPlotHeight, setEmptyPlotHeight] = useState<number | null>(null);
+  useEffect(() => setEmptyPlotHeight(null), [explorerEmpty, data]);
   // Reserve the stable Timeline controls. Event Editor borrows Viewer/table space;
   // very short windows scroll rather than shrinking the preferred plot for editing.
   const plotBounds = panelBounds(
@@ -82,6 +88,9 @@ export function App() {
     plotBounds.min,
     plotBounds.max,
   );
+  const displayedPlotHeight = explorerEmpty
+    ? clampPanel(emptyPlotHeight ?? 72, 72, plotBounds.max)
+    : plotHeight;
   const changePlotHeight = (value: number | null) =>
     setPlotHeights((previous) => ({ ...previous, [activeWorkspace]: value }));
   const inspectorBounds = panelBounds(260, Math.min(560, workspaceSize.width - 400));
@@ -323,18 +332,22 @@ export function App() {
                   axis="vertical"
                   label="Signal Inspector height"
                   controls="signal-panel"
-                  value={plotHeight}
-                  {...plotBounds}
+                  value={displayedPlotHeight}
+                  min={explorerEmpty ? 72 : plotBounds.min}
+                  max={plotBounds.max}
                   sign={-1}
-                  onChange={changePlotHeight}
-                  onReset={() => changePlotHeight(null)}
+                  onChange={explorerEmpty ? setEmptyPlotHeight : changePlotHeight}
+                  onReset={() =>
+                    explorerEmpty ? setEmptyPlotHeight(null) : changePlotHeight(null)
+                  }
                 />
               )}
               <SignalPlot
                 data={data}
                 collapsed={!showPlot}
                 explorer={showExplorer}
-                height={desktop ? plotHeight : undefined}
+                empty={explorerEmpty}
+                height={desktop ? displayedPlotHeight : undefined}
                 onToggle={() => setShowPlot((value) => !value)}
               />
             </>

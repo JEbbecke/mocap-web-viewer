@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 import { chooseExportFormat } from './browser-cross-format.mjs';
 import { verifyFileMetadata } from './browser-file-metadata.mjs';
+import { verifyExplorerPolish } from './browser-explorer-polish.mjs';
 
 export async function verifyExampleFile(browser, base, development) {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
@@ -74,7 +75,7 @@ export async function verifyExampleFile(browser, base, development) {
     );
     await page.getByRole('button', { name: 'Data Explorer', exact: true }).click();
     await page.getByRole('region', { name: 'Data Explorer', exact: true }).waitFor();
-    await page.getByRole('button', { name: 'Data Visualizer', exact: true }).click();
+    await verifyExplorerPolish(page);
     const cropStart = page.getByRole('slider', { name: 'Crop start', exact: true });
     await cropStart.press('ArrowRight');
     await page.getByRole('button', { name: 'Apply crop', exact: true }).click();

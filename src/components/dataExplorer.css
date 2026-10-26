@@ -96,18 +96,14 @@
   gap: 12px;
   flex: none;
   margin-bottom: 6px;
-}
-.explorer-dataset-info:has(.explorer-facts[open]) {
-  display: block;
-  max-height: 30%;
-  overflow: auto;
+  flex-wrap: wrap;
 }
 .explorer-dataset-heading {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 10px;
-  flex: 1;
+  flex: 1 1 160px;
   min-width: 0;
 }
 .explorer-dataset-heading > div {
@@ -115,6 +111,7 @@
   align-items: baseline;
   gap: 8px;
   min-width: 0;
+  flex-wrap: wrap;
 }
 .explorer-dataset-heading p {
   color: #8eb5c5;
@@ -127,42 +124,113 @@
   font-weight: 500;
   overflow-wrap: anywhere;
 }
-.explorer-dataset-heading label {
+.explorer-dataset-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-left: auto;
+  max-width: 100%;
+}
+.explorer-dataset-controls label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   white-space: nowrap;
   font-size: 11px;
 }
-.explorer-facts {
+.explorer-copy-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.explorer-copy-trigger svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+}
+.explorer-copy-menu {
+  position: fixed;
+  right: auto;
+  z-index: 1000;
+  width: 230px;
+  min-width: 0;
+  max-width: calc(100vw - 16px);
+  overflow: auto;
+  font-size: 11px;
+}
+.explorer-copy-menu button {
+  white-space: normal;
+}
+.explorer-details-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   flex: none;
   font-size: 11px;
-  margin: 0;
-}
-.explorer-facts summary {
-  cursor: pointer;
+  padding: 4px 8px;
   color: #9bcdbc;
-  padding: 5px 0;
+}
+.explorer-details-trigger svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+}
+.explorer-facts {
+  position: fixed;
+  z-index: 1000;
+  width: 320px;
+  max-width: calc(100vw - 16px);
+  overflow: auto;
+  padding: 12px;
+  font-size: 11px;
+  color: #dce7ef;
+  background: #15232f;
+  border: 1px solid #3c655f;
+  border-radius: 7px;
+  box-shadow: 0 8px 30px #0007;
+}
+.explorer-facts > strong {
+  display: block;
+  margin-bottom: 8px;
+  overflow-wrap: anywhere;
 }
 .explorer-facts dl {
-  margin: 4px 0;
+  margin: 0;
 }
 .explorer-facts dl > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: 10px;
   padding: 5px 0;
+  border-bottom: 1px solid #263846;
+}
+.explorer-facts dt {
+  color: #98b2c1;
+  overflow-wrap: anywhere;
 }
 .explorer-facts dd {
+  margin: 0;
   text-align: left;
   white-space: pre-wrap;
-  flex: 1;
+  overflow-wrap: anywhere;
 }
 .explorer-metadata .explorer-dataset-heading h3 {
   color: var(--metadata-heading);
 }
 .explorer-metadata .explorer-dataset-heading p,
-.explorer-metadata .explorer-facts summary {
+.explorer-metadata .explorer-details-trigger {
   color: var(--metadata-subheading);
 }
-.explorer-metadata .explorer-facts dt {
+.explorer-facts.explorer-metadata dt {
   color: var(--metadata-label);
 }
-.explorer-metadata .explorer-facts dd {
+.explorer-facts.explorer-metadata dd {
   color: var(--metadata-secondary);
 }
 .explorer-table-tools,
@@ -180,14 +248,23 @@
   padding: 4px 8px;
   font-size: 11px;
 }
+.explorer-table-tools {
+  row-gap: 2px;
+}
 .explorer-table-tools [role='status'] {
   color: #8ce0c9;
+  flex-basis: 100%;
+  height: 14px;
+  line-height: 14px;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.explorer-selection-help {
+.explorer-selection-count {
   color: #98b2c1;
   font-size: 10px;
-  margin: 0 0 2px;
-  flex: none;
+  min-width: 90px;
 }
 .explorer-column-select {
   color: inherit;
@@ -314,6 +391,7 @@
 }
 @media (max-width: 760px) {
   .data-explorer {
+    flex: none;
     height: 65dvh;
     min-height: 420px;
   }
@@ -339,4 +417,13 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.workspace.is-exploring .plot-panel.is-empty:not(.is-collapsed) {
+  height: 72px;
+  flex-basis: 72px;
+  min-height: 72px;
+}
+.plot-panel.is-empty .plot-empty {
+  margin: 4px 10px;
+  font-size: 11px;
 }
