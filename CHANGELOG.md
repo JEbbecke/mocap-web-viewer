@@ -53,6 +53,8 @@ branches describe the planned release until its tag is published.
 
 ### Fixed
 
+- Patched development dependency advisories with Vite 7.3.7, Vitest and its
+  matching packages 4.1.12, and source-map-js 1.2.2 in the npm lockfile.
 - C3D files with a verified separate 17-float Rotation extension can import supported
   Point/Analog data. Persistent notes and both export previews disclose omitted
   Rotation signals without blocking valid exports. C3D output removes the Rotation
