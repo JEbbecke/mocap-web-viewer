@@ -10,7 +10,7 @@ Visit the [project website](https://jemolab.com/) or [open JE Motion Lab](https:
 
 ![JE Motion Lab | MoCap Viewer & Editor with generated example data](docs/screenshot.png)
 
-The viewer screenshot is a historical capture whose footer displays `v0.4.0`; the current release is `v0.5.1`.
+The viewer screenshot is a historical capture whose footer displays `v0.4.0`; the prepared application version is `v0.6.0`.
 
 ## Basic usage
 
@@ -228,7 +228,7 @@ For scientific use, please cite JE Motion Lab using the metadata in [CITATION.cf
 
 ## Development status and releases
 
-The current release is [JE Motion Lab v0.5.1](https://github.com/JEbbecke/mocap-web-viewer/releases/tag/v0.5.1), dated 2026-10-12.
+The latest published release is [JE Motion Lab v0.5.1](https://github.com/JEbbecke/mocap-web-viewer/releases/tag/v0.5.1), dated 2026-10-12. The prepared application version is **0.6.0**; see the [candidate release notes](CHANGELOG.md). The intended publication date is **2026-10-26**; publication and deployment of v0.6.0 remain pending.
 
 JE Motion Lab is under active pre-1.0 development. Support is limited to the documented formats and validated conventions; arbitrary vendor variants and general HDF5 files are not claimed. Outstanding format questions are tracked in [OPEN_QUESTIONS.md](docs/OPEN_QUESTIONS.md).
 

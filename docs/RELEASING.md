@@ -4,7 +4,7 @@ JE Motion Lab uses Semantic Versioning. Before 1.0, minor releases may include b
 
 Preparation, review, tagging, deployment, and promotion are separate steps.
 
-Current released baseline: **v0.5.1**, dated **2026-10-12**. Use this release as the baseline for future preparation.
+Current published baseline: **v0.5.1**, dated **2026-10-12**. The **v0.6.0** candidate is prepared on `release/0.6.0`; its intended publication date is **2026-10-26**. Publication and deployment of v0.6.0 remain pending. Use v0.5.1 as the comparison baseline until v0.6.0 is published.
 
 ## Establish the release baseline
 
@@ -24,7 +24,7 @@ Do not infer release history from package versions alone. Published tags and rel
 
 A pre-release audit keeps package/application versions unchanged and all new notes
 under Unreleased. Version selection, tagging and deployment follow separate
-maintainer approval. Once the intended version and date are confirmed, update it
+maintainer approval. Once the intended version is confirmed, update it
 with npm so `package.json` and `package-lock.json` remain synchronized:
 
 ```sh
@@ -37,7 +37,9 @@ Reconcile `CHANGELOG.md` with Git and pull-request history. Release notes should
 
 For each release:
 
-- move curated entries from `Unreleased` into a dated version section;
+- move curated entries from `Unreleased` into a version section; use `Unreleased`
+  in place of the date while publication is unconfirmed, then set the actual
+  publication date before tagging;
 - leave a new empty `Unreleased` section;
 - update comparison links;
 - synchronize `CITATION.cff` version and release date;
@@ -155,6 +157,27 @@ Review `THIRD_PARTY_NOTICES.md` against the actual production bundle whenever de
 
 Application tests do not establish legal clearance. Any unresolved provenance or licensing question must remain an explicit manual release gate until reviewed.
 
+## v0.6.0 owner-confirmed acceptance
+
+The project owner supplied the following completed manual acceptance for this
+release preparation on 2026-10-26:
+
+- Edited and cropped H5 outputs opened successfully in the external institute H5 reader.
+- Safari and Samsung Internet passed import, editing, export and media checks.
+- The existing native compression/runtime provenance review in
+  `docs/LICENSING_AUDIT.md` was reviewed and accepted as correct.
+- Real Xsens and Qualisys C3D files were tested successfully.
+
+These items are accepted for v0.6.0. They were confirmed by the owner, not
+executed by the release-preparation agent. Automated candidate results are
+recorded separately in ignored `.local/release-readiness-v0.6.0.md`; historical
+audit reports retain their original findings.
+
+The v0.6.0 changelog and `CITATION.cff` are synchronized to the intended
+publication date, **2026-10-26**. This records the planned release, not completed
+publication or deployment. If promotion moves to another date, update both dates
+before tagging.
+
 ## Review before promotion
 
 Before tagging, review the exact release commit and confirm that all automated, manual, scientific, and legal gates required for the release are complete.
@@ -173,6 +196,11 @@ Also review repository and deployment presentation, including:
 If the planned release date changes, update release dates in the changelog and citation metadata before tagging.
 
 ## Tag and publish
+
+Open the release PR against `main`. After review and merge, wait for the Pages
+workflow and verify `https://app.jemolab.com/` serves the reviewed version. Then
+tag that exact reviewed commit on `main` and publish its GitHub Release. Tags
+and GitHub Releases do not trigger deployment.
 
 Tag the reviewed release commit, not an arbitrary newer `main` commit.
 
