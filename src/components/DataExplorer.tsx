@@ -1,5 +1,8 @@
 import { independentModelMessage } from '../motion/modelTiming';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { ResizeHandle } from '../layout/ResizeHandle';
+import { clampPanel, panelBounds } from '../layout/geometry';
+import { useElementSize, useMediaQuery } from '../layout/useElementSize';
 import type { MotionData } from '../motion/types';
 import { setFrame, useSession } from '../state/session';
 import {
@@ -30,6 +33,8 @@ import {
   type CellSelection,
 } from '../explorer/selection';
 import './dataExplorer.css';
+import { DatasetDetails } from './DatasetDetails';
+import { ExplorerCopyMenu } from './ExplorerCopyMenu';
 
 function Navigation({
   datasets,
@@ -191,53 +196,63 @@ function NumericalTable({
     <>
       <div className="explorer-table-tools">
         <span>{dataset.count.toLocaleString()} rows · read-only</span>
-        <button
-          disabled={!selected || copying}
-          onClick={() => bounded && copy(() => copySelectedCells(dataset, bounded))}
-        >
-          Copy selected cell(s)
-        </button>
-        <button
-          disabled={!selected || copying}
-          title="Copy every row in all columns containing selected cells, including other model pages."
-          onClick={() =>
-            bounded &&
-            copy(() =>
-              prepareTableCopy
-                ? prepareTableCopy(selectedColumns(bounded))
-                : copySelectedColumns(dataset, bounded),
-            )
-          }
-        >
-          Copy selected column(s)
-        </button>
-        <button
-          disabled={!selected || copying}
-          onClick={() => bounded && copy(() => copySelectedRows(dataset, bounded))}
-        >
-          Copy selected row(s)
-        </button>
-        <button
-          disabled={!dataset.count || copying}
-          title="Copy every row and column in this dataset, including rows outside the viewport and other model pages."
-          onClick={() =>
-            copy(() => (prepareTableCopy ? prepareTableCopy() : copyFullTable(dataset)))
-          }
-        >
-          Copy full table
-        </button>
+        <span className="explorer-selection-count">
+          {count ? `${count.toLocaleString()} selected` : ''}
+        </span>
+        <ExplorerCopyMenu busy={copying}>
+          <button
+            role="menuitem"
+            tabIndex={-1}
+            disabled={!selected || copying}
+            onClick={() => bounded && copy(() => copySelectedCells(dataset, bounded))}
+          >
+            Copy selected cell(s)
+          </button>
+          <button
+            role="menuitem"
+            tabIndex={-1}
+            disabled={!selected || copying}
+            title="Copy every row in all columns containing selected cells, including other model pages."
+            onClick={() =>
+              bounded &&
+              copy(() =>
+                prepareTableCopy
+                  ? prepareTableCopy(selectedColumns(bounded))
+                  : copySelectedColumns(dataset, bounded),
+              )
+            }
+          >
+            Copy selected column(s)
+          </button>
+          <button
+            role="menuitem"
+            tabIndex={-1}
+            disabled={!selected || copying}
+            onClick={() => bounded && copy(() => copySelectedRows(dataset, bounded))}
+          >
+            Copy selected row(s)
+          </button>
+          <button
+            role="menuitem"
+            tabIndex={-1}
+            disabled={!dataset.count || copying}
+            title="Copy every row and column in this dataset, including rows outside the viewport and other model pages."
+            onClick={() =>
+              copy(() => (prepareTableCopy ? prepareTableCopy() : copyFullTable(dataset)))
+            }
+          >
+            Copy full table
+          </button>
+        </ExplorerCopyMenu>
         {dataset.seek && (
           <button disabled={!selected} onClick={seek}>
             Seek to event
           </button>
         )}
-        <span role="status">{status}</span>
+        <span role="status" title={status}>
+          {status}
+        </span>
       </div>
-      <p className="explorer-selection-help">
-        Click a cell · Shift-click a range · Ctrl/Cmd-click to add or remove cells · Click a header
-        to select columns (Ctrl/Cmd toggles, Shift selects a range)
-        {count ? ` · ${count.toLocaleString()} selected` : ''}
-      </p>
       <div
         className="explorer-scroll"
         ref={viewport}
@@ -331,7 +346,7 @@ function NumericalTable({
                       <td
                         key={i}
                         className={`${c.numeric ? 'numeric' : ''} ${rowSelected(bounded, r) || columnSelected(bounded, i) ? 'selection-axis' : ''} ${cellSelected(bounded, { row: r, column: i }) ? 'selected-cell' : ''}`}
-                        title={exact}
+                        title={dataset.cellTitle?.(r, i) || exact}
                         tabIndex={0}
                         onMouseDown={(e) => {
                           if (e.shiftKey || e.ctrlKey || e.metaKey) e.preventDefault();
@@ -398,7 +413,7 @@ function NumericalTable({
                           }
                         }}
                       >
-                        {displayCell(value)}
+                        {dataset.cellDisplay?.(r, i) ?? displayCell(value)}
                       </td>
                     );
                   })}
@@ -428,10 +443,7 @@ function NumericalTable({
             <span>{exactCell(dataset.cell(selected.row, selected.column))}</span>
           </>
         ) : (
-          <span>
-            Select a cell to inspect its exact value. Text selection and Ctrl/Cmd+C are also
-            available.
-          </span>
+          <span className="muted">No cell selected.</span>
         )}
       </div>
     </>
@@ -609,7 +621,28 @@ function ModelTable({ dataset, data }: { dataset: Dataset; data: MotionData }) {
   );
 }
 
-export function DataExplorer({ data, onClose }: { data: MotionData; onClose: () => void }) {
+export function DataExplorer({
+  data,
+  preferredWidth,
+  onWidthChange,
+}: {
+  data: MotionData;
+  preferredWidth: number | null;
+  onWidthChange: (value: number | null) => void;
+}) {
+  const body = useRef<HTMLDivElement>(null);
+  const size = useElementSize(body);
+  const desktop = useMediaQuery('(min-width: 761px)');
+  const wide = useMediaQuery('(min-width: 1101px)');
+  const bounds = panelBounds(
+    desktop ? 180 : 130,
+    Math.min(520, size.width - (desktop ? 360 : 160)),
+  );
+  const width = clampPanel(
+    preferredWidth ?? (wide ? 250 : desktop ? 210 : 160),
+    bounds.min,
+    bounds.max,
+  );
   const datasets = useMemo(() => explorerDatasets(data), [data]);
   const [query, setQuery] = useState(''),
     [follow, setFollow] = useState(false);
@@ -621,20 +654,15 @@ export function DataExplorer({ data, onClose }: { data: MotionData; onClose: () 
     }));
   const matches = useMemo(() => filterDatasets(datasets, query), [datasets, query]);
   const dataset = datasets.find((d) => d.id === selected) ?? datasets[0];
-  useEffect(() => {
-    const key = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onClose();
-        event.preventDefault();
-      }
-    };
-    window.addEventListener('keydown', key);
-    return () => window.removeEventListener('keydown', key);
-  }, [onClose]);
   return (
     <section className="data-explorer" aria-label="Data Explorer">
-      <div className="explorer-body">
-        <nav className="explorer-navigation" aria-label="Explorer datasets">
+      <div className="explorer-body" ref={body}>
+        <nav
+          id="explorer-navigation"
+          className="explorer-navigation"
+          aria-label="Explorer datasets"
+          style={{ width }}
+        >
           <input
             className="search"
             type="search"
@@ -654,7 +682,18 @@ export function DataExplorer({ data, onClose }: { data: MotionData; onClose: () 
           />
           {!matches.length && <p className="small muted">No matching datasets.</p>}
         </nav>
-        <div className="explorer-detail">
+        <ResizeHandle
+          axis="horizontal"
+          label="Explorer navigation width"
+          controls="explorer-navigation"
+          value={width}
+          {...bounds}
+          onChange={onWidthChange}
+          onReset={() => onWidthChange(null)}
+        />
+        <div
+          className={`explorer-detail${dataset?.path[0] === 'Metadata' ? ' explorer-metadata' : ''}`}
+        >
           {dataset ? (
             <>
               <div className="explorer-dataset-info">
@@ -663,6 +702,8 @@ export function DataExplorer({ data, onClose }: { data: MotionData; onClose: () 
                     <p>{dataset.path.join(' / ')}</p>
                     <h3>{dataset.name}</h3>
                   </div>
+                </div>
+                <div className="explorer-dataset-controls">
                   {(dataset.current || dataset.model) && (
                     <label>
                       <input
@@ -674,20 +715,8 @@ export function DataExplorer({ data, onClose }: { data: MotionData; onClose: () 
                       Follow playback
                     </label>
                   )}
+                  {!!dataset.facts.length && <DatasetDetails key={dataset.id} dataset={dataset} />}
                 </div>
-                {!!dataset.facts.length && (
-                  <details className="explorer-facts">
-                    <summary>Units, clock and dataset details</summary>
-                    <dl>
-                      {dataset.facts.map(([key, value]) => (
-                        <div key={key}>
-                          <dt>{key}</dt>
-                          <dd>{value}</dd>
-                        </div>
-                      ))}
-                    </dl>
-                  </details>
-                )}
               </div>
               {dataset.model ? (
                 <ModelTable key={dataset.id} dataset={dataset} data={data} />

@@ -131,7 +131,7 @@ it('imports nested metadata, expanded events and semantic EMG without duplicated
       fileInfoSections(motion).flatMap((s) => s.rows.map((r) => [r.label, r.values])),
     );
     expect(info['Subject ID']).toEqual(['SYNTHETIC']);
-    expect(info['Date']).toEqual(['2026-01-01 12:00:00']);
+    expect(info['Created (local/original)']).toEqual(['2026-01-01T12:00:00']);
     expect(info['Project']).toEqual(['Synthetic']);
     expect(motion.source.info?.modelResults?.ik).toMatchObject({
       samples: 4,

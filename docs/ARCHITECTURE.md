@@ -12,20 +12,123 @@ Local File → short-lived module Worker → C3D or institute H5 importer
 
 MotionData is format-independent: a regular point timeline with source frame origin, frame-major contiguous marker XYZ in millimetres, validity/residuals, original-rate analog channels, original-rate global forces (N), moments (Nm), COP/corners (mm), events in relative seconds and source warnings. Geometry carries its own rate. Scene objects share one normalized rendering path; the local-frame resolver additionally requires a declared global pose or an established source corner convention. Unknown force frames are a general data quality state, not an H5 rendering branch.
 
-Importers validate magic, schema, sizes and rates. C3D binary parsing is isolated; unsupported processors/features fail explicitly or omit only the affected force platform with warnings. HDF5 uses bundled h5wasm in a Worker with a local File mounted through WORKERFS. The worker is terminated after completion or cancellation; arrays transfer rather than clone. C3D needs one input ArrayBuffer plus normalized arrays temporarily. HDF5 decompresses each dataset in WASM and copies it to normalized typed arrays, then closes/unmounts and terminates the WASM heap. The session retains an immutable local File reference for source-preserving export, without persistence.
+Importers validate magic, schema, sizes and rates. C3D binary parsing is isolated; unsupported processors/layouts fail explicitly, unsupported force platforms are omitted with warnings, and verified separate Rotation sections allow a disclosed partial Point/Analog import. `source.partialImport` and persistent notes retain the omission through editing/crop/history. Both export previews disclose it; source-format C3D output removes the Rotation payload and parameter group. Declared sampling rates remain authoritative, including incorrect source metadata; see [parser scope and timing](PARSERS.md). HDF5 uses bundled h5wasm in a Worker with a local File mounted through WORKERFS. The worker is terminated after completion or cancellation; arrays transfer rather than clone. C3D needs one input ArrayBuffer plus normalized arrays temporarily. HDF5 decompresses each dataset in WASM and copies it to normalized typed arrays, then closes/unmounts and terminates the WASM heap. The session retains an immutable local File reference for source-preserving export, without persistence.
 
-Cropping lives in `motion/crop.ts`, independent of React and format. It uses half-open point boundaries, crops each signal at its own rate/origin, filters/rebases events and creates independent arrays. The session retains original/current MotionData and cumulative source boundaries, allowing restoration and repeated crops. Crop clears metadata edit history and establishes a modified baseline. Timeline controls share playback state; preview playback stays within the selected interval. Modified state compares the current history revision to the imported clean checkpoint. Reusable reversible commands in `motion/history.ts` cover all Data-tab labels and event rows without retaining scientific arrays; see [edit history](DATA_EDITING.md).
+Cropping lives in `motion/crop.ts`, independent of React and format. It uses half-open point boundaries, crops each signal at its own rate/origin, filters/rebases events and creates independent arrays. The session retains original/current MotionData and cumulative source boundaries, allowing restoration and repeated crops. Crop clears edit history and establishes a modified baseline. Timeline controls share playback state; preview playback stays within the selected interval. Modified state compares the current history revision to the imported clean checkpoint. Reusable reversible commands in `motion/history.ts` cover Data-tab labels, event rows and full marker deletions; label/event payloads retain metadata and deletion retains only removed samples; see [edit history](DATA_EDITING.md).
 
-Same-format export sends the original File, source interval, edited labels and any edited events to `export.worker.ts`. `exporters/c3d.ts` copies raw interleaved samples and the parameter region, patching temporal metadata and events. `exporters/h5.ts` copies the institute hierarchy using raw dataset hyperslabs and preserved attributes, updating counts/frame extents. Unsupported temporal schemas fail explicitly. `state/session.ts` exposes `exportFile`, which creates a local Blob URL and uses the standard HTML anchor `download` attribute to offer the exported file through the browser. The worker is cancellable and transfers only the resulting buffer. Same-format requests do not send large MotionData arrays. See [cropping/export conventions and limits](CROPPING_EXPORT.md).
+Same-format export sends the original File, source interval, retained marker source IDs, edited labels and any edited events to `export.worker.ts`. `exporters/c3d.ts` copies raw interleaved samples and the parameter region, patching temporal metadata and events. `exporters/h5.ts` copies the institute hierarchy using raw dataset hyperslabs and preserved attributes, updating counts/frame extents. Unsupported temporal schemas fail explicitly. `state/session.ts` exposes `exportFile`, which creates a local Blob URL and uses the standard HTML anchor `download` attribute to offer the exported file through the browser. The worker is cancellable and transfers only the resulting buffer. Same-format requests do not send large MotionData arrays. See [cropping/export conventions and limits](CROPPING_EXPORT.md).
 
 Cross-format export uses separate `semanticH5.ts`/`semanticC3D.ts` writers over the current edited/cropped MotionData. A reusable pure `conversionPlan` supplies a pre-export compatibility report and references existing buffers; the worker repeats its guards. Only cross-format calls clone current arrays into the short-lived worker, preserving the viewer's buffers. New H5 files follow the current nested institute layout. New C3D files use float32 point/analog records, verified original effective analog encoding when available (otherwise identity), and the existing event serializer. H5 import retains embedded original C3D plate/channel identities; `reuseForcePlatforms.ts` verifies current and encoded reconstruction before reusing TYPE-2/3/4 definitions, origins, calibration and COP correction. Incompatible or missing definitions fall back per plate to six derived TYPE-2 channels. Curated recording/subject fields use versioned `JE_METADATA`, restored by C3D import. Format/menu/review state stays in the header's `ExportControl`; **Changed or omitted** orders changes before omissions. No history/dirty changes, resampling or analytics additions occur. See [complete mapping, unit/clock guards and validation](CROSS_FORMAT_EXPORT.md).
 
 Timeline markers and the event editor remain in the scrubber. Add Event and the
-Events selector share the right-hand action area beside Crop, independently
+Events selector share the right-hand action area beside Apply crop, independently
 reading the same session event-editor request. Export lives beside Open file in
 the header and is blocked during busy operations or an unapplied crop selection.
 
+`TimelineEvents` uses `eventClusters.ts` to place Left/Right in upper/lower lanes
+and General diamonds in free space. `display.compactEventMarkers` defaults false;
+the compact mode shares the same visible-box collision solver in one lane. Cluster
+lists portal outside layout containers and retain original event indices.
+`EventEditor` owns drafts, unsaved-switch and inline-delete confirmation state;
+`eventTime.ts` separates compact time text from exact unchanged source timestamps.
+The Timeline's end readout uses the last sample time; crop boundaries remain
+half-open. See [event layout and editing](EVENT_EDITING.md).
+
 Playback uses requestAnimationFrame and elapsed time at the actual point rate. Only the small timeline/inspector subscribe to frame changes; scene buffers and plot cursor update imperatively. Markers are instanced, connections use one line buffer. All positions keep lab XYZ; Three's camera uses Z up and grid lies on XY. Display GRF scale defaults to 1 mm/N. Temporary render coordinates use 0.001 scene units/mm; camera bounds, marker/plate buffers, COP and labels share this boundary without mutating MotionData. See [unit policy](UNITS.md) for scientific conversions and export semantics. Display threshold is configurable and never edits data.
+
+Camera framing separates spatial selection (`viewer/cameraBounds.ts`) from camera
+geometry and application (`viewer/cameraController.ts`). `CameraController` owns
+writes to the existing perspective camera and single Drei OrbitControls instance.
+`fitCameraToData()` selects bounds and calculates a view; `resetCameraView()` uses
+the established perspective/front/side/top directions with Z up. Both apply the
+result through `focusCameraOnPoint()`, which synchronizes camera position and orbit
+target, clears pending damping, updates projection/clipping and invalidates the
+render. Point focusing accepts scene coordinates and preserves the current
+camera-to-target offset by default. `viewer/markerPosition.ts` resolves only the
+active-frame valid/residual-checked XYZ, applying the existing mm-to-scene scale
+once. Marker rendering, picking, camera bounds and marker focus share it.
+`state/markerCommands.ts` reads the authoritative `session.selected` index and
+adds a copied point to the existing revisioned camera request. The same controller
+consumes that request once; playback and resize cannot turn it into tracking.
+
+`state/markerCommands.ts` also coordinates menu requests and selected-marker rename
+requests. UI request snapshots guard against changed selections/datasets; they
+are not another selection model. `MarkerContextMenu` portals to the document body,
+clamps client coordinates to the viewport and owns local menu navigation/dismissal.
+`MarkerRenameDialog` reuses `LabelEditor` and `renameSessionMarker`, which commits
+the existing reversible label command. Inspector inline renaming retains this
+same editor/session data pathway. Delete calls `deleteSessionMarker()` and the pure
+`motion/markerDeletion.ts` command through the existing history. Its payload retains
+only the removed trajectory/quality and membership entries. `markerIdentity.ts`
+maps immutable original source columns to current array positions. Session edit
+transactions reconcile selection/visibility and affected plot/Explorer references
+atomically. Explicit plot/Explorer keys use source IDs, including the second plot;
+an unavailable plot resolves safely without displaying another marker's data.
+
+Same-format workers receive retained source indices alongside labels. C3D's
+`c3dMarkers.ts` compacts raw point records and copies analog tails unchanged,
+updates header/POINT counts, segmented labels/descriptions, numeric marker metadata
+and established reference lists. H5's `h5Markers.ts` selects marker axes, updates
+embedded POINT aliases and removes obsolete continuation groups. Its native writer
+preserves timestamps, precision and supported enum types. Import-time metadata
+checks disable structural deletion for undocumented axes/references; export repeats
+these guards. The last marker remains protected by the existing nonempty model.
+
+`state/shortcuts.ts` is the single application keyboard dispatcher, registered by
+App with current workspace scope. Bubbling lets local widgets prevent handling
+first. It guards editable ancestors, IME/composition, interactive controls,
+dialogs/popovers, plots, Explorer navigation and resize separators; only an
+available handled action prevents the browser default. Repeats remain available
+for frame stepping but cannot repeat focus, rename, history or playback toggles.
+Application history remains available from read-only Explorer and plot widgets;
+editable fields and active editors retain their own undo behavior.
+Explorer retains its independent table selection and scoped handlers; its former
+global Escape listener is handled by this dispatcher. Local menu and editor keys
+remain on their own elements. The live viewer readiness flag gates camera commands
+and is cleared when the renderer unmounts or becomes inactive.
+
+Initial framing uses one representative pose, starting at the active zero-based
+frame (source `firstFrame` is provenance). It seeks at least half the marker channels
+and at least three markers (all channels for one/two-marker recordings),
+checks four neighbouring frames on either side if needed, then at most twelve
+evenly distributed trial frames. If none is sufficient, the most populated
+candidate wins. This bounded search never combines the movement envelope. Marker
+validity, negative residuals and finite XYZ are checked; legitimate origins remain
+valid. With at least eight finite points, a single isolated point is excluded from
+camera bounds only if its radius from the coordinate-wise median exceeds the
+second-largest radius by more than 20 times. Small/coincident sets and multiple
+outliers remain intact because they provide insufficient evidence. This heuristic
+changes framing only and cannot classify every unusual valid spatial arrangement.
+The 14 mm selected-marker radius pads bounds. If markers are unavailable, valid
+rigid-body origins, then plate corners use the renderer's own sampling/pose rules at
+one candidate time. Body bounds include the existing 100 mm pose-axis length so
+the only body geometry remains visible even in a narrow viewport.
+Platforms never enlarge marker/body-based framing, and distant
+bodies never enlarge marker-based framing;
+scene decorations and force arrows are excluded. The separate full-trial marker
+picking sphere remains necessary for raycasting during playback.
+
+The fit projects all eight bounding-box corners into the requested orientation.
+Perspective distance satisfies horizontal and vertical FOV limits including depth
+and camera zoom, with a configurable default 1.2 framing margin and a 0.3 scene-unit
+minimum distance for degenerate poses. The helper also supports orthographic zoom;
+the live camera type is unchanged. Clipping expands for fitted depth while retaining
+the existing far plane so manual zoom-out and the ground grid remain usable.
+Orbit constraints remain in place; the distance ceiling grows
+only if necessary to contain unusually large data or a narrow viewport.
+
+Successful `setData()` atomically activates data and increments the existing camera
+command revision. The synchronous layout effect consumes that revision once, with
+no deferred fit; stale worker replies are already rejected at import. Edits, crops,
+undo, playback, marker/display changes and R3F resize updates do not increment it.
+Empty fits are consumed too and leave the previous safe view intact. Reset and
+presets explicitly request a fresh fit at the current frame; restoring the original
+trial follows the existing `setData()` activation workflow. R3F alone owns normal
+aspect/projection resizing. No fit runs in the playback/render loop. Camera tests
+live in `tests/camera.test.ts`; `node scripts/browser-camera.mjs` runs focused Chrome
+checks with a development-only probe generated under ignored `.local/`, including
+the bundled example and available local C3D references. Reports/screenshots also
+stay under `.local/`; no probe is part of the production bundle.
 
 Plotting materializes a time column and selected component columns, with nulls for gaps. Viewer selects one signal per pane; Explorer selects plottable columns from one dataset, including complete time series beyond the visible table window. Those arrays duplicate selected signals only, are memoized across playback frames, and are released when selection changes. The implementation does not create copies of every analog/force stream at marker rate. C3D marker positions use Float32; H5 marker positions retain Float64, with Float32 buffers for GPU rendering. Force calculations and original-rate analog signals use Float64. Full-series plots consume memory proportional to selected samples; table virtualization does not remove this cost.
 
@@ -143,3 +246,47 @@ refs. Arrays materialize only when data/selected components change; playback upd
 the shared chart cursor imperatively. No second plot system, dependency or scientific
 state/export changes are introduced. Explorer's compact flex layout reserves a
 usable table and chart region with `min-height: 0` and the existing panel toggle.
+
+`DatasetDetails`, keyed by dataset ID, portals facts into an anchored dialog with
+local focus/dismissal and viewport placement. It does not participate in table
+sizing. `ExplorerCopyMenu` portals the four existing copy actions; `NumericalTable`
+retains exact-value preparation, selection scopes and asynchronous clipboard state.
+The menu disables actions while copying and remains keyboard-dismissible. Dataset
+or workspace unmount closes both overlays; no scientific metadata is edited.
+
+Workspace resizing lives in `src/layout/`: `ResizeHandle` provides named ARIA
+separators, pointer capture, animation-frame batching, cancellation/blur/unmount
+cleanup and keyboard controls. Arrow keys move the boundary by 10px (Shift: 40px);
+Home or double-click resets its default. `useElementSize` observes owning containers;
+pure geometry helpers clamp effective sizes without overwriting preferences.
+`App` owns separate in-memory Visualizer Inspector width, Explorer navigation width
+and per-workspace Signal Inspector heights. Explorer replaces the Trial Inspector
+with its existing navigation tree; it has no Split Plot feature. The shared mounted
+`SignalPlot` owns the Visualizer's split ratio, retained across toggles, workspace
+switches and file loads. No browser storage, analytics or scientific session writes
+are involved.
+
+The Inspector starts at its existing 310px/270px breakpoint default, bounded by
+260–560px and a 400px central workspace reserve. Explorer starts at 250px/210px/160px,
+bounded by 180–520px (130px minimum on narrow screens) and a 360px table reserve
+(160px on narrow screens). Signal Inspector retains the existing 254px Visualizer
+and 28% Explorer defaults, with 180–720px bounds further constrained by the measured
+Timeline controls and the existing 210px Viewer / 300px Explorer minimum. Very short desktop
+windows retain workspace scrolling. Opening Event Editor consumes Viewer/table
+space first; any temporary clamp is reversed when space returns. At the existing
+760px stacking breakpoint desktop Inspector/height splitters disappear. Each split
+plot retains 250px minimum width and internal scrolling when both cannot fit; its
+splitter is shown only when both minimums fit. Ratio constraints also preserve the
+original preference through temporary narrowing. Existing R3F, uPlot and Timeline
+ResizeObservers update rendering geometry without camera fit or selection resets.
+
+Explorer's no-signal state temporarily uses a 72px default height. `App` keeps
+`emptyPlotHeight` separate from `plotHeights.explorer`; empty-state resizing/reset
+cannot overwrite the preferred populated height. Explicit `showPlot` collapse
+state takes priority. Header workspace buttons are permanently present and expose
+their current state with `aria-pressed`; workspace choice is App-local state.
+
+`tests/layout-resize.test.ts` covers geometry and separator semantics;
+`node scripts/browser-workspace-resize.mjs` checks live dragging, keyboard/reset,
+collapse/expand, per-workspace preferences, split ratios, cleanup, data/camera
+invariance and desktop/narrow layouts. Reports/screenshots stay under `.local/`.

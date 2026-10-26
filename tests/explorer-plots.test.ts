@@ -14,6 +14,8 @@ import { readModelSeries } from '../src/plots/modelSeries';
 import { cropMotionData } from '../src/motion/crop';
 import { cropPreviewInterval } from '../src/plots/cropPreview';
 import { SignalPlot } from '../src/plots/SignalPlot';
+import { explorerPlotSelection } from '../src/plots/explorerPlotSelection';
+import { DatasetDetails } from '../src/components/DatasetDetails';
 import { selectPlot, setData, useSession } from '../src/state/session';
 
 const order = ['sample', 'time', 'x', 'y', 'z'];
@@ -29,6 +31,30 @@ const graph = (d: Dataset, ids: string[]) =>
     d.time,
     d.columns.filter((c) => ids.includes(c.id) && c.plot).map((c) => c.plot!),
   );
+
+it('uses plottable columns, not numeric indices, clocks or categorical selection, for empty layout', () => {
+  const datasets = explorerDatasets(parseC3D(physicalFixture(), 'synthetic.c3d'));
+  expect(explorerPlotSelection(datasets, null).columns).toEqual([]);
+  for (const columns of [[], ['sample', 'time'], ['valid'], ['missing']])
+    expect(
+      explorerPlotSelection(datasets, {
+        datasetId: 'marker:0',
+        columns,
+        anchor: null,
+      }).columns,
+    ).toEqual([]);
+  expect(explorerPlotSelection(datasets, header(null, 'x')).columns).toHaveLength(1);
+  expect(explorerPlotSelection(datasets, header(null, 'x', {}, 'missing')).columns).toEqual([]);
+});
+
+it('renders dataset details closed and exposes a keyboard button with dialog semantics', () => {
+  const dataset = explorerDatasets(parseC3D(physicalFixture(), 'synthetic.c3d'))[0];
+  const markup = renderToStaticMarkup(createElement(DatasetDetails, { dataset }));
+  expect(markup).toContain('aria-expanded="false"');
+  expect(markup).toContain('aria-haspopup="dialog"');
+  expect(markup).not.toContain('<dl');
+  expect(markup).not.toContain('<details');
+});
 
 it('replaces, toggles, removes and orders header selections with predictable anchors', () => {
   let selected = header(null, 'time');
@@ -198,8 +224,9 @@ it('retains separate Viewer/Explorer choices and leaves scientific/edit state un
   useSession.setState({ explorerDataset: 'marker:0', explorerColumns: header(null, 'x') });
   const props = { data, collapsed: false, onToggle: () => {} };
   const explorer = renderToStaticMarkup(createElement(SignalPlot, { ...props, explorer: true }));
-  expect(explorer).toContain('plot-column-label');
-  expect(explorer).toContain('Reset zoom');
+  // Static rendering reads Zustand's initial snapshot, with no plotted columns.
+  expect(explorer).toContain('Select a numeric column to plot.');
+  expect(explorer).not.toContain('Reset zoom');
   expect(explorer).not.toContain('Signal to plot');
   expect(renderToStaticMarkup(createElement(SignalPlot, props))).toContain('Signal to plot');
   expect(useSession.getState().plot).toBe('analog:0');

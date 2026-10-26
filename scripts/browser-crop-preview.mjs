@@ -79,7 +79,7 @@ export async function verifyCropPreview(page) {
   );
   assert.equal(Number(await page.locator('.plot-crop-before').getAttribute('data-end')), 0.05);
   assert.equal(Number(await page.locator('.plot-crop-after').getAttribute('data-start')), 0.15);
-  await page.getByRole('button', { name: 'Data Viewer', exact: true }).click();
+  await page.getByRole('button', { name: 'Data Visualizer', exact: true }).click();
   await page.waitForFunction(
     () =>
       [...document.querySelectorAll('.plot-crop-muted')].filter((el) => !el.hidden).length === 4,
@@ -149,7 +149,7 @@ export async function verifyCropPreview(page) {
     () =>
       [...document.querySelectorAll('.plot-crop-muted')].filter((el) => !el.hidden).length === 4,
   );
-  await page.getByRole('button', { name: 'Crop', exact: true }).click();
+  await page.getByRole('button', { name: 'Apply crop', exact: true }).click();
   await page.waitForFunction(() =>
     [...document.querySelectorAll('.plot-crop-muted')].every((el) => el.hidden),
   );
@@ -175,7 +175,7 @@ export async function verifyCropPreview(page) {
     0,
     'Explorer retains independent model clock without crop shading',
   );
-  await page.getByRole('button', { name: 'Data Viewer', exact: true }).click();
+  await page.getByRole('button', { name: 'Data Visualizer', exact: true }).click();
   await page.getByRole('button', { name: 'Cancel crop', exact: true }).click();
   await page.setViewportSize({ width: 1440, height: 1000 });
   console.log(

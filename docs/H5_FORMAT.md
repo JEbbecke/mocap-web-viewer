@@ -138,6 +138,19 @@ No EMG category or conversion-loss warning is fabricated.
   Condition, Project, ProjectPI (strings, including numeric-looking values).
 - MetaData/FileInfo: FileCreationLocal, FileCreationUTC, LastUpdate, OriginalFiles,
   PathFile. These are provenance; retain their original history on crop.
+  The first three are file-level timestamp attributes. The reference stores
+  `FileCreationLocal` and `LastUpdate` as timezone-naive
+  `YYYY-MM-DD HH:mm:ss.ffffff` text, and `FileCreationUTC` as
+  `YYYY-MM-DD HH:mm:ss.ffffff+00:00`. Both creation values are retained separately;
+  their fractional seconds can differ. ISO `T` separators, explicit offsets, UTC
+  `Z` and date-only values are also accepted. No timezone or time of day is added
+  when absent. Invalid calendar/clock values display as `Invalid timestamp`,
+  separately from missing/empty fields (`Not available`). HDF5 object timestamps
+  are not used. The bundled demo has these attributes removed.
+  The metadata UI uses concise dates with expandable original values. Local and
+  UTC creation fields are grouped only when explicit offsets and full fractional
+  precision establish the same instant; the reference's naive local field does
+  not establish that equivalence. Parsing and stored timestamp text are unchanged.
 - MetaData/Location: Lat, Lon; unavailable/Unknown values stay hidden.
 - MetaData/C3DParameters: nested acquisition/provenance for ANALOG, POINT, EVENT,
   EVENT_CONTEXT, FORCE_PLATFORM, MANUFACTURER, PROCESSING, SEG and TRIAL.
@@ -202,8 +215,11 @@ and Rotation arrays (without a time dimension) are also accepted.
 
 Rendering samples the global corners directly in physical time. Position and
 Rotation orient and place the identifier on the surface; Origin is not applied
-again as a translation of already-global corners. Camera framing includes the
-full plate trajectory. Surface depth bias avoids interference with the ground
+again as a translation of already-global corners. Camera fitting uses one
+representative valid marker pose; body poses, then
+current plate corners are fallbacks when markers are unavailable. It does not
+include the full plate trajectory or refit during playback. Surface depth bias
+avoids interference with the ground
 grid. Optional local coordinate-system helpers use `Position - Rotation × d`
 for their origin, with depth-only `d` for TYPE-1/3 and the full ORIGIN vector for
 TYPE-2/4. Embedded C3D TYPE metadata is retained independently of complete

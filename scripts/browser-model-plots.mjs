@@ -37,8 +37,9 @@ export async function verifyModelPlots(page) {
   for (const category of ['IK results', 'ID results']) {
     const section = page
       .locator('.data-section')
-      .filter({ has: page.locator('summary').filter({ hasText: category }) });
-    if (!(await section.evaluate((el) => el.open))) await section.locator('summary').click();
+      .filter({ has: page.locator('.data-section-heading').filter({ hasText: category }) });
+    if ((await section.locator('.data-section-heading').getAttribute('aria-expanded')) === 'false')
+      await section.locator('.data-section-heading').click();
     await section
       .getByRole('button', { name: /^Plot / })
       .first()

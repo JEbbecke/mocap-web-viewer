@@ -5,7 +5,8 @@ const clipboardText = (page) =>
   page.evaluate(async () => (await navigator.clipboard.readText()).replace(/\r\n/g, '\n'));
 
 async function copyWithButton(page, explorer, label) {
-  await explorer.getByRole('button', { name: label, exact: true }).click();
+  await explorer.getByRole('button', { name: 'Copy', exact: true }).click();
+  await page.getByRole('menuitem', { name: label, exact: true }).click();
   await page.waitForFunction(
     () =>
       document.querySelector('.explorer-table-tools [role="status"]')?.textContent ===
@@ -92,7 +93,7 @@ async function verifyHeaderPlots(page, table) {
   await page.getByRole('button', { name: 'Hide plot panel', exact: true }).click();
   assert.deepEqual(await selected(), ['Time [s]', 'X [mm]', 'Y [mm]', 'Z [mm]']);
   await page.getByRole('button', { name: 'Show plot panel', exact: true }).click();
-  await page.getByRole('button', { name: 'Data Viewer', exact: true }).click();
+  await page.getByRole('button', { name: 'Data Visualizer', exact: true }).click();
   await page.getByRole('button', { name: 'Data Explorer', exact: true }).click();
   assert.deepEqual(
     await selected(),
@@ -105,7 +106,7 @@ async function verifyHeaderPlots(page, table) {
     0,
     'categorical validity is selectable but not plotted',
   );
-  await plot.getByText('Select a numeric signal column to plot.').waitFor();
+  await plot.getByText('Select a numeric column to plot.').waitFor();
   await header('X [mm]').focus();
   await header('X [mm]').press('Enter');
   await header('Z [mm]').focus();
@@ -137,9 +138,9 @@ export async function verifyExplorer(page, format) {
   const explorer = page.getByRole('region', { name: 'Data Explorer', exact: true });
   await explorer.waitFor();
   assert.equal(
-    await page.getByRole('button', { name: 'Data Viewer', exact: true }).count(),
+    await page.getByRole('button', { name: 'Data Visualizer', exact: true }).count(),
     1,
-    'header label switches with the view',
+    'Visualizer remains available from Explorer',
   );
   assert.equal(await explorer.getByRole('button', { name: 'Back to viewer' }).count(), 0);
   assert.equal(
@@ -361,7 +362,7 @@ export async function verifyExplorer(page, format) {
     );
     await search.fill('Metadata');
     await explorer.locator('nav button').first().click();
-    assert.deepEqual(await table.locator('th').allTextContents(), ['Field', 'Value']);
+    assert.deepEqual((await table.locator('th').allTextContents()).slice(-2), ['Field', 'Value']);
   }
   await page.setViewportSize({ width: 1366, height: 768 });
   const box = await explorer.boundingBox();
@@ -378,7 +379,7 @@ export async function verifyExplorer(page, format) {
     before.file,
     'browsing leaves dirty state unchanged',
   );
-  await page.getByRole('button', { name: 'Data Viewer', exact: true }).click();
+  await page.getByRole('button', { name: 'Data Visualizer', exact: true }).click();
   assert.equal(
     await page.getByLabel('Signal to plot', { exact: true }).inputValue(),
     before.signal,
@@ -387,7 +388,7 @@ export async function verifyExplorer(page, format) {
   assert.equal(
     await page.getByRole('button', { name: 'Data Explorer', exact: true }).count(),
     1,
-    'header switches back',
+    'Explorer remains available from Visualizer',
   );
   assert.equal(await page.locator('.scene-wrap canvas').count(), 1);
   assert.equal(
@@ -529,7 +530,7 @@ export async function verifyLargeExplorer(page) {
   assert.equal(values.length, 1006, 'model column copy covers all pages from sample zero');
   assert.equal(values[1], '4');
   assert.equal(values.at(-1), '1008');
-  await page.getByRole('button', { name: 'Data Viewer', exact: true }).click();
+  await page.getByRole('button', { name: 'Data Visualizer', exact: true }).click();
 }
 
 export async function verifyCroppedExplorer(page, layout) {
@@ -571,5 +572,5 @@ export async function verifyCroppedExplorer(page, layout) {
       'model time is not rebased to trial crop',
     );
   }
-  await page.getByRole('button', { name: 'Data Viewer', exact: true }).click();
+  await page.getByRole('button', { name: 'Data Visualizer', exact: true }).click();
 }

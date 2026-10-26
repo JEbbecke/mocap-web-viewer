@@ -1,8 +1,12 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import { ResizeHandle } from '../layout/ResizeHandle';
+import { splitSizes } from '../layout/geometry';
+import { useElementSize } from '../layout/useElementSize';
 import { SignalChart } from './SignalChart';
 import { useModelSeries } from './useModelSeries';
 import { ColumnSignals } from './ColumnSignals';
 import type { MotionData } from '../motion/types';
+import { markerIndex, markerSourceId } from '../motion/markerIdentity';
 import { independentModelMessage } from '../motion/modelTiming';
 import { selectPlot, useSession } from '../state/session';
 import { plotSeries } from './series';
@@ -14,22 +18,37 @@ export function SignalPlot({
   collapsed,
   onToggle,
   explorer = false,
+  height,
+  empty = false,
 }: {
   data: MotionData;
   collapsed: boolean;
   onToggle: () => void;
   explorer?: boolean;
+  height?: number;
+  empty?: boolean;
 }) {
   const [split, setSplit] = useState(false);
+  const [splitRatio, setSplitRatio] = useState(0.5);
+  const panes = useRef<HTMLDivElement>(null);
+  const paneSize = useElementSize(panes, !collapsed);
+  const splitActive = split && !explorer;
+  const { left: leftWidth, resizable: splitResizable } = splitSizes(paneSize.width, splitRatio);
   const [secondSelection, setSecondSelection] = useState('marker');
   const selection = useSession((s) => s.plot);
   return (
-    <section id="signal-panel" className={`plot-panel ${collapsed ? 'is-collapsed' : ''}`}>
+    <section
+      id="signal-panel"
+      className={`plot-panel ${collapsed ? 'is-collapsed' : ''}${empty ? ' is-empty' : ''}`}
+      style={!collapsed && height !== undefined ? { height, flexBasis: height } : undefined}
+    >
       <div className="panel-heading">
         <span>SIGNAL INSPECTOR</span>
-        <span className="muted">
-          Scroll or drag to zoom · Click to scrub · Double-click to reset
-        </span>
+        {!explorer && (
+          <span className="muted">
+            Scroll or drag to zoom · Click to scrub · Double-click to reset
+          </span>
+        )}
         <div className="plot-view-controls">
           {!explorer && (
             <button
@@ -51,13 +70,37 @@ export function SignalPlot({
       </div>
       <div id="signal-panel-content" hidden={collapsed}>
         {!collapsed && (
-          <div className={`plot-panes ${split && !explorer ? 'is-split' : ''}`}>
+          <div
+            ref={panes}
+            className={`plot-panes ${splitActive ? 'is-split' : ''}`}
+            style={
+              splitActive && splitResizable
+                ? { gridTemplateColumns: `${leftWidth}px 0 minmax(250px, 1fr)` }
+                : undefined
+            }
+          >
             {explorer ? (
               <ColumnSignals data={data} />
             ) : (
               <SignalPane data={data} selection={selection} onSelection={selectPlot} />
             )}
-            {split && !explorer && (
+            {splitActive && (
+              <div className="plot-divider">
+                {splitResizable && (
+                  <ResizeHandle
+                    axis="horizontal"
+                    label="Split plot widths"
+                    controls="signal-panel-content"
+                    value={leftWidth}
+                    min={250}
+                    max={paneSize.width - 250}
+                    onChange={(value) => setSplitRatio(value / paneSize.width)}
+                    onReset={() => setSplitRatio(0.5)}
+                  />
+                )}
+              </div>
+            )}
+            {splitActive && (
               <SignalPane
                 data={data}
                 selection={secondSelection}
@@ -101,7 +144,7 @@ function SignalPane({
     (Number.isInteger(Number(index)) &&
       Number(index) >= 0 &&
       (kind === 'marker'
-        ? Number(index) < data.markers.labels.length
+        ? markerIndex(data, Number(index)) >= 0
         : kind === 'analog'
           ? Number(index) < data.analogs.length
           : kind === 'signal'
@@ -110,7 +153,7 @@ function SignalPane({
               Number(index) < data.forcePlatforms.length &&
               (['force', 'moment', 'cop'].includes(field) ||
                 (field === 'freeMoment' && !!data.forcePlatforms[Number(index)].freeMoment))));
-  const selection = valid ? requestedSelection : 'marker';
+  const selection = valid ? requestedSelection : kind === 'marker' ? 'none' : 'marker';
   const graph = useMemo(() => {
     if (selection === 'none') return null;
     if (!model) return plotSeries(data, selection, selected);
@@ -139,10 +182,12 @@ function SignalPane({
           onChange={onSelection}
         >
           <option value="none">No signal</option>
-          <option value="marker">Marker · {data.markers.labels[selected]}</option>
+          <option value="marker">
+            Marker · {data.markers.labels[selected] ?? 'None selected'}
+          </option>
           <optgroup label="Markers">
             {data.markers.labels.map((label, i) => (
-              <option key={i} value={`marker:${i}`}>
+              <option key={markerSourceId(data, i)} value={`marker:${markerSourceId(data, i)}`}>
                 {label}
               </option>
             ))}

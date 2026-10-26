@@ -8,6 +8,76 @@ branches describe the planned release until its tag is published.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-26
+
+Intended publication date: 2026-10-26. Publication and deployment remain pending.
+
+### Added
+
+- Landing-page **Load Example File** action through the existing cancellable H5
+  importer, with retryable download errors and one anonymous successful-load event.
+  The separate public demo asset has generic subject identifiers, removed recording
+  timestamps and sanitized source paths; measurement arrays are preserved.
+- Automatic camera fitting after load, using a representative valid pose. Reset
+  and front/side/top views use the shared camera controller.
+- Keyboard-accessible marker context menu with Focus, Rename and Delete.
+  **C** sets a fixed orbit pivot at the selected marker's current valid position;
+  **F** fits/resets, **Ctrl+Shift+U** renames, and **Shift+F10** opens the menu.
+- Full marker-trajectory deletion via **Delete** or the menu, with shared Undo/Redo,
+  selection cleanup and C3D/H5 export. Remaining signals retain their identities and
+  samples; the last marker and undocumented source dependencies are protected.
+- Resizable Trial Inspector, Signal Inspector and Split Plot separators, with
+  pointer/keyboard controls, reset, custom-size restoration and separate in-memory
+  workspace dimensions.
+
+### Changed
+
+- Permanent **Data Visualizer / Data Explorer** header navigation with current
+  workspace indication, compact responsive icons and refined spacing/typography.
+- Trial Inspector Data categories start collapsed and retain expansion across
+  tabs, searches and workspaces. File Info and Explorer share concise recording,
+  acquisition, data and provenance sections with exact timestamps/paths in Details
+  and copy controls; browser file properties remain separate from embedded metadata.
+- Timeline controls and crop/event actions adapt to panel width. Event Editor uses
+  compact responsive fields, stable action slots, Add-only autofocus, unsaved-draft
+  protection and inline deletion confirmation. Opening it preserves plot height;
+  unchanged saves retain exact event times.
+- Timeline events use Left/Right upper/lower lanes and General yellow diamonds in
+  available space. Display's optional **Compact event markers** uses one lane.
+  Both modes cluster local visual collisions and preserve original event selection.
+- Data Explorer moves dataset facts into an anchored Details popover, consolidates
+  all four Copy scopes into one accessible menu, and groups Follow playback with
+  Details. Empty Signal Inspectors are compact while retaining expanded height and
+  explicit Collapse/Expand state.
+- Unified shortcut dispatch protects text editing, dialogs, menus, plots, Explorer
+  navigation and panel resizing. Playback, scrubbing and resizing preserve manual
+  camera navigation; marker focus stays fixed during playback.
+- README and technical guidance reconciled with implemented workspaces, camera,
+  marker deletion, events, resizing, export limits and source timing conventions.
+
+### Fixed
+
+- Patched development dependency advisories with Vite 7.3.7, Vitest and its
+  matching packages 4.1.12, and source-map-js 1.2.2 in the npm lockfile.
+- C3D files with a verified separate 17-float Rotation extension can import supported
+  Point/Analog data. Persistent notes and both export previews disclose omitted
+  Rotation signals without blocking valid exports. C3D output removes the Rotation
+  payload and parameter group; unverified/truncated layouts still fail explicitly.
+- Timeline end time uses the last sample timestamp, `(frames - 1) / rate`, matching
+  File Info and plots; exclusive crop boundaries keep `frames / rate`.
+- Browser Copy-menu checks wait for asynchronous clipboard completion before
+  asserting enabled-item focus, and cover navigation after a pending copy.
+- Production browser regression coverage now verifies partial-Rotation import
+  notes, both export previews and numeric full/cropped C3D/H5 subset round trips
+  using a small synthetic fixture.
+
+### Notes
+
+- The provider confirmed particular Xsens recordings were acquired at 60 Hz but
+  declare 240 Hz. JE Motion Lab respects the declared source rate, including on
+  export, without automatic correction, resampling or an effective-rate override.
+  Those source files require upstream metadata correction.
+
 ## [0.5.1] - 2026-10-12
 
 ### Changed
@@ -148,7 +218,8 @@ The published tag retained `0.1.0` in its package files despite being released a
 `v0.4.0`. That historical mismatch was corrected after publication and is recorded under
 `[0.5.0]`; the existing release and tag have not been rewritten.
 
-[Unreleased]: https://github.com/JEbbecke/mocap-web-viewer/compare/v0.5.1...HEAD
+[Unreleased]: https://github.com/JEbbecke/mocap-web-viewer/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/JEbbecke/mocap-web-viewer/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/JEbbecke/mocap-web-viewer/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/JEbbecke/mocap-web-viewer/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/JEbbecke/mocap-web-viewer/releases/tag/v0.4.0

@@ -130,7 +130,7 @@ export async function verifyModelTiming(page) {
     const end = page.getByRole('slider', { name: 'Crop end', exact: true });
     await end.press('Home');
     for (let i = 0; i < 9; i++) await end.press('ArrowRight');
-    await page.getByRole('button', { name: 'Crop', exact: true }).click();
+    await page.getByRole('button', { name: 'Apply crop', exact: true }).click();
     await verifyGeometry(page, independent);
     await page.getByLabel('Signal to plot', { exact: true }).selectOption('ik:0');
     await page.locator('.u-legend').getByText(/IK ·/).waitFor();
@@ -157,7 +157,7 @@ export async function verifyModelTiming(page) {
       );
       assert(Math.abs(firstTime - (independent && kind === 'ID' ? 7 : 0)) < 1e-10);
     }
-    await page.getByRole('button', { name: 'Data Viewer', exact: true }).click();
+    await page.getByRole('button', { name: 'Data Visualizer', exact: true }).click();
   }
   console.log(
     'Model timing smoke passed: alignment, crop, independent retention, shared cursor and desktop/laptop plot bounds.',

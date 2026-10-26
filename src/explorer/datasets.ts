@@ -1,8 +1,9 @@
 import { independentModelMessage, type ModelView } from '../motion/modelTiming';
 import type { MotionData, Series } from '../motion/types';
+import { markerSourceId } from '../motion/markerIdentity';
 import { eventSourceFrame } from '../motion/events';
 import { metadataText } from '../motion/metadata';
-import { fileInfoSections } from '../components/fileInfoSections';
+import { fileInfoSections, type InfoRow } from '../components/fileInfoSections';
 import type { PlotColumn } from '../plots/series';
 
 export type Cell = string | number | boolean | undefined;
@@ -19,6 +20,8 @@ export interface Dataset {
   columns: Column[];
   count: number;
   cell: (row: number, column: number) => Cell;
+  cellTitle?: (row: number, column: number) => string | undefined;
+  cellDisplay?: (row: number, column: number) => string | undefined;
   facts: [string, string][];
   time?: (row: number) => number;
   current?: (time: number) => number;
@@ -148,7 +151,7 @@ export function explorerDatasets(data: MotionData): Dataset[] {
               ).join(', '),
       ]);
     datasets.push({
-      id: `marker:${m}`,
+      id: `marker:${markerSourceId(data, m)}`,
       name,
       path: ['Trajectories'],
       count: data.timeline.frameCount,
@@ -364,31 +367,8 @@ export function explorerDatasets(data: MotionData): Dataset[] {
     });
   }
   const sections = fileInfoSections(data);
-  // File Info's internal origin is zero-based; detailed source numbering is format-native.
-  const first = sections
-    .find((s) => s.title === 'File & Recording')
-    ?.rows.find((r) => r.label === 'Source first frame');
-  if (first) {
-    first.label = `Source first frame (${data.source.format === 'C3D' ? 'C3D one-based' : 'H5 zero-based'})`;
-    first.values = [String(eventSourceFrame(data, 0))];
-  }
-  const metadata = sections.map((s) => ({
-    name:
-      (
-        {
-          'File & Recording': 'File',
-          'Subject & Trial': 'Subject',
-          'Project & Provenance': 'Provenance',
-        } as Record<string, string>
-      )[s.title] ?? s.title,
-    rows: s.rows,
-  }));
-  const provenance = metadata.find((s) => s.name === 'Provenance');
-  if (provenance) {
-    const rows = provenance.rows.filter((r) => ['Project', 'Project PI'].includes(r.label));
-    if (rows.length) metadata.push({ name: 'Project', rows });
-    provenance.rows = provenance.rows.filter((r) => !['Project', 'Project PI'].includes(r.label));
-  }
+  const metadata: { name: string; rows: InfoRow[]; notes?: Record<string, string> }[] =
+    sections.map((s) => ({ name: s.title, rows: s.rows, notes: s.notes }));
   metadata.push({
     name: 'Coordinate system',
     rows: [
@@ -396,35 +376,63 @@ export function explorerDatasets(data: MotionData): Dataset[] {
         label: 'Scientific units',
         values: ['Position / COP / geometry / residual mm; force N; moment Nm; time s'],
       },
-      {
-        label: 'Axes',
-        values: [
-          data.source.info?.coordinateSystem ??
-            'Lab XYZ; viewer Z-up. Source axis convention unspecified.',
-        ],
-      },
+      ...(!data.source.info?.coordinateSystem
+        ? [
+            {
+              label: 'Axes',
+              values: [
+                data.source.info?.coordinateSystem ??
+                  'Lab XYZ; viewer Z-up. Source axis convention unspecified.',
+              ],
+            },
+          ]
+        : []),
     ],
+    notes: undefined,
   });
   metadata.push({
     name: 'Schema',
     rows: [
-      { label: 'Format', values: [data.source.format] },
+      ...(data.source.format === 'C3D'
+        ? [
+            {
+              label: 'Source first frame (C3D one-based)',
+              values: [String(eventSourceFrame(data, 0))],
+            },
+          ]
+        : []),
       { label: 'H5 layout', values: data.source.h5Layout ? [data.source.h5Layout] : [] },
       { label: 'Event layout', values: data.source.eventSchema ? [data.source.eventSchema] : [] },
     ],
+    notes: undefined,
   });
   metadata
     .filter((s) => s.rows.length)
     .forEach((s) => {
       const rows = s.rows.filter((r) => r.values.length);
+      if (!rows.length) return;
+      const grouped = rows.some((r) => r.group);
+      const valueColumn = grouped ? 2 : 1;
       datasets.push({
-        id: `metadata:${s.name}`,
+        id: `metadata:${s.name === 'File & Recording' ? 'File' : s.name}`,
         name: s.name,
         path: ['Metadata'],
         count: rows.length,
-        columns: [col('Field', false), col('Value', false)],
-        cell: (r, c) => (c ? rows[r].values.join('\n') : rows[r].label),
-        facts: [],
+        columns: [
+          ...(grouped ? [col('Section', false)] : []),
+          col('Field', false),
+          col('Value', false),
+        ],
+        cell: (r, c) =>
+          c === valueColumn
+            ? rows[r].values.join('\n')
+            : grouped && c === 0
+              ? (rows[r].group ?? s.name)
+              : rows[r].label,
+        cellTitle: (r, c) => (c === valueColumn ? rows[r].tooltip : undefined),
+        cellDisplay: (r, c) =>
+          c === valueColumn ? (rows[r].displayValues?.join('\n') ?? rows[r].summary) : undefined,
+        facts: Object.entries(s.notes ?? {}).map(([group, note]) => [group, note]),
       });
     });
   return [

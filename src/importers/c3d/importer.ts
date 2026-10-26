@@ -5,14 +5,13 @@ import { validateMotion } from '../../motion/validation';
 import { readParameters, number, nums, strings, labels } from './parameters';
 import { extractPlatforms } from './forces';
 import { c3dRecordingInfo } from './metadata';
+import { omittedRotations } from './rotation';
+import { partialImportNotice } from '../../motion/importLimitations';
+import { c3dMarkerDeletionIssue } from './markerMetadata';
 
 export function parseC3D(buffer: ArrayBuffer, name: string): MotionData {
   const view = new DataView(buffer),
-    { params: p, little } = readParameters(view);
-  if (number(p, 'ROTATION:USED', 0) > 0)
-    throw new Error(
-      'Nonstandard C3D rotation records are not supported. Re-export a standard point/analog C3D.',
-    );
+    { params: p, little, start: parameterStart } = readParameters(view);
   const u16 = (offset: number) => view.getUint16(offset, little),
     f32 = (offset: number) => view.getFloat32(offset, little);
   const rate = positiveRate(number(p, 'POINT:RATE', f32(20)), 'Point');
@@ -49,16 +48,21 @@ export function parseC3D(buffer: ArrayBuffer, name: string): MotionData {
     throw new Error('Invalid C3D point/analog counts, rate ratio or scale.');
   const start = (number(p, 'POINT:DATA_START', u16(16)) - 1) * 512;
   const bytes = floating ? 4 : 2,
-    frameBytes = (count * 4 + channels * subframes) * bytes;
+    frameBytes = (count * 4 + channels * subframes) * bytes,
+    sampleEnd = start + frames * frameBytes;
   if (
     start < 512 ||
     !Number.isSafeInteger(start) ||
-    start + frames * frameBytes > buffer.byteLength
+    !Number.isSafeInteger(sampleEnd) ||
+    start < parameterStart + view.getUint8(parameterStart + 2) * 512 ||
+    sampleEnd > buffer.byteLength
   )
     throw new Error('Truncated C3D sample data.');
+  const partialImport = omittedRotations(p, view, sampleEnd, rate, frames, floating);
   const unit = strings(p, 'POINT:UNITS')[0] || '',
     lengthScale = millimetres(unit),
     warnings: string[] = [];
+  if (partialImport) warnings.push(partialImportNotice(partialImport, channels > 0));
   const rawLabels = labels(p, 'POINT:LABELS');
   const markerLabels = uniqueLabels(
     Array.from({ length: count }, (_, i) => rawLabels[i] || `Marker ${i + 1}`),
@@ -143,6 +147,10 @@ export function parseC3D(buffer: ArrayBuffer, name: string): MotionData {
     source: {
       format: 'C3D',
       originalPositionUnit: unit,
+      ...(c3dMarkerDeletionIssue(p, count)
+        ? { markerDeletionIssue: c3dMarkerDeletionIssue(p, count) }
+        : {}),
+      ...(partialImport ? { partialImport } : {}),
       info: c3dRecordingInfo(p),
       metadata: {
         processor: little ? 'Intel' : 'MIPS',

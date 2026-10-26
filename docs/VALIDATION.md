@@ -17,12 +17,51 @@ git diff --check
 npm run test:browser
 ```
 
+On Windows with a blocked PowerShell npm wrapper, use `npm.cmd` for the same
+scripts. Node.js must satisfy `package.json` (currently >=22.12.0). Build before
+smoke: it serves `dist/` with Vite preview unless `SMOKE_MODE=development` is set.
+For production-domain paths set `VITE_BASE_PATH=/` before building and testing;
+for repository-subpath coverage use the same explicit base in both commands.
+The Pages workflow runs unit/format/typechecked build checks, not browser tests.
+
+Focused browser checks use local development servers and existing test probes:
+
+```sh
+node scripts/browser-camera.mjs
+node scripts/browser-workspace-resize.mjs
+node scripts/browser-explorer-polish.mjs
+```
+
+Camera includes marker focus/context menu/rename/deletion, keyboard scope,
+history and all four C3D/H5 deletion export paths. Workspace resizing covers
+nested separators, constraints/reset, Collapse/Expand, camera/data invariance and
+workspace preferences at 2560×1440, 1920×1080, 1366×768 and narrower widths.
+Explorer polish covers Details placement/scroll/focus, exact clipboard scopes,
+pending/failed clipboard writes, compact empty plots and preferred-height
+restoration. Reports and development probes stay under ignored `.local/`.
+
 Tests cover Intel integer/IEEE and MIPS C3D, signed/unsigned analog scaling and
 subframes, residual validity, units, TYPE-2/3/4 force calibration and COP,
 moving geometry, crop clocks, event edits, all data-label collections, history,
 File Info, Data sidebar, Explorer paging/copying, current H5 preservation, both
 cross-format paths, force-channel reuse/fallback and conversion-loss reporting.
 Malformed structures and unsupported obsolete H5 layouts must fail explicitly.
+Generated Rotation fixtures cover verified separate sections, malformed layouts,
+explicit omission warnings, supported-subset C3D/H5 round trips and source
+provenance through cropping/editing. Optional local C3D tests read both Xsens
+examples as well as the standard Qualisys file and compare supported samples
+against an independent byte scanner. Timing tests retain the Xsens files' declared
+240 Hz even though the data provider confirmed 60 Hz acquisition: playback follows
+source metadata and applies no automatic correction. They cover 60–240 Hz clocks,
+rendering-rate independence, speed multipliers, events, plots, crops and exports.
+`browser-rotation.mjs`, invoked by smoke, reuses the tiny independent synthetic
+Rotation encoder. In the built app it verifies persistent omission notes, both
+export previews, nonblocking export and full/cropped C3D/H5 re-imports. It compares
+known marker XYZ, validity, residuals, analog values, rates and nonzero source
+frames through Explorer, and checks that C3D output has no stale Rotation group.
+The cross-format warning about the unspecified fourth trajectory component is
+retained. This is supported-subset coverage, not full Rotation support or proof
+of compatibility with unavailable private Xsens files.
 Synthetic empty-category tests accept absent/empty optional current-H5 groups
 while rejecting inconsistent populated dimensions, labels, units and clocks.
 Browser smoke opens H5 with empty EMG, checks its absence from Data/Explorer and

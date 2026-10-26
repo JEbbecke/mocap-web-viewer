@@ -174,7 +174,14 @@ it('omits absent/empty categories and renders common IK/ID selection controls', 
   const data = fixture();
   setData(data);
   useSession.setState({ search: 'knee_angle' });
-  const sidebar = renderToStaticMarkup(createElement(DataBrowser, { data }));
+  const sidebar = renderToStaticMarkup(
+    createElement(DataBrowser, {
+      data,
+      expandedSections: new Set(['IK results', 'ID results']),
+      collapsedSearchSections: new Set<string>(),
+      onToggleSection: () => {},
+    }),
+  );
   expect(sidebar).toContain('IK results');
   expect(sidebar).toContain('ID results');
   const plot = renderToStaticMarkup(

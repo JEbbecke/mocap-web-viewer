@@ -4,6 +4,7 @@ import { forceScale, millimetres, momentScale, MOTION_UNITS } from '../../motion
 import { validateMotion } from '../../motion/validation';
 import { h5RecordingInfo } from './metadata';
 import { h5Layout } from './layout';
+import { h5MarkerDeletionIssue } from './markerMetadata';
 import { modelTrialAligned } from '../../motion/modelTiming';
 import {
   embeddedC3DAnalogEncoding,
@@ -748,6 +749,9 @@ export function parseH5Tree(root: H5Node, name: string): MotionData {
       timeOrigin,
       eventSchema,
       h5Layout: layout,
+      ...(h5MarkerDeletionIssue(root, count)
+        ? { markerDeletionIssue: h5MarkerDeletionIssue(root, count) }
+        : {}),
       c3dAnalogEncoding: embeddedC3DAnalogEncoding(root),
     },
     timeline: { frameCount, rate, firstFrame, duration: (frameCount - 1) / rate },

@@ -6,6 +6,7 @@ import {
 } from '../../motion/metadata';
 import { labels, number, nums, type Parameters } from './parameters';
 import { readC3DMetadata } from '../../motion/c3dMetadata';
+import { parseFileTimestamp } from '../../motion/fileMetadata';
 
 /** SUBJECT(S) is application-specific. Map only explicit field names, never infer
  * age from birth date, mass from WEIGHT, ID from NAME, or units from POINT:UNITS. */
@@ -59,6 +60,21 @@ export function c3dRecordingInfo(p: Parameters): RecordingInfo {
     // C3D screen axes describe viewing, not a lab coordinate system. TRIAL frame
     // indices, ambiguous DATE parameters and browser lastModified are not dates.
     ...embedded,
+    // Only the existing versioned JE_METADATA extension establishes timestamp semantics.
+    fileTimestamps: {
+      created: parseFileTimestamp(
+        embedded.provenance?.createdLocal?.values ?? embedded.created,
+        'JE_METADATA v1: CREATED_LOCAL / CREATED',
+      ),
+      createdUTC: parseFileTimestamp(
+        embedded.provenance?.createdUTC?.values,
+        'JE_METADATA v1: CREATED_UTC',
+      ),
+      modified: parseFileTimestamp(
+        embedded.provenance?.lastUpdated?.values,
+        'JE_METADATA v1: LAST_UPDATED',
+      ),
+    },
     subject: { ...subject, ...embedded.subject },
   };
 }

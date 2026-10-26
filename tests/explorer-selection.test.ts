@@ -134,3 +134,36 @@ it('copies the complete table independently of selection and viewport', () => {
   expect(copySelectedRows(data, null)).toBe('');
   expect(copySelectedColumns(data, null)).toBe('');
 });
+
+it('keeps unavailable selections empty for every selection-specific copy scope', () => {
+  for (const selected of [null, selectColumn(99, 4), selectCell(null, { row: 99, column: 2 })]) {
+    expect(boundSelection(selected, data.count, data.columns.length)).toBeNull();
+    expect(copySelectedCells(data, selected)).toBe('');
+    expect(copySelectedColumns(data, selected)).toBe('');
+    expect(copySelectedRows(data, selected)).toBe('');
+    expect(copyFullTable(data)).toContain('0.12345678901234566');
+  }
+});
+
+it('preserves missing values and the distinct single-cell versus tabular multiline formatting', () => {
+  const values = [
+    [undefined, 'line one\nline two'],
+    [true, 'tab\tvalue'],
+  ];
+  const dataset = {
+    ...data,
+    count: 2,
+    columns: [
+      { id: 'a', name: 'A' },
+      { id: 'b', name: 'B' },
+    ],
+    cell: (row: number, column: number) => values[row][column],
+  };
+  expect(copySelectedCells(dataset, selectCell(null, { row: 0, column: 1 }))).toBe(
+    'line one\nline two',
+  );
+  expect(copyFullTable(dataset)).toBe('A\tB\n—\tline one line two\nYes\ttab value');
+  expect(copySelectedRows(dataset, selectCell(null, { row: 0, column: 0 }))).toBe(
+    'A\tB\n—\tline one line two',
+  );
+});

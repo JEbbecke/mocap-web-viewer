@@ -1,25 +1,35 @@
 import type { MotionData } from '../motion/types';
 import { useSession } from '../state/session';
 import { fileInfoSections } from './fileInfoSections';
-import { sourceBasename } from './metadataDisplay';
+import { metadataTimestamp, sourceBasename } from './metadataDisplay';
 
 /** Reuse File Info's normalized rows and clock formatting for compact trial identity. */
 export function trialOverview(data: MotionData, sourceName?: string) {
+  const sections = fileInfoSections(data);
   const fields = new Map(
-    fileInfoSections(data).flatMap((section) =>
+    sections.flatMap((section) =>
       section.rows.map((row) => [row.label, row.values.join(', ')] as const),
     ),
   );
   const filename = sourceBasename(sourceName ?? data.name) || fields.get('Format') || 'Trial';
   const condition = fields.get('Condition');
+  const created = sections
+    .flatMap((s) => s.rows)
+    .find(
+      (row) =>
+        row.group === 'Embedded file metadata' &&
+        row.label.startsWith('Created') &&
+        metadataTimestamp(row.values[0]),
+    );
   return {
     title: condition || filename,
     filename,
+    createdTooltip: created?.tooltip || created?.values.join('\n'),
     rows: [
       ['Subject', fields.get('Subject ID') || fields.get('Subject name')],
       ['Group', fields.get('Subject group')],
       // Condition is already the primary title; avoid a duplicate row.
-      ['Created', fields.get('Date')],
+      ['Created', created && metadataTimestamp(created.values[0])],
     ].flatMap(([label, value]) => (value ? [{ label: label!, value }] : [])),
     summary: [
       fields.get('Format'),
@@ -44,7 +54,9 @@ export function TrialOverview({ data }: { data: MotionData }) {
           {overview.rows.map((row) => (
             <div key={row.label}>
               <dt>{row.label}</dt>
-              <dd title={row.value}>{row.value}</dd>
+              <dd title={row.label === 'Created' ? overview.createdTooltip : row.value}>
+                {row.value}
+              </dd>
             </div>
           ))}
         </dl>

@@ -5,9 +5,21 @@ import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import assert from 'node:assert/strict';
 import { verifyLicense } from './browser-license.mjs';
+import { verifyExampleFile } from './browser-example.mjs';
+import { createRotationBrowserFixture, verifyRotationExport } from './browser-rotation.mjs';
+import { verifyWorkspaceNavigation } from './browser-workspace-navigation.mjs';
+import { verifyDataTab } from './browser-data-tab.mjs';
+import { verifyFileMetadata } from './browser-file-metadata.mjs';
 import { verifyModelPlots } from './browser-model-plots.mjs';
 import { createModelTimingFixtures, verifyModelTiming } from './browser-model-timing.mjs';
 import { verifyCropPreview } from './browser-crop-preview.mjs';
+import { createTimelineFixture, verifyTimelineLayout } from './browser-timeline.mjs';
+import { verifyEventEditor } from './browser-event-editor.mjs';
+import {
+  createClusterFixtures,
+  openTimelineEvent,
+  verifyEventClusters,
+} from './browser-event-clusters.mjs';
 import { verifyTrialOverview, verifyLongTrialFilename } from './browser-trial-overview.mjs';
 import * as h5 from 'h5wasm/node';
 import {
@@ -37,6 +49,7 @@ const { version } = JSON.parse(await readFile('package.json', 'utf8'));
 const analyticsOrigin = 'https://je-motion-analytics.jonasebbecke97.workers.dev';
 const analyticsURL = `${analyticsOrigin}/event`;
 await mkdir('.local', { recursive: true });
+await createRotationBrowserFixture();
 const fixtures = JSON.parse(await readFile('tests/fixtures/c3d.json', 'utf8'));
 await writeFile('.local/synthetic.c3d', Buffer.from(fixtures.intelFloat, 'base64'));
 const h5Fixture = JSON.parse(await readFile('tests/fixtures/current-h5.json', 'utf8'));
@@ -47,6 +60,9 @@ const currentH5 = JSON.parse(await readFile('tests/fixtures/current-h5.json', 'u
 await writeFile('.local/current-browser.h5', Buffer.from(currentH5.base64, 'base64'));
 // Synthetic metadata exercises all curated sections without participant data.
 await h5.ready;
+createTimelineFixture();
+createTimelineFixture('.local/event-editor-fast.h5', 120, false, 100000);
+createClusterFixtures();
 createCoordinateSystemsFixture();
 createModelTimingFixtures();
 // Three-frame current-schema fixture for the shared C3D/H5 crop interaction checks.
@@ -185,6 +201,15 @@ try {
 } finally {
   populatedFile.close();
 }
+await writeFile('.local/same-source.h5', await readFile('.local/populated.h5'));
+const sameSourceFile = new h5.File(resolve('.local/same-source.h5'), 'a');
+try {
+  const info = sameSourceFile.get('MetaData/FileInfo');
+  info.delete_attribute('OriginalFiles');
+  info.create_attribute('OriginalFiles', [syntheticInfoPath]);
+} finally {
+  sameSourceFile.close();
+}
 const development = process.env.SMOKE_MODE === 'development';
 const base =
   process.env.VITE_BASE_PATH && process.env.VITE_BASE_PATH !== './'
@@ -232,6 +257,7 @@ try {
     headless: true,
     args: ['--enable-unsafe-swiftshader'],
   });
+  await verifyExampleFile(browser, base, development);
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   // Validate client requests without sending test activity or local references to the service.
   await page.route(`${analyticsOrigin}/**`, (route) =>
@@ -263,6 +289,7 @@ try {
     }),
   );
   await page.goto(`http://127.0.0.1:4173${base}`, { waitUntil: 'networkidle' });
+  await verifyWorkspaceNavigation(page, false);
   assert.equal(await page.title(), 'JE Motion Lab | MoCap Viewer & Editor');
   assert.equal(await page.locator('.brand strong').innerText(), 'JE Motion Lab');
   assert.equal(
@@ -298,12 +325,13 @@ try {
   await page.getByLabel('Open motion file').setInputFiles(resolve('.local/populated.h5'));
   await controlsLoad;
   await page.getByRole('slider', { name: 'Frame', exact: true }).waitFor();
+  await verifyWorkspaceNavigation(page);
   await verifyTrialOverview(page, {
     title: 'Baseline',
     filename: 'populated.h5',
     subject: 'SYNTHETIC-INFO',
     group: 'Synthetic group',
-    created: '2026-01-02 03:04:05.123456',
+    created: '02 Jan 2026, 03:04:05',
   });
   await verifyExportToolbar(page);
   await page.getByRole('tab', { name: 'File Info', exact: true }).click();
@@ -312,9 +340,15 @@ try {
     fileInfo
       .locator('dl > div')
       .filter({ has: page.locator('dt').filter({ hasText: new RegExp(`^${label}$`) }) })
-      .locator('dd');
-  assert.equal(await fileInfo.locator('section').count(), 6);
-  assert.equal(await infoValue('Date').innerText(), '2026-01-02 03:04:05.123456');
+      .locator('dd')
+      .first();
+  assert.equal(await fileInfo.locator('section').count(), 4);
+  await verifyFileMetadata(page, {
+    name: 'populated.h5',
+    size: (await readFile('.local/populated.h5')).length,
+    embeddedCreated: '2026-01-02 03:04:05.123456',
+  });
+  assert.equal(await infoValue('Date').count(), 0);
   assert.equal(await infoValue('Analog / force rate').innerText(), '8 Hz');
   assert.equal(await infoValue('EMG channels').innerText(), '1');
   assert.equal(await infoValue('IK results').innerText(), '1 variable');
@@ -325,16 +359,16 @@ try {
   assert.equal(await fileInfo.locator('pre, .event-row').count(), 0);
   assert(!/sourceTree|hierarchy|Source metadata/.test(await fileInfo.innerText()));
   await page.screenshot({ path: '.local/file-info-top.png' });
-  await infoValue('Original files').locator('summary').click();
+  await fileInfo.getByRole('button', { name: 'Original files details', exact: true }).click();
   assert.deepEqual(
-    await infoValue('Original files').locator('.file-info-value').allTextContents(),
+    await infoValue('Original files')
+      .locator('..')
+      .locator('.metadata-details .file-info-value')
+      .allTextContents(),
     ['first.c3d', 'second.h5', 'third.c3d', 'fourth.h5'],
   );
   await infoValue('Source path').scrollIntoViewIfNeeded();
-  assert.equal(
-    await infoValue('Source path').locator('span').getAttribute('title'),
-    syntheticInfoPath,
-  );
+  assert.equal(await infoValue('Source path').getAttribute('title'), syntheticInfoPath);
   assert(
     await fileInfo.evaluate(
       (el) =>
@@ -347,11 +381,15 @@ try {
   await page.getByRole('tab', { name: 'Data', exact: true }).click();
   assert.equal(await page.getByRole('tab', { name: 'Markers', exact: true }).count(), 0);
   const dataBrowser = page.getByRole('tabpanel', { name: 'Data', exact: true });
+  await verifyDataTab(page, 'H5');
   const dataGroup = (name) =>
     dataBrowser.locator('.data-section').filter({
-      has: page.locator('summary > span:first-child').filter({ hasText: new RegExp(`^${name}$`) }),
+      has: page
+        .locator('.data-section-heading > span:first-of-type')
+        .filter({ hasText: new RegExp(`^${name}$`) }),
     });
   // Committed marker edits share history; native text-field undo keeps its own draft.
+  await dataGroup('Markers').locator('.data-section-heading').click();
   const firstMarker = dataBrowser.locator('.marker-row').first();
   const oldMarkerName = await firstMarker.locator('button').first().getAttribute('title');
   const otherMarkerName = await dataBrowser
@@ -576,12 +614,12 @@ try {
   assert.equal(await dataBrowser.getByRole('status').innerText(), 'No matching data.');
   await page.getByLabel('Search data').fill('');
   assert.equal(await dataBrowser.locator('.data-section').count(), 8);
-  await dataGroup('Analog channels').locator('summary').click();
-  // Native details summaries also toggle from the keyboard.
-  const analogSummary = dataGroup('Analog channels').locator('summary');
-  const openBeforeKey = await dataGroup('Analog channels').getAttribute('open');
+  await dataGroup('Analog channels').locator('.data-section-heading').click();
+  // Category buttons also toggle from the keyboard.
+  const analogSummary = dataGroup('Analog channels').locator('.data-section-heading');
+  const openBeforeKey = await analogSummary.getAttribute('aria-expanded');
   await analogSummary.press('Enter');
-  assert.notEqual(await dataGroup('Analog channels').getAttribute('open'), openBeforeKey);
+  assert.notEqual(await analogSummary.getAttribute('aria-expanded'), openBeforeKey);
   assert(await dataBrowser.evaluate((el) => el.scrollWidth <= el.clientWidth + 1));
   await page.screenshot({ path: '.local/data-browser.png' });
   assert.match(await page.locator('.viewport-title').innerText(), /XYZ.*mm/);
@@ -622,12 +660,18 @@ try {
   await page.getByLabel('Show B', { exact: true }).uncheck();
   assert.equal(await page.getByLabel('Show B', { exact: true }).isChecked(), false);
   await page.getByLabel('Search data').fill('A');
-  await page.getByRole('button', { name: 'Show all', exact: true }).click();
+  assert.equal(await page.getByRole('button', { name: 'Show all', exact: true }).count(), 0);
   await page.getByLabel('Search data').fill('B');
   assert.equal(
     await page.getByLabel('Show B', { exact: true }).isChecked(),
+    false,
+    'hidden markers stay hidden when switching search results',
+  );
+  await page.getByLabel('Show B', { exact: true }).check();
+  assert.equal(
+    await page.getByLabel('Show B', { exact: true }).isChecked(),
     true,
-    'Show all restores markers outside the search results',
+    'the existing marker checkbox restores visibility after filtering',
   );
   await page.getByLabel('Search data').fill('');
   const plotBox = await page.locator('.u-over').boundingBox();
@@ -790,7 +834,15 @@ try {
   );
   assert.equal(await page.locator('.trial-overview dt').filter({ hasText: 'Created' }).count(), 0);
   await page.getByRole('tab', { name: 'File Info', exact: true }).click();
-  assert.equal(await fileInfo.locator('section').count(), 3, 'minimal C3D omits optional sections');
+  assert.equal(
+    await fileInfo.locator('section').count(),
+    4,
+    'minimal C3D omits optional recording sections',
+  );
+  await verifyFileMetadata(page, {
+    name: 'synthetic.c3d',
+    size: (await readFile('.local/synthetic.c3d')).length,
+  });
   assert.equal(
     await infoValue('Date').count(),
     0,
@@ -800,6 +852,7 @@ try {
   assert.equal(await fileInfo.locator('.event-row, pre').count(), 0);
   await page.getByRole('tab', { name: 'Data', exact: true }).click();
   assert.equal(await dataBrowser.locator('.data-section').count(), 3);
+  await verifyDataTab(page, 'C3D');
   assert.equal(await dataGroup('Force platforms').count(), 0);
   for (const name of ['EMG channels', 'Rigid bodies', 'IK results', 'ID results'])
     assert.equal(await dataGroup(name).count(), 0);
@@ -808,7 +861,7 @@ try {
   await page.getByLabel('Time (s)', { exact: true }).fill('0.015');
   await page.getByLabel('Context', { exact: true }).fill('Right');
   await page.getByRole('button', { name: 'Save event', exact: true }).click();
-  await page.getByRole('button', { name: 'Edit event Synthetic added event', exact: true }).click();
+  await openTimelineEvent(page, 'Synthetic added event');
   await page.getByLabel('Event label', { exact: true }).fill('Synthetic edited event');
   await page.getByLabel('Time (s)', { exact: true }).fill('0.02');
   await page.screenshot({ path: '.local/event-editor.png' });
@@ -993,7 +1046,7 @@ try {
     );
     await page.getByRole('slider', { name: 'Crop start', exact: true }).press('ArrowRight');
     await page.getByRole('slider', { name: 'Crop end', exact: true }).press('Home');
-    await page.getByRole('button', { name: 'Crop', exact: true }).click();
+    await page.getByRole('button', { name: 'Apply crop', exact: true }).click();
     await verifyCroppedExplorer(page, label);
     await verifyModelPlots(page);
     const cropped = await save('cropped');
@@ -1046,7 +1099,7 @@ try {
         3,
         'available marker table still opens',
       );
-      await page.getByRole('button', { name: 'Data Viewer', exact: true }).click();
+      await page.getByRole('button', { name: 'Data Visualizer', exact: true }).click();
       await page.getByRole('slider', { name: 'Frame', exact: true }).press('End');
       assert.equal(
         await page
@@ -1065,6 +1118,7 @@ try {
         'unavailable coordinate-system categories are hidden',
       );
     await page.getByRole('tab', { name: 'Data', exact: true }).click();
+    await dataGroup('Markers').locator('.data-section-heading').click();
     const exportMarker = dataBrowser.locator('.marker-row').first();
     const importedLabel = await exportMarker.locator('button').first().getAttribute('title');
     await exportMarker
@@ -1077,8 +1131,10 @@ try {
     await undoButton.click();
     await redoButton.click();
     const analogGroup = dataGroup('Analog channels');
-    if ((await analogGroup.getAttribute('open')) === null)
-      await analogGroup.locator('summary').click();
+    if (
+      (await analogGroup.locator('.data-section-heading').getAttribute('aria-expanded')) === 'false'
+    )
+      await analogGroup.locator('.data-section-heading').click();
     const analogLabel = analogGroup.locator('.data-entry').first();
     const originalAnalogName = await analogLabel.getAttribute('title');
     await analogLabel.dblclick();
@@ -1167,7 +1223,7 @@ try {
       'preview stays in crop range',
     );
     if (extension === 'h5') await page.screenshot({ path: '.local/crop-selection.png' });
-    await page.getByRole('button', { name: 'Crop', exact: true }).click();
+    await page.getByRole('button', { name: 'Apply crop', exact: true }).click();
     assert(await undoButton.isDisabled(), 'crop clears undo history');
     assert.equal(
       await page.getByRole('slider', { name: 'Frame', exact: true }).getAttribute('aria-valuemax'),
@@ -1208,6 +1264,13 @@ try {
     await page.waitForFunction(() => !document.body.textContent.includes('Reading your recording'));
     assert.equal(await page.getByRole('alert').count(), 0);
     assert.equal(
+      await dataBrowser.locator('.data-section-heading[aria-expanded="true"]').count(),
+      0,
+      're-import resets all category expansion',
+    );
+    await dataGroup('Markers').locator('.data-section-heading').click();
+    await dataGroup('Analog channels').locator('.data-section-heading').click();
+    assert.equal(
       await dataBrowser.getByRole('button', { name: 'Exported_Thigh', exact: true }).count(),
       1,
     );
@@ -1246,6 +1309,14 @@ try {
     const plates = page.getByRole('checkbox', { name: 'Force plates', exact: true });
     const frame = page.getByRole('slider', { name: 'Frame', exact: true });
     const canvas = page.locator('.viewport canvas');
+    // Initial fit intentionally prioritizes this fixture's single marker. Zoom
+    // out through the existing controls to inspect the distant plate's full path.
+    await canvas.evaluate((element) => {
+      for (let i = 0; i < 65; i++)
+        element.dispatchEvent(
+          new WheelEvent('wheel', { deltaY: 1, bubbles: true, cancelable: true }),
+        );
+    });
     await frame.press('Home');
     await plates.uncheck();
     await page.waitForTimeout(250);
@@ -1288,8 +1359,19 @@ try {
   await page.waitForFunction(() => !document.body.textContent.includes('Reading your recording'));
   await verifyExplorer(page, 'C3D');
   await verifyCrossFormat(page, analyticsEvents);
+  await verifyRotationExport(page, analyticsEvents);
   await verifyModelTiming(page);
   await verifyCropPreview(page);
+  await verifyTimelineLayout(page);
+  await verifyEventEditor(page);
+  await verifyEventClusters(page);
+  await page.getByLabel('Open motion file').setInputFiles(resolve('.local/same-source.h5'));
+  await page.waitForFunction(() => !document.body.textContent.includes('Reading your recording'));
+  await verifyFileMetadata(page, {
+    name: 'same-source.h5',
+    size: (await readFile('.local/same-source.h5')).length,
+    embeddedCreated: '2026-01-02 03:04:05.123456',
+  });
   await verifyLongTrialFilename(page);
   await page.getByLabel('Open motion file').setInputFiles(resolve('.local/explorer-large.h5'));
   await page.waitForFunction(() => !document.body.textContent.includes('Reading your recording'));

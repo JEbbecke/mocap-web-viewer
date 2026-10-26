@@ -1,4 +1,5 @@
 @import url('./workspace.css');
+@import url('./layout/resize.css');
 :root {
   font-family: Inter, 'Segoe UI', Arial, sans-serif;
   color: #dce7ef;

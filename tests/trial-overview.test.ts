@@ -11,6 +11,7 @@ import { readParameters } from '../src/importers/c3d/parameters';
 import { physicalFixture } from './helpers/c3d';
 import { cropMotionData } from '../src/motion/crop';
 import { selectPlot, setData, useSession } from '../src/state/session';
+import { fileProperties, parseFileTimestamp } from '../src/motion/fileMetadata';
 
 const fixture = () => parseC3D(physicalFixture(), 'walking_trial_03.c3d');
 const html = (data: ReturnType<typeof fixture>) =>
@@ -39,7 +40,7 @@ it('prioritizes normalized current-H5 condition, subject and group, with file tr
   expect(overview.rows).toEqual([
     { label: 'Subject', value: 'SYN-012' },
     { label: 'Group', value: 'Synthetic group' },
-    { label: 'Created', value: '2026-10-09 10:32:00' },
+    { label: 'Created', value: '09 Oct 2026, 10:32:00' },
   ]);
   const view = html(data);
   expect(view).toContain('TRIAL');
@@ -48,7 +49,10 @@ it('prioritizes normalized current-H5 condition, subject and group, with file tr
   expect(view).not.toContain('Recorded');
   const infoRows = fileInfoSections(data).flatMap((s) => s.rows);
   expect(infoRows.find((r) => r.label === 'Subject ID')!.values).toEqual(['SYN-012']);
-  expect(infoRows.find((r) => r.label === 'Date')!.values).toEqual(['2026-10-09 10:32:00']);
+  expect(
+    infoRows.find((r) => r.group === 'Embedded file metadata' && r.label === 'Created')!.values,
+  ).toEqual(['2026-10-09T10:32:00']);
+  expect(overview.createdTooltip).toContain('2026-10-09T10:32:00');
 });
 
 it('omits missing/placeholder fields and dates without losing partial identity', () => {
@@ -94,6 +98,42 @@ it('uses actual C3D subject fields without a format-specific display branch', ()
   expect(trialOverview(data).rows).toEqual([{ label: 'Subject', value: 'Synthetic subject' }]);
 });
 
+it('uses the authoritative embedded creation row and never substitutes filesystem modification', () => {
+  const data = fixture();
+  data.source.format = 'H5';
+  data.source.filesystem = fileProperties(
+    new File(['test'], 'trial.h5', { lastModified: Date.UTC(2030, 0, 1) }),
+  );
+  const original = '2026-10-08 14:01:31.197201';
+  data.source.info = {
+    created: '1990-01-01',
+    fileTimestamps: {
+      created: parseFileTimestamp(original, '/MetaData/FileInfo@FileCreationLocal'),
+      createdUTC: parseFileTimestamp(
+        '2026-10-08 12:01:31.197201+00:00',
+        '/MetaData/FileInfo@FileCreationUTC',
+      ),
+      modified: parseFileTimestamp('2027-01-01'),
+    },
+  };
+  const embedded = fileInfoSections(data)
+    .flatMap((section) => section.rows)
+    .find((row) => row.label === 'Created (local/original)')!;
+  expect(trialOverview(data).rows.find((row) => row.label === 'Created')?.value).toBe(
+    embedded.displayValues![0],
+  );
+  expect(trialOverview(data).createdTooltip).toBe(embedded.tooltip);
+  expect(trialOverview(data).createdTooltip).toContain(original);
+  data.source.info.fileTimestamps!.created = parseFileTimestamp('malformed');
+  expect(trialOverview(data).rows.find((row) => row.label === 'Created')?.value).toBe(
+    '08 Oct 2026, 12:01:31 UTC',
+  );
+  data.source.info = {};
+  expect(trialOverview(data).rows.some((row) => row.label === 'Created')).toBe(false);
+  data.source.format = 'C3D';
+  expect(trialOverview(data).rows.some((row) => row.label === 'Created')).toBe(false);
+});
+
 it('displays safe basenames and nonempty fallback titles, with full-text tooltips', () => {
   const data = fixture();
   data.name = String.raw`C:\Users\Private Person\recordings\long_trial_name.c3d`;
@@ -118,8 +158,8 @@ it('replaces the marker card without changing selection, scientific data or hist
   expect(view).toContain('aria-label="Trial overview"');
   expect(view).not.toContain('SELECTED MARKER');
   expect(view).not.toContain('coordinate-values');
-  expect(view).toContain('marker-row selected');
-  expect(view).toContain(`aria-label="Show ${data.markers.labels[0]}"`);
+  expect(view).toContain('class="data-section-heading" aria-expanded="false"');
+  expect(view).not.toContain('marker-row selected');
   const after = useSession.getState();
   expect(after.selected).toBe(0);
   expect(after.plot).toBe('marker');

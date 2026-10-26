@@ -2,6 +2,7 @@ import type { C3DPlateDefinition, ForcePlatform, MotionData, Series, Vec3 } from
 import { add, cross, mul, plateBasis, rotate, sub, uniqueLabels } from '../motion/math';
 import { hasC3DMetadata } from '../motion/c3dMetadata';
 import { analogEncodings, reuseForcePlatform, type AnalogEncoding } from './reuseForcePlatforms';
+import { partialImportExportWarnings, partialImportNotice } from '../motion/importLimitations';
 
 export type ExportFormat = 'C3D' | 'H5';
 export interface ConversionReport {
@@ -256,7 +257,8 @@ export function conversionPlan(data: MotionData, target: ExportFormat): Conversi
     residualStep: 0.001,
     analogEncoding: [],
   };
-  if (report.sameFormat) return plan;
+  report.warnings.push(...partialImportExportWarnings(data));
+  if (report.sameFormat && !data.source.partialImport) return plan;
   const changes: string[] = [];
   const finish = () => {
     report.warnings = [...changes, ...report.warnings];
@@ -279,7 +281,19 @@ export function conversionPlan(data: MotionData, target: ExportFormat): Conversi
   report.included.push(`${markerCount} markers in mm`, `${data.events.length} events`);
   if (data.events.some((e) => !Number.isFinite(e.time)))
     report.errors.push('An event has an invalid time.');
-  if (data.warnings.length)
+  if (report.sameFormat) {
+    report.included[0] = `${markerCount} markers in ${data.source.originalPositionUnit}`;
+    report.included.push(
+      `${data.analogs.length} analog channels with source scaling and units`,
+      `${data.forcePlatforms.length} supported force platforms`,
+      'Supported source point/analog records and metadata',
+    );
+    return plan;
+  }
+  const partialNotice = data.source.partialImport
+    ? partialImportNotice(data.source.partialImport, data.analogs.length > 0)
+    : undefined;
+  if (data.warnings.some((warning) => warning !== partialNotice))
     report.warnings.push(
       'Existing import warnings still apply; uninterpreted source data cannot be converted.',
     );
@@ -461,8 +475,8 @@ export function conversionPlan(data: MotionData, target: ExportFormat): Conversi
 
 export function requireConversion(data: MotionData, target: ExportFormat): ConversionPlan {
   const plan = conversionPlan(data, target);
+  if (plan.report.errors.length) throw new Error(plan.report.errors.join(' '));
   if (plan.report.sameFormat)
     throw new Error('Use the source-preserving exporter for same-format output.');
-  if (plan.report.errors.length) throw new Error(plan.report.errors.join(' '));
   return plan;
 }

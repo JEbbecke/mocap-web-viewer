@@ -1,19 +1,24 @@
-import { Component, useEffect, useRef, useState, type ReactNode } from 'react';
+import { Component, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { ResizeHandle } from './layout/ResizeHandle';
+import { clampPanel, panelBounds } from './layout/geometry';
+import { useElementSize, useMediaQuery } from './layout/useElementSize';
 import { Viewer3D } from './viewer/Viewer3D';
 import { Inspector } from './components/Inspector';
 import { Timeline } from './components/Timeline';
 import { SignalPlot } from './plots/SignalPlot';
+import { useExplorerPlotSelection } from './plots/explorerPlotSelection';
 import { startClock } from './playback/clock';
 import {
   cancelImport,
   openFile,
-  setFrame,
-  togglePlay,
+  openExampleFile,
   undoEdit,
   redoEdit,
   useSession,
 } from './state/session';
-import { handleHistoryShortcut } from './state/shortcuts';
+import { handleApplicationShortcut } from './state/shortcuts';
+import { closeMarkerInteractions } from './state/markerCommands';
+import { MarkerRenameDialog } from './components/MarkerRenameDialog';
 import { PanelToggle } from './components/PanelToggle';
 import { DataExplorer } from './components/DataExplorer';
 import { ExportControl } from './components/ExportControl';
@@ -49,6 +54,51 @@ export function App() {
     [showExplorer, setShowExplorer] = useState(false),
     [dragging, setDragging] = useState(false);
   const visitTracked = useRef(false);
+  const workspace = useRef<HTMLDivElement>(null);
+  const column = useRef<HTMLDivElement>(null);
+  const timeline = useRef<HTMLDivElement>(null);
+  const workspaceSize = useElementSize(workspace);
+  const columnSize = useElementSize(column);
+  const timelineSize = useElementSize(timeline, !!data);
+  const desktop = useMediaQuery('(min-width: 761px)');
+  const wide = useMediaQuery('(min-width: 1101px)');
+  const [inspectorWidth, setInspectorWidth] = useState<number | null>(null);
+  const [explorerWidth, setExplorerWidth] = useState<number | null>(null);
+  const [plotHeights, setPlotHeights] = useState<{
+    visualizer: number | null;
+    explorer: number | null;
+  }>({ visualizer: null, explorer: null });
+  const activeWorkspace = data && showExplorer ? 'explorer' : 'visualizer';
+  const { columns: explorerPlotColumns } = useExplorerPlotSelection(data);
+  const explorerEmpty = !!data && showExplorer && !explorerPlotColumns.length;
+  // Empty layout has its own temporary size; it never writes the expanded preference.
+  const [emptyPlotHeight, setEmptyPlotHeight] = useState<number | null>(null);
+  useEffect(() => setEmptyPlotHeight(null), [explorerEmpty, data]);
+  // Reserve the stable Timeline controls. Event Editor borrows Viewer/table space;
+  // very short windows scroll rather than shrinking the preferred plot for editing.
+  const plotBounds = panelBounds(
+    180,
+    Math.max(
+      180,
+      Math.min(720, columnSize.height - timelineSize.height - (showExplorer ? 300 : 210) - 6),
+    ),
+  );
+  const plotHeight = clampPanel(
+    plotHeights[activeWorkspace] ?? (showExplorer ? columnSize.height * 0.28 : 254),
+    plotBounds.min,
+    plotBounds.max,
+  );
+  const displayedPlotHeight = explorerEmpty
+    ? clampPanel(emptyPlotHeight ?? 72, 72, plotBounds.max)
+    : plotHeight;
+  const changePlotHeight = (value: number | null) =>
+    setPlotHeights((previous) => ({ ...previous, [activeWorkspace]: value }));
+  const inspectorBounds = panelBounds(260, Math.min(560, workspaceSize.width - 400));
+  const effectiveInspectorWidth = clampPanel(
+    inspectorWidth ?? (wide ? 310 : 270),
+    inspectorBounds.min,
+    inspectorBounds.max,
+  );
 
   useEffect(startClock, []);
   useEffect(() => {
@@ -58,33 +108,15 @@ export function App() {
     void trackEvent('visit');
   }, []);
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (handleHistoryShortcut(e)) return;
-      if (e.defaultPrevented || e.isComposing || e.ctrlKey || e.metaKey || e.altKey) return;
-      if (
-        (e.target as HTMLElement).closest('input,select,textarea,button,[contenteditable="true"]')
-      )
-        return;
-      const s = useSession.getState();
-      if (!s.data || s.busy) return;
-      if (e.code === 'Space') {
-        e.preventDefault();
-        togglePlay();
-      } else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
-        e.preventDefault();
-        useSession.setState({ playing: false });
-        setFrame(s.frame + (e.key === 'ArrowRight' ? 1 : -1));
-      } else if (e.key === 'Home') {
-        e.preventDefault();
-        setFrame(0);
-      } else if (e.key === 'End') {
-        e.preventDefault();
-        setFrame(s.data.timeline.frameCount - 1);
-      }
-    };
+    const onKey = (e: KeyboardEvent) =>
+      handleApplicationShortcut(e, {
+        viewerActive: !showExplorer,
+        closeExplorer: () => setShowExplorer(false),
+      });
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [showExplorer]);
+  useEffect(closeMarkerInteractions, [showExplorer]);
   const open = () => input.current?.click();
   return (
     <main
@@ -112,6 +144,7 @@ export function App() {
         if (file) openFile(file);
       }}
     >
+      <MarkerRenameDialog />
       <header>
         <div className="brand-mark">
           <svg viewBox="0 0 32 32" aria-hidden="true">
@@ -126,6 +159,33 @@ export function App() {
             JE <span>Motion Lab</span>
           </strong>
           <span>MoCap Viewer &amp; Editor</span>
+        </div>
+        <div className="workspace-nav" role="group" aria-label="Workspace">
+          <button
+            aria-label="Data Visualizer"
+            title="Data Visualizer"
+            aria-pressed={!data || !showExplorer}
+            disabled={!data}
+            onClick={() => setShowExplorer(false)}
+          >
+            <svg viewBox="0 0 20 20" aria-hidden="true">
+              <path d="m10 2 7 4v8l-7 4-7-4V6Zm0 8 7-4M10 10 3 6m7 4v8" />
+            </svg>
+            <span className="workspace-label">Data Visualizer</span>
+          </button>
+          <button
+            aria-label="Data Explorer"
+            title="Data Explorer"
+            aria-pressed={!!data && showExplorer}
+            disabled={!data}
+            onClick={() => setShowExplorer(true)}
+          >
+            <svg viewBox="0 0 20 20" aria-hidden="true">
+              <rect x="2.5" y="3" width="15" height="14" rx="1.5" />
+              <path d="M3 8h14M3 12.5h14M8 8v9" />
+            </svg>
+            <span className="workspace-label">Data Explorer</span>
+          </button>
         </div>
         <div className="header-file">
           {data ? (
@@ -143,22 +203,27 @@ export function App() {
         </div>
         {data && (
           <div className="history-controls">
-            <button aria-pressed={showExplorer} onClick={() => setShowExplorer((value) => !value)}>
-              {showExplorer ? 'Data Viewer' : 'Data Explorer'}
-            </button>
             <button
+              aria-label="Undo"
               onClick={undoEdit}
               disabled={busy || !history.past.length}
               title={`Undo${history.past.length ? ': ' + history.past.at(-1)!.command.description : ''} (Ctrl/Cmd+Z)`}
             >
-              Undo
+              <svg viewBox="0 0 20 20" aria-hidden="true">
+                <path d="M7 3 3 7l4 4M3 7h9a5 5 0 0 1 0 10H9" />
+              </svg>
+              <span className="header-action-label">Undo</span>
             </button>
             <button
+              aria-label="Redo"
               onClick={redoEdit}
               disabled={busy || !history.future.length}
               title={`Redo${history.future.length ? ': ' + history.future.at(-1)!.command.description : ''} (Ctrl/Cmd+Shift+Z, Ctrl+Y)`}
             >
-              Redo
+              <svg viewBox="0 0 20 20" aria-hidden="true">
+                <path d="m13 3 4 4-4 4m4-4H8a5 5 0 0 0 0 10h3" />
+              </svg>
+              <span className="header-action-label">Redo</span>
             </button>
           </div>
         )}
@@ -166,8 +231,9 @@ export function App() {
           {data && (
             <ExportControl data={data} disabled={busy || !sourceFile || Boolean(cropSelection)} />
           )}
-          <button className="primary" onClick={open}>
-            ＋ Open file
+          <button className="primary" onClick={open} aria-label="Open file" title="Open file">
+            <span aria-hidden="true">＋</span>{' '}
+            <span className="header-action-label">Open file</span>
           </button>
         </div>
         <input
@@ -195,7 +261,11 @@ export function App() {
         <details className="warnings">
           <summary>
             {data.warnings.length} import {data.warnings.length === 1 ? 'note' : 'notes'}{' '}
-            <span>Review data conventions</span>
+            <span>
+              {data.source.partialImport
+                ? 'File loaded with limitations: rotation data was not imported'
+                : 'Review data conventions'}
+            </span>
           </summary>
           <ul>
             {data.warnings.map((w, i) => (
@@ -204,10 +274,18 @@ export function App() {
           </ul>
         </details>
       ) : null}
-      <div className={`workspace ${data && showExplorer ? 'is-exploring' : ''}`}>
-        <div className="main-column">
+      <div
+        ref={workspace}
+        className={`workspace ${data && showExplorer ? 'is-exploring' : ''}`}
+        style={{ '--trial-inspector-width': `${effectiveInspectorWidth}px` } as CSSProperties}
+      >
+        <div className="main-column" ref={column}>
           {data && showExplorer && (
-            <DataExplorer data={data} onClose={() => setShowExplorer(false)} />
+            <DataExplorer
+              data={data}
+              preferredWidth={explorerWidth}
+              onWidthChange={setExplorerWidth}
+            />
           )}
           <div className="viewer-workspace" hidden={!!data && showExplorer}>
             <div className="scene-wrap">
@@ -227,9 +305,14 @@ export function App() {
                     <br />
                     trajectories, forces, analogs and events.
                   </p>
-                  <button className="primary" onClick={open}>
-                    Open a recording
-                  </button>
+                  <div className="welcome-actions">
+                    <button className="primary" onClick={open}>
+                      Open a recording
+                    </button>
+                    <button onClick={() => void openExampleFile()} disabled={busy} aria-busy={busy}>
+                      {busy ? 'Loading example…' : 'Load Example File'}
+                    </button>
+                  </div>
                   <span className="muted">or drop a file anywhere</span>
                   <div className="format-tags">
                     <span>C3D</span>
@@ -242,16 +325,46 @@ export function App() {
           </div>
           {data && (
             <>
-              <Timeline data={data} />
+              <Timeline data={data} controlsRef={timeline} />
+              {desktop && showPlot && (
+                <ResizeHandle
+                  key={activeWorkspace}
+                  axis="vertical"
+                  label="Signal Inspector height"
+                  controls="signal-panel"
+                  value={displayedPlotHeight}
+                  min={explorerEmpty ? 72 : plotBounds.min}
+                  max={plotBounds.max}
+                  sign={-1}
+                  onChange={explorerEmpty ? setEmptyPlotHeight : changePlotHeight}
+                  onReset={() =>
+                    explorerEmpty ? setEmptyPlotHeight(null) : changePlotHeight(null)
+                  }
+                />
+              )}
               <SignalPlot
                 data={data}
                 collapsed={!showPlot}
                 explorer={showExplorer}
+                empty={explorerEmpty}
+                height={desktop ? displayedPlotHeight : undefined}
                 onToggle={() => setShowPlot((value) => !value)}
               />
             </>
           )}
         </div>
+        {desktop && showSidebar && !(data && showExplorer) && (
+          <ResizeHandle
+            axis="horizontal"
+            label="Trial Inspector width"
+            controls="trial-inspector"
+            value={effectiveInspectorWidth}
+            {...inspectorBounds}
+            sign={-1}
+            onChange={setInspectorWidth}
+            onReset={() => setInspectorWidth(null)}
+          />
+        )}
         {data ? (
           <Inspector
             data={data}
@@ -327,7 +440,13 @@ export function App() {
         <div className="loading-overlay" role="status">
           <div className="loading-card">
             <span className="spinner" />
-            <h2>{operation === 'export' ? 'Preparing your export' : 'Reading your recording'}</h2>
+            <h2>
+              {operation === 'export'
+                ? 'Preparing your export'
+                : operation === 'download'
+                  ? 'Loading example file'
+                  : 'Reading your recording'}
+            </h2>
             <p>Processing locally. Your file stays on this device.</p>
             <button onClick={cancelImport}>Cancel</button>
           </div>

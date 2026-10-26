@@ -38,7 +38,7 @@ export function TimelineSlider({ data }: { data: MotionData }) {
   };
   return (
     <>
-      <div className="timeline-slider" ref={rail}>
+      <div className={`timeline-slider${selection ? ' has-crop-selection' : ''}`} ref={rail}>
         <div className="timeline-rail" />
         <div
           className="timeline-included"
@@ -49,6 +49,7 @@ export function TimelineSlider({ data }: { data: MotionData }) {
           role="slider"
           tabIndex={0}
           aria-label="Frame"
+          title="Drag to scrub (← / →, Home / End)"
           aria-valuemin={0}
           aria-valuemax={frameCount - 1}
           aria-valuenow={frame}
@@ -96,7 +97,7 @@ export function TimelineSlider({ data }: { data: MotionData }) {
               aria-valuemax={max}
               aria-valuenow={value}
               aria-valuetext={text}
-              title={`${label}: ${text}. Drag or use arrow keys.`}
+              title={`Adjust selection ${boundary}: ${text}. Drag or use arrow keys.`}
               onPointerDown={(event) => {
                 event.preventDefault();
                 event.currentTarget.focus();
@@ -137,11 +138,13 @@ export function TimelineSlider({ data }: { data: MotionData }) {
       </div>
       <div className="crop-readout">
         <span>
-          Start {origin + start} · {(start / rate).toFixed(3)} s
+          Start {origin + start} <span>· {(start / rate).toFixed(3)} s</span>
         </span>
-        <span>{((end - start) / rate).toFixed(3)} s selected</span>
+        <span>
+          Selection: <span>{((end - start) / rate).toFixed(3)} s</span>
+        </span>
         <span title="Exclusive end boundary">
-          End {origin + end} · {(end / rate).toFixed(3)} s
+          End {origin + end} <span>· {(end / rate).toFixed(3)} s</span>
         </span>
       </div>
     </>
