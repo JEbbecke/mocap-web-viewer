@@ -10,114 +10,67 @@ branches describe the planned release until its tag is published.
 
 ### Added
 
-- Right-click a 3D trajectory marker for a keyboard-accessible Focus/Rename/Delete
-  menu. Selection is shared with the Trial Inspector; the menu stays inside the
-  browser viewport and closes on selection, file or workspace changes.
-- **C** centers the existing camera orbit on the selected marker's valid position
-  at the current frame, preserving orientation and distance. The pivot stays fixed
-  during playback. **F** invokes the existing scene reset/fit; **Shift+F10** opens
-  the selected marker's menu without a pointer.
-- **Ctrl+Shift+U** opens the shared label editor for the selected marker, with the
-  existing validation, undo/redo and export path. **Delete** or the menu's Delete
-  action removes the complete selected trajectory and quality metadata across all
-  frames as one undoable edit. Stable source identities preserve other marker
-  selections and plots. C3D/H5 exports compact source marker records, counts,
-  labels, descriptions and supported references while preserving remaining samples,
-  analogs, forces, events and clocks. The last trajectory and undocumented source
-  dependencies are protected with a specific disabled reason.
-- Unified keyboard dispatch preserves Space playback, arrow-key frame stepping,
-  Home/End and history bindings while protecting editable fields, menus, dialogs,
-  plots, Data Explorer navigation, buttons and keyboard panel resizing.
-
-### Fixed
-
-- Timeline's recording end-time readout now uses the last sample timestamp,
-  `(frames - 1) / rate`, matching File Info and signal plots. Exclusive crop
-  boundaries retain their existing `frames / rate` convention; playback rates
-  and source timing metadata are unchanged.
-- C3D files with a verified, separate 17-float Rotation extension can load their
-  Point/Analog data. Omitted rotations are recorded as a partial import and shown
-  in the persistent import notes. C3D/H5 export remains available after reviewing
-  the omitted source data in the existing Export dialog, including after cropping
-  or editing. Exported C3D files omit Rotation records and their parameter group.
-  Unknown, inconsistent or truncated rotation layouts still fail explicitly.
-
-### Notes
-
-- The data provider confirmed that the supplied Xsens recordings were acquired at
-  60 Hz but exported with incorrect 240 Hz C3D metadata. JE Motion Lab correctly
-  follows the declared source rate, including on export. No automatic rate
-  correction, resampling or effective-rate override is applied; the source-file
-  timing error has not been repaired within the application.
+- Landing-page **Load Example File** action through the existing cancellable H5
+  importer, with retryable download errors and one anonymous successful-load event.
+  The separate public demo asset has generic subject identifiers, removed recording
+  timestamps and sanitized source paths; measurement arrays are preserved.
+- Automatic camera fitting after load, using a representative valid pose. Reset
+  and front/side/top views use the shared camera controller.
+- Keyboard-accessible marker context menu with Focus, Rename and Delete.
+  **C** sets a fixed orbit pivot at the selected marker's current valid position;
+  **F** fits/resets, **Ctrl+Shift+U** renames, and **Shift+F10** opens the menu.
+- Full marker-trajectory deletion via **Delete** or the menu, with shared Undo/Redo,
+  selection cleanup and C3D/H5 export. Remaining signals retain their identities and
+  samples; the last marker and undocumented source dependencies are protected.
+- Resizable Trial Inspector, Signal Inspector and Split Plot separators, with
+  pointer/keyboard controls, reset, custom-size restoration and separate in-memory
+  workspace dimensions.
 
 ### Changed
 
-- Decluttered Data Explorer selection guidance and moved dataset details into an
-  anchored, keyboard-accessible popover that preserves table layout and scrolling.
-  Empty Signal Inspectors now use a compact layout while retaining preferred plot
-  heights and explicit Collapse/Expand state. Consolidated the four Copy actions
-  into a compact menu and grouped Follow playback with Details in the dataset header.
-- Refined desktop workspace switcher spacing and height beside the header branding.
-- Motion capture loads automatically fit the 3D camera to a representative valid
-  pose for useful initial framing. Reset and view presets share a reusable camera
-  controller with world-point targeting for future marker focusing; ordinary
-  playback, editing, scrubbing and resizing preserve manual navigation.
-- Timeline events use two context-aware lanes with Left above Right and General
-  events as yellow diamonds in available space. Display's optional Compact event
-  markers checkbox uses one lane. Both modes cluster only local visual collisions,
-  adapt to track width and retain keyboard-accessible selection of original events.
-- Event Editor fits content-sized fields and right-aligned, stable Save/Cancel/Delete
-  slots into one desktop row, with panel-width responsive wrapping. Subtle input
-  focus and consistent labels accompany Add-only autofocus. Opening it takes height from
-  the Viewer while preserving the Signal Inspector. Clean event time presentation
-  retains exact timestamps on unchanged saves; validation, focus, unsaved-input
-  protection and inline deletion remain intact.
-- Restored the compact Timeline with shared playback/bar alignment, matching
-  two-row crop/event actions and panel-width responsive wrapping. The Event Editor
-  opens below the stable controls. Clearer crop selection/actions, concise tooltips
-  and safe inline event deletion with Keep event are preserved.
-- Display and File Info share restrained heading colors and spacing. Display
-  settings and File Info main sections remain immediately accessible; Data keeps
-  its compact collapsed defaults. Intentional UI text removals are preserved.
-  File Info uses integrated property-row chevrons in place of separate Details
-  rows. Independent expansions survive
-  Inspector tab changes; exact values and copy controls remain available.
-  A single original file and identical absolute source path share one compact
-  Original source row while retaining both labeled original fields in Details.
-- Polished Dates & Provenance with subdued headings, aligned date/time lines and
-  full-width Details areas for exact timestamps and paths, including accessible
-  copy actions. Original/UTC fields and distinct provenance concepts remain intact.
-- Consolidated File Info and Explorer metadata into File & Recording, Acquisition,
-  Data, and Dates & Provenance. Concise timestamps and paths expand to exact source
-  values; only proven equivalent offset-aware creation timestamps share a row.
-  Subject, location, zero-count categories and detailed provenance remain accessible.
-- File Info and Data Explorer share separate file properties and embedded metadata,
-  including exact byte-size tooltips and validated H5 creation/update timestamps.
-  Source offsets and precision are retained; unavailable and malformed timestamps
-  are distinguished. Fetched demo bytes never acquire invented filesystem dates.
-- Trial Inspector Data categories start collapsed for each file and retain their
-  expansion state across Inspector tabs, workspace switches and searches. Compact
-  44 px category buttons keep counts aligned without changing expanded item spacing.
-- Permanent Data Visualizer / Data Explorer workspace controls in the existing
-  header, with mint active states, keyboard focus and accessible compact icons on
-  narrow screens. Switching reuses the current workspace state and loaded trial;
-  header actions stay on one row without increasing the header height.
+- Permanent **Data Visualizer / Data Explorer** header navigation with current
+  workspace indication, compact responsive icons and refined spacing/typography.
+- Trial Inspector Data categories start collapsed and retain expansion across
+  tabs, searches and workspaces. File Info and Explorer share concise recording,
+  acquisition, data and provenance sections with exact timestamps/paths in Details
+  and copy controls; browser file properties remain separate from embedded metadata.
+- Timeline controls and crop/event actions adapt to panel width. Event Editor uses
+  compact responsive fields, stable action slots, Add-only autofocus, unsaved-draft
+  protection and inline deletion confirmation. Opening it preserves plot height;
+  unchanged saves retain exact event times.
+- Timeline events use Left/Right upper/lower lanes and General yellow diamonds in
+  available space. Display's optional **Compact event markers** uses one lane.
+  Both modes cluster local visual collisions and preserve original event selection.
+- Data Explorer moves dataset facts into an anchored Details popover, consolidates
+  all four Copy scopes into one accessible menu, and groups Follow playback with
+  Details. Empty Signal Inspectors are compact while retaining expanded height and
+  explicit Collapse/Expand state.
+- Unified shortcut dispatch protects text editing, dialogs, menus, plots, Explorer
+  navigation and panel resizing. Playback, scrubbing and resizing preserve manual
+  camera navigation; marker focus stays fixed during playback.
+- README and technical guidance reconciled with implemented workspaces, camera,
+  marker deletion, events, resizing, export limits and source timing conventions.
 
-### Added
+### Fixed
 
-- Drag separators resize the Trial Inspector, Signal Inspector and Split Plot
-  widths. Data Visualizer and Data Explorer share pointer and keyboard resizing,
-  with independent workspace dimensions retained in memory during navigation.
-  Collapse/Expand restores custom sizes; double-click or Home resets a separator.
-- Landing-page **Load Example File** action using the existing H5 import pipeline,
-  with download/import loading states, cancellation, retryable errors and one
-  anonymous load event. Vite serves the unchanged demo as a separate static asset
-  under the configured base path; local upload remains available.
-- Demo loading tests for repeated clicks, errors, cancellation, local-file races,
-  browser import, event-only analytics and byte-identical production assets.
-- Public demo metadata sanitized: retained subject identifiers become generic
-  test subjects, recording timestamps are removed and source paths use the demo
-  filename. All measurement datasets are preserved.
+- C3D files with a verified separate 17-float Rotation extension can import supported
+  Point/Analog data. Persistent notes and both export previews disclose omitted
+  Rotation signals without blocking valid exports. C3D output removes the Rotation
+  payload and parameter group; unverified/truncated layouts still fail explicitly.
+- Timeline end time uses the last sample timestamp, `(frames - 1) / rate`, matching
+  File Info and plots; exclusive crop boundaries keep `frames / rate`.
+- Browser Copy-menu checks wait for asynchronous clipboard completion before
+  asserting enabled-item focus, and cover navigation after a pending copy.
+- Production browser regression coverage now verifies partial-Rotation import
+  notes, both export previews and numeric full/cropped C3D/H5 subset round trips
+  using a small synthetic fixture.
+
+### Notes
+
+- The provider confirmed particular Xsens recordings were acquired at 60 Hz but
+  declare 240 Hz. JE Motion Lab respects the declared source rate, including on
+  export, without automatic correction, resampling or an effective-rate override.
+  Those source files require upstream metadata correction.
 
 ## [0.5.1] - 2026-10-12
 

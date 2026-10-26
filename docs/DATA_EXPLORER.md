@@ -2,8 +2,10 @@
 
 Open a C3D or institute H5 recording and choose **Data Explorer** in the header.
 It fills the main workspace with a dataset hierarchy and a numerical table. The
-timeline stays below it; the same header button changes to **Data Viewer** and
-switches back (Escape also works), restoring the viewer, plots and inspector.
+timeline stays below it. The persistent **Data Visualizer** and **Data Explorer**
+header buttons indicate the current workspace; Data Visualizer switches back to
+3D, restoring its plots and inspector. Escape also returns when no local editor,
+input, menu or Details dialog consumes it.
 The navigation pane can be resized horizontally on desktop. Metadata is always
 first. All navigation groups start collapsed; searching expands matching groups
 so their datasets are immediately accessible.
@@ -36,6 +38,12 @@ origin. Time-dependent geometry has separate tables so its clock and spatial
 units cannot be confused with force samples. One-sample static geometry has no
 time column. Rotation matrices are dimensionless; no Euler conversion is made.
 Body quality fields are unavailable in the current MotionData model.
+
+**Details**, beside **Follow playback** in the dataset header, opens these facts
+in an anchored dialog over the workspace. Opening it preserves table dimensions,
+scroll position and selection. Escape returns focus to Details; outside click or
+focus dismisses it. It follows viewport/sidebar resizing and closes on dataset,
+file or workspace changes, so another dataset cannot retain stale facts.
 
 Metadata is curated key/value data. Embedded provenance describes the source;
 live counts describe the current recording. Unknown source trees and large binary
@@ -107,6 +115,14 @@ below the table, including long metadata or descriptions.
 Rows and columns containing selected cells receive a subtle tint, including their
 column headings. Selected cells keep the stronger highlight.
 
+The **Copy** menu above the table retains four scopes: selected cells, selected
+columns, selected rows and the full table. Selection scopes are disabled without
+a selection; full-table copy is disabled for an empty dataset. All actions are
+disabled during an asynchronous copy. ArrowDown/ArrowUp opens at the first/last
+enabled action; arrows, Home and End navigate; Enter/Space activates; Escape closes
+and restores the trigger. Tab resumes the document order. Clipboard failures show
+an inline message and leave native table copying available.
+
 Finite decimals display up to 12 significant digits. Tooltips, **Copy selected
 cell(s)**, **Copy selected column(s)**, **Copy selected row(s)** and **Copy full
 table** use the exact JavaScript number string (up to stored precision). Row copying
@@ -123,7 +139,7 @@ copies; single-cell copies preserve the complete string.
 Ctrl/Cmd+C copies the selected cells when the table has focus, without needing
 clipboard-button permissions. Normal browser text selection still works and takes
 precedence when copying highlighted text; that uses displayed precision. Use the
-buttons or exact-value panel for full precision. Cell selection stores coordinates and ranges; header selection stores only
+Copy menu or exact-value panel for full precision. Cell selection stores coordinates and ranges; header selection stores only
 dataset/column IDs and an anchor. Numerical data are materialized as text
 only for explicit copy actions. No CSV export or numerical editing is added.
 
@@ -151,10 +167,10 @@ persisted in browser storage, or included in analytics.
 ## Shared Signal Inspector
 
 Selecting numeric time-series headers automatically plots their complete underlying
-columns in the same Signal Inspector used by Data Viewer. Sample/frame indices,
+columns in the same Signal Inspector used by Data Visualizer. Sample/frame indices,
 time columns, validity/quality categories, events, metadata and static geometry
 remain selectable for copying but never become plot lines. Empty selections show
-an explanatory plot message. Marker gaps respect validity; other nonfinite samples
+a compact “Select a numeric column to plot.” state. Marker gaps respect validity; other nonfinite samples
 stay gaps. Dynamic force geometry and body matrices retain their original components.
 
 The plot uses dataset metadata for units and each stream's physical timestamps or
@@ -170,6 +186,16 @@ The usual plot hide/show toggle works in both views. Explorer has a flexible ver
 table/plot split with compact controls and independently scrolling table rows;
 Viewer retains its single/split panes and dropdown choices when switching back.
 Explorer dataset/header choices persist separately for the current recording.
+
+On desktop, drag the navigation separator or the separator above Signal Inspector
+to resize it. Focus a separator and use arrows (10 px), Shift+arrows (40 px), or
+Home/double-click to reset. Temporary viewport clamps preserve preferred sizes.
+With no plottable columns selected, the expanded inspector defaults to 72 px;
+resizing that empty state does not overwrite the preferred plotting height.
+Plotting resumes at the saved expanded height. Explicit Collapse/Expand remains
+in effect, including while changing datasets or clearing plot selection. Workspace
+dimensions persist in memory for the mounted app, not across reloads. Split Plot
+belongs to Data Visualizer; Explorer plots multiple columns from one dataset.
 
 Only selected components are materialized and memoized; sample buffers stay outside
 React/session selection state. No new series cap is imposed: selections belong to

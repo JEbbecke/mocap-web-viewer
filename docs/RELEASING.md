@@ -22,7 +22,10 @@ Do not infer release history from package versions alone. Published tags and rel
 
 ## Prepare the candidate
 
-Choose the target version and update it with npm so `package.json` and `package-lock.json` remain synchronized:
+A pre-release audit keeps package/application versions unchanged and all new notes
+under Unreleased. Version selection, tagging and deployment follow separate
+maintainer approval. Once the intended version and date are confirmed, update it
+with npm so `package.json` and `package-lock.json` remain synchronized:
 
 ```sh
 npm version X.Y.Z --no-git-tag-version

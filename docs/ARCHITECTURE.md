@@ -12,7 +12,7 @@ Local File → short-lived module Worker → C3D or institute H5 importer
 
 MotionData is format-independent: a regular point timeline with source frame origin, frame-major contiguous marker XYZ in millimetres, validity/residuals, original-rate analog channels, original-rate global forces (N), moments (Nm), COP/corners (mm), events in relative seconds and source warnings. Geometry carries its own rate. Scene objects share one normalized rendering path; the local-frame resolver additionally requires a declared global pose or an established source corner convention. Unknown force frames are a general data quality state, not an H5 rendering branch.
 
-Importers validate magic, schema, sizes and rates. C3D binary parsing is isolated; unsupported processors/features fail explicitly or omit only the affected force platform with warnings. HDF5 uses bundled h5wasm in a Worker with a local File mounted through WORKERFS. The worker is terminated after completion or cancellation; arrays transfer rather than clone. C3D needs one input ArrayBuffer plus normalized arrays temporarily. HDF5 decompresses each dataset in WASM and copies it to normalized typed arrays, then closes/unmounts and terminates the WASM heap. The session retains an immutable local File reference for source-preserving export, without persistence.
+Importers validate magic, schema, sizes and rates. C3D binary parsing is isolated; unsupported processors/layouts fail explicitly, unsupported force platforms are omitted with warnings, and verified separate Rotation sections allow a disclosed partial Point/Analog import. `source.partialImport` and persistent notes retain the omission through editing/crop/history. Both export previews disclose it; source-format C3D output removes the Rotation payload and parameter group. Declared sampling rates remain authoritative, including incorrect source metadata; see [parser scope and timing](PARSERS.md). HDF5 uses bundled h5wasm in a Worker with a local File mounted through WORKERFS. The worker is terminated after completion or cancellation; arrays transfer rather than clone. C3D needs one input ArrayBuffer plus normalized arrays temporarily. HDF5 decompresses each dataset in WASM and copies it to normalized typed arrays, then closes/unmounts and terminates the WASM heap. The session retains an immutable local File reference for source-preserving export, without persistence.
 
 Cropping lives in `motion/crop.ts`, independent of React and format. It uses half-open point boundaries, crops each signal at its own rate/origin, filters/rebases events and creates independent arrays. The session retains original/current MotionData and cumulative source boundaries, allowing restoration and repeated crops. Crop clears edit history and establishes a modified baseline. Timeline controls share playback state; preview playback stays within the selected interval. Modified state compares the current history revision to the imported clean checkpoint. Reusable reversible commands in `motion/history.ts` cover Data-tab labels, event rows and full marker deletions; label/event payloads retain metadata and deletion retains only removed samples; see [edit history](DATA_EDITING.md).
 
@@ -21,9 +21,18 @@ Same-format export sends the original File, source interval, retained marker sou
 Cross-format export uses separate `semanticH5.ts`/`semanticC3D.ts` writers over the current edited/cropped MotionData. A reusable pure `conversionPlan` supplies a pre-export compatibility report and references existing buffers; the worker repeats its guards. Only cross-format calls clone current arrays into the short-lived worker, preserving the viewer's buffers. New H5 files follow the current nested institute layout. New C3D files use float32 point/analog records, verified original effective analog encoding when available (otherwise identity), and the existing event serializer. H5 import retains embedded original C3D plate/channel identities; `reuseForcePlatforms.ts` verifies current and encoded reconstruction before reusing TYPE-2/3/4 definitions, origins, calibration and COP correction. Incompatible or missing definitions fall back per plate to six derived TYPE-2 channels. Curated recording/subject fields use versioned `JE_METADATA`, restored by C3D import. Format/menu/review state stays in the header's `ExportControl`; **Changed or omitted** orders changes before omissions. No history/dirty changes, resampling or analytics additions occur. See [complete mapping, unit/clock guards and validation](CROSS_FORMAT_EXPORT.md).
 
 Timeline markers and the event editor remain in the scrubber. Add Event and the
-Events selector share the right-hand action area beside Crop, independently
+Events selector share the right-hand action area beside Apply crop, independently
 reading the same session event-editor request. Export lives beside Open file in
 the header and is blocked during busy operations or an unapplied crop selection.
+
+`TimelineEvents` uses `eventClusters.ts` to place Left/Right in upper/lower lanes
+and General diamonds in free space. `display.compactEventMarkers` defaults false;
+the compact mode shares the same visible-box collision solver in one lane. Cluster
+lists portal outside layout containers and retain original event indices.
+`EventEditor` owns drafts, unsaved-switch and inline-delete confirmation state;
+`eventTime.ts` separates compact time text from exact unchanged source timestamps.
+The Timeline's end readout uses the last sample time; crop boundaries remain
+half-open. See [event layout and editing](EVENT_EDITING.md).
 
 Playback uses requestAnimationFrame and elapsed time at the actual point rate. Only the small timeline/inspector subscribe to frame changes; scene buffers and plot cursor update imperatively. Markers are instanced, connections use one line buffer. All positions keep lab XYZ; Three's camera uses Z up and grid lies on XY. Display GRF scale defaults to 1 mm/N. Temporary render coordinates use 0.001 scene units/mm; camera bounds, marker/plate buffers, COP and labels share this boundary without mutating MotionData. See [unit policy](UNITS.md) for scientific conversions and export semantics. Display threshold is configurable and never edits data.
 
@@ -238,6 +247,13 @@ the shared chart cursor imperatively. No second plot system, dependency or scien
 state/export changes are introduced. Explorer's compact flex layout reserves a
 usable table and chart region with `min-height: 0` and the existing panel toggle.
 
+`DatasetDetails`, keyed by dataset ID, portals facts into an anchored dialog with
+local focus/dismissal and viewport placement. It does not participate in table
+sizing. `ExplorerCopyMenu` portals the four existing copy actions; `NumericalTable`
+retains exact-value preparation, selection scopes and asynchronous clipboard state.
+The menu disables actions while copying and remains keyboard-dismissible. Dataset
+or workspace unmount closes both overlays; no scientific metadata is edited.
+
 Workspace resizing lives in `src/layout/`: `ResizeHandle` provides named ARIA
 separators, pointer capture, animation-frame batching, cancellation/blur/unmount
 cleanup and keyboard controls. Arrow keys move the boundary by 10px (Shift: 40px);
@@ -263,6 +279,12 @@ plot retains 250px minimum width and internal scrolling when both cannot fit; it
 splitter is shown only when both minimums fit. Ratio constraints also preserve the
 original preference through temporary narrowing. Existing R3F, uPlot and Timeline
 ResizeObservers update rendering geometry without camera fit or selection resets.
+
+Explorer's no-signal state temporarily uses a 72px default height. `App` keeps
+`emptyPlotHeight` separate from `plotHeights.explorer`; empty-state resizing/reset
+cannot overwrite the preferred populated height. Explicit `showPlot` collapse
+state takes priority. Header workspace buttons are permanently present and expose
+their current state with `aria-pressed`; workspace choice is App-local state.
 
 `tests/layout-resize.test.ts` covers geometry and separator semantics;
 `node scripts/browser-workspace-resize.mjs` checks live dragging, keyboard/reset,

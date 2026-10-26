@@ -215,8 +215,11 @@ and Rotation arrays (without a time dimension) are also accepted.
 
 Rendering samples the global corners directly in physical time. Position and
 Rotation orient and place the identifier on the surface; Origin is not applied
-again as a translation of already-global corners. Camera framing includes the
-full plate trajectory. Surface depth bias avoids interference with the ground
+again as a translation of already-global corners. Camera fitting uses one
+representative valid marker pose; body poses, then
+current plate corners are fallbacks when markers are unavailable. It does not
+include the full plate trajectory or refit during playback. Surface depth bias
+avoids interference with the ground
 grid. Optional local coordinate-system helpers use `Position - Rotation × d`
 for their origin, with depth-only `d` for TYPE-1/3 and the full ORIGIN vector for
 TYPE-2/4. Embedded C3D TYPE metadata is retained independently of complete

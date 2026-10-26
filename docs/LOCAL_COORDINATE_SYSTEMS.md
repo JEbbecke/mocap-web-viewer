@@ -99,7 +99,7 @@ Plate helpers belong to the existing `Plates` object collection. They are create
 once per loaded object, updated through `useScientificFrame`, hidden by toggles,
 and disposed with the object's resources. `RigidBodies` owns its pose helpers
 through the same lifecycle; no separate body meshes or marker-derived model are
-introduced. Camera bounds include recorded body positions. Image export renders this same scene;
+introduced. Camera fitting falls back to a valid body pose only when marker geometry is unavailable; the bounds include its origin and helper-axis extent. Image export renders this same scene;
 video's existing isolated snapshot resolves the same helpers and updates their
 poses with frozen visibility. No media-specific helpers are created.
 

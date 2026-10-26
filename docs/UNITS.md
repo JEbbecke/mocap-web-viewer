@@ -64,13 +64,16 @@ names only; trajectory/analog samples, residuals, quality, units, clocks and for
 calibration remain unchanged through undo/redo and source-format export.
 
 Same-format exports are source-preserving, not serializers of rendered coordinates. They
-receive the immutable original File plus the crop interval, edited labels and events.
+receive the immutable original File plus the crop interval, retained marker source
+IDs, edited labels and events.
 H5 copies raw datasets with their unit attributes; C3D copies raw point/analog
 records with their original unit, scale and calibration parameters. A normal
 mm source therefore follows source mm → internal mm → exported mm. A metre
 source follows source m → internal mm, while export retains the original m
-values and m metadata. Full-range unedited exports preserve source bytes;
-synthetic reconstruction/crop/event tests additionally check raw values and units.
+values and m metadata. Full-range unedited exports of complete imports preserve
+source bytes. Partial C3D exports omit the verified Rotation payload and parameters
+after review. Synthetic reconstruction/crop/event tests additionally check raw
+values and units.
 Cross-format export separately serializes normalized scientific values: XYZ/residuals/COP/geometry in mm, force in N, and derived moment/free moment converted from internal Nm to declared Nmm. H5 uses float64 storage. C3D uses float32 samples and a reported residual quantization step; existing analogs use verified original effective scale/offset encoding when available, otherwise physical values with identity scaling. Validated original TYPE-2/3/4 definitions retain their channel units, origin, calibration and COP correction. The TYPE-2 fallback adds force channels in N and moment channels in Nmm with identity scaling and zero origin. No render coordinates, resampling or coordinate editing are involved. See [conversion mapping and limits](CROSS_FORMAT_EXPORT.md).
 
 ## Viewer and UI
