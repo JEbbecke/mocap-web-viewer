@@ -8,6 +8,12 @@ branches describe the planned release until its tag is published.
 
 ## [Unreleased]
 
+### Fixed
+
+- Disabled camera damping so orbit and pan respond directly and stop on mouse release.
+- Suppressed the native browser context menu on the 3D canvas while preserving
+  right-button pan and the custom marker context menu.
+
 ## [0.6.0] - 2026-10-26
 
 Intended publication date: 2026-10-26. Publication and deployment remain pending.
