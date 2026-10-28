@@ -10,6 +10,9 @@ branches describe the planned release until its tag is published.
 
 ### Fixed
 
+- Import warning banners can be dismissed together or note by note for the current
+  recording; later imports show their warnings again. Scientific limitations and
+  mandatory export loss disclosures remain intact.
 - Disabled camera damping so orbit and pan respond directly and stop on mouse release.
 - Suppressed the native browser context menu on the 3D canvas while preserving
   right-button pan and the custom marker context menu.

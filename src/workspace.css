@@ -1819,6 +1819,7 @@ footer .privacy-dot {
   font-size: 20px;
 }
 .warnings {
+  position: relative;
   background: #2a2b24;
   border-bottom: 1px solid #514a32;
   color: #dccb99;
@@ -1828,7 +1829,8 @@ footer .privacy-dot {
   flex: none;
 }
 .warnings summary {
-  padding: 9px 22px;
+  padding: 9px 54px 9px 22px;
+  overflow-wrap: anywhere;
 }
 .warnings summary span {
   color: #a79e83;
@@ -1837,6 +1839,43 @@ footer .privacy-dot {
 .warnings li {
   padding: 3px 15px 3px 0;
   line-height: 1.5;
+}
+.warning-note {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.warning-note > span {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.warnings .warning-dismiss {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid transparent;
+  background: transparent;
+  color: inherit;
+  font-size: 18px;
+  line-height: 1;
+}
+.warnings .warning-dismiss:hover {
+  background: #dccb9914;
+  border-color: #514a32;
+}
+.warnings .warning-dismiss:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 1px;
+}
+.warning-dismiss-all {
+  position: absolute;
+  top: 3px;
+  right: 15px;
 }
 .loading-overlay,
 .drop-overlay {

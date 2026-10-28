@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import { verifyLicense } from './browser-license.mjs';
 import { verifyExampleFile } from './browser-example.mjs';
 import { createRotationBrowserFixture, verifyRotationExport } from './browser-rotation.mjs';
+import { verifyWarningBanners } from './browser-warnings.mjs';
 import { verifyWorkspaceNavigation } from './browser-workspace-navigation.mjs';
 import { verifyDataTab } from './browser-data-tab.mjs';
 import { verifyFileMetadata } from './browser-file-metadata.mjs';
@@ -1360,6 +1361,7 @@ try {
   await verifyExplorer(page, 'C3D');
   await verifyCrossFormat(page, analyticsEvents);
   await verifyRotationExport(page, analyticsEvents);
+  await verifyWarningBanners(page);
   await verifyModelTiming(page);
   await verifyCropPreview(page);
   await verifyTimelineLayout(page);
