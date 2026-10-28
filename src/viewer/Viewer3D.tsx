@@ -51,35 +51,6 @@ function Camera({ data, active }: { data: MotionData; active: boolean }) {
       useSession.setState({ viewerReady: false });
     };
   }, [active, camera, size.width, size.height]);
-  useEffect(() => {
-    const orbit = controls.current;
-    if (!orbit?.domElement) return;
-    // OrbitControls otherwise cancels every native context menu. Suspend only its
-    // contextmenu callback during dispatch; marker raycasting decides cancellation.
-    let enabled: boolean | undefined;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const restore = () => {
-      if (enabled !== undefined) orbit.enabled = enabled;
-      enabled = undefined;
-      clearTimeout(timer);
-    };
-    const nativeMenu = () => {
-      restore();
-      enabled = orbit.enabled;
-      orbit.enabled = false;
-      // A microtask can run between native event listeners. Restore after bubbling,
-      // with a task fallback if another consumer stops native propagation.
-      timer = setTimeout(restore, 0);
-    };
-    const element = orbit.domElement;
-    element.addEventListener('contextmenu', nativeMenu, true);
-    window.addEventListener('contextmenu', restore);
-    return () => {
-      restore();
-      element.removeEventListener('contextmenu', nativeMenu, true);
-      window.removeEventListener('contextmenu', restore);
-    };
-  }, []);
   useLayoutEffect(() => {
     if (!controls.current || size.width <= 0 || size.height <= 0) return;
     if (!(camera instanceof THREE.PerspectiveCamera || camera instanceof THREE.OrthographicCamera))
@@ -95,8 +66,7 @@ function Camera({ data, active }: { data: MotionData; active: boolean }) {
     <OrbitControls
       ref={controls}
       makeDefault
-      enableDamping
-      dampingFactor={0.12}
+      enableDamping={false}
       minDistance={0.05}
       maxDistance={1000}
     />
@@ -568,6 +538,7 @@ export function Viewer3D({ data, active = true }: { data: MotionData | null; act
   return (
     <div className="viewport" tabIndex={0} aria-label="3D Viewer">
       <Canvas
+        onContextMenu={(event) => event.preventDefault()}
         frameloop={active ? 'always' : 'never'}
         camera={{ position: [2, -3, 2], up: [0, 0, 1], near: 0.005, far: 2000, fov: 42 }}
         dpr={[1, 2]}
@@ -594,7 +565,7 @@ export function Viewer3D({ data, active = true }: { data: MotionData | null; act
             <RigidBodies data={data} />
           </>
         ) : (
-          <OrbitControls makeDefault />
+          <OrbitControls makeDefault enableDamping={false} />
         )}
       </Canvas>
       {active && <MarkerContextMenu />}

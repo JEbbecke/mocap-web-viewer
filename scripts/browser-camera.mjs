@@ -37,7 +37,7 @@ export function markerPoint(marker) {
 export const attempts = [];
 export function settleControls() {
   const { controls } = _roots.get(document.querySelector('.viewport canvas')).store.getState();
-  // Advance existing damping deterministically on slow software WebGL runners.
+  // Advance controls deterministically on slow software WebGL runners.
   for(let i = 0; i < 240; i++) controls.update();
 }
 const reset = CameraController.prototype.resetCameraView;
@@ -56,6 +56,7 @@ export function snapshot() {
       corners.push(new Vector3(x,y,z).project(camera).toArray());
   return {
     position: camera.position.toArray(), target: controls.target.toArray(),
+    enableDamping: controls.enableDamping,
     direction: camera.getWorldDirection(new Vector3()).toArray(),
     aspect: camera.aspect, size: [root.size.width,root.size.height],
     near: camera.near, far: camera.far, corners, attempts: attempts.length,
@@ -157,6 +158,15 @@ try {
   await page.evaluate(async () => {
     window.cameraProbe = await import('/.local/camera-probe.ts');
   });
+  assert.equal(
+    await page
+      .locator('.viewport canvas')
+      .evaluate((canvas) =>
+        canvas.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true })),
+      ),
+    false,
+    'canvas suppresses native menu before a file is loaded',
+  );
   const snapshot = () => page.evaluate(() => window.cameraProbe.snapshot());
   const settle = async () => {
     await page.waitForTimeout(200);
@@ -205,6 +215,7 @@ try {
   };
   await load('.local/camera-mm.h5');
   const first = await snapshot();
+  assert.equal(first.enableDamping, false, 'camera damping is disabled');
   framed(first);
   assert.equal(first.attempts, 1, 'one automatic fit including StrictMode effect replay');
   assert(first.target[0] > 14 && first.target[1] < -11, 'off-origin pose, no source-frame offset');
@@ -216,9 +227,13 @@ try {
   await page.mouse.move(x, y);
   await page.mouse.down();
   await page.mouse.move(x + 80, y + 30, { steps: 10 });
+  const orbitDrag = await snapshot();
+  assert.notDeepEqual(orbitDrag.direction, first.direction, 'orbit responds during mouse drag');
   await page.mouse.up();
+  equalPose(orbitDrag, await snapshot(), 'orbit release');
   await settle();
   const rotated = await snapshot();
+  equalPose(orbitDrag, rotated, 'orbit has no residual movement');
   assert.notDeepEqual(rotated.direction, first.direction, 'mouse orbit changes orientation');
   rotated.target.forEach((v, i) =>
     assert(Math.abs(v - first.target[i]) < 1e-6, 'orbit keeps fitted pivot'),
@@ -230,9 +245,13 @@ try {
   await page.mouse.move(x, y);
   await page.mouse.down({ button: 'right' });
   await page.mouse.move(x + 50, y + 20, { steps: 10 });
+  const panDrag = await snapshot();
+  assert.notDeepEqual(panDrag.target, zoomed.target, 'pan responds during mouse drag');
   await page.mouse.up({ button: 'right' });
+  equalPose(panDrag, await snapshot(), 'pan release');
   await settle();
   const manual = await snapshot();
+  equalPose(panDrag, manual, 'pan has no residual movement');
   assert.notDeepEqual(manual.target, first.target, 'right drag pans');
   await page.evaluate(() => window.cameraProbe.togglePlay());
   await page.waitForTimeout(200);
@@ -323,6 +342,8 @@ try {
           'automatic fit',
           'pose center/padding/clipping',
           'orbit/zoom/pan',
+          'immediate orbit/pan without damping or residual movement',
+          'canvas native menu suppression with custom marker menu and outside menus preserved',
           'playback',
           'scrub',
           'event selection',
