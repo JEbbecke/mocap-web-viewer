@@ -245,6 +245,9 @@ export function openFile(file: File, origin: FileProperties['origin'] = 'local')
   worker.postMessage(file);
 }
 
+export function cancelCrop() {
+  useSession.setState({ cropSelection: null, playing: false });
+}
 export function selectCrop(start: number, end: number) {
   const { data } = useSession.getState();
   if (
@@ -254,8 +257,11 @@ export function selectCrop(start: number, end: number) {
     start >= 0 &&
     start < end &&
     end <= data.timeline.frameCount
-  )
-    useSession.setState({ cropSelection: { start, end }, playing: false });
+  ) {
+    // Local half-open boundaries refer to the current working data, including after a crop.
+    if (start === 0 && end === data.timeline.frameCount) cancelCrop();
+    else useSession.setState({ cropSelection: { start, end }, playing: false });
+  }
 }
 export function applyCrop() {
   const { data, cropSelection, originalData, busy } = useSession.getState();

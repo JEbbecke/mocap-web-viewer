@@ -2,7 +2,7 @@ import { expect, it } from 'vitest';
 import { cropPreviewInterval, outsideCropRegions } from '../src/plots/cropPreview';
 import { parseC3D } from '../src/importers/c3d/importer';
 import { physicalFixture } from './helpers/c3d';
-import { applyCrop, selectCrop, setData, useSession } from '../src/state/session';
+import { applyCrop, cancelCrop, selectCrop, setData, useSession } from '../src/state/session';
 import { sampleTime } from '../src/explorer/datasets';
 
 function fixture() {
@@ -85,7 +85,7 @@ it('clears the preview on cancel/completion and never edits data or history duri
   expect(state.data).toBe(data);
   expect(state.history).toBe(before.history);
   expect(state.dirty).toBe(before.dirty);
-  useSession.setState({ cropSelection: null });
+  cancelCrop();
   expect(cropPreviewInterval(data, useSession.getState().cropSelection)).toBeNull();
   selectCrop(2, 7);
   applyCrop();

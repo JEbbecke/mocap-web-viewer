@@ -22,6 +22,7 @@ import { MarkerRenameDialog } from './components/MarkerRenameDialog';
 import { PanelToggle } from './components/PanelToggle';
 import { DataExplorer } from './components/DataExplorer';
 import { ExportControl } from './components/ExportControl';
+import { ImportWarnings } from './components/ImportWarnings';
 import { trackEvent } from './analytics';
 import { LicenseInfo } from './components/LicenseInfo';
 class ViewerBoundary extends Component<{ children: ReactNode }, { error: string | null }> {
@@ -257,23 +258,7 @@ export function App() {
           </button>
         </div>
       )}
-      {data?.warnings.length ? (
-        <details className="warnings">
-          <summary>
-            {data.warnings.length} import {data.warnings.length === 1 ? 'note' : 'notes'}{' '}
-            <span>
-              {data.source.partialImport
-                ? 'File loaded with limitations: rotation data was not imported'
-                : 'Review data conventions'}
-            </span>
-          </summary>
-          <ul>
-            {data.warnings.map((w, i) => (
-              <li key={i}>{w}</li>
-            ))}
-          </ul>
-        </details>
-      ) : null}
+      {data && <ImportWarnings data={data} />}
       <div
         ref={workspace}
         className={`workspace ${data && showExplorer ? 'is-exploring' : ''}`}

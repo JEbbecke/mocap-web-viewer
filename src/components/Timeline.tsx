@@ -1,4 +1,11 @@
-import { applyCrop, restoreOriginal, setFrame, togglePlay, useSession } from '../state/session';
+import {
+  applyCrop,
+  cancelCrop,
+  restoreOriginal,
+  setFrame,
+  togglePlay,
+  useSession,
+} from '../state/session';
 import type { MotionData } from '../motion/types';
 import type { Ref } from 'react';
 import { EventControls, EventEditor, TimelineEvents } from './EventEditor';
@@ -110,10 +117,7 @@ export function Timeline({
             </button>
             <div className="crop-secondary">
               {selection ? (
-                <button
-                  title="Cancel crop selection"
-                  onClick={() => useSession.setState({ cropSelection: null, playing: false })}
-                >
+                <button title="Cancel crop selection" onClick={cancelCrop}>
                   Cancel crop
                 </button>
               ) : file && dirty ? (

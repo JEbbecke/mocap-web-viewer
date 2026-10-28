@@ -7,12 +7,14 @@ import assert from 'node:assert/strict';
 import { verifyLicense } from './browser-license.mjs';
 import { verifyExampleFile } from './browser-example.mjs';
 import { createRotationBrowserFixture, verifyRotationExport } from './browser-rotation.mjs';
+import { verifyWarningBanners } from './browser-warnings.mjs';
 import { verifyWorkspaceNavigation } from './browser-workspace-navigation.mjs';
 import { verifyDataTab } from './browser-data-tab.mjs';
 import { verifyFileMetadata } from './browser-file-metadata.mjs';
 import { verifyModelPlots } from './browser-model-plots.mjs';
 import { createModelTimingFixtures, verifyModelTiming } from './browser-model-timing.mjs';
 import { verifyCropPreview } from './browser-crop-preview.mjs';
+import { verifyFullRangeCropCancellation } from './browser-crop-cancel.mjs';
 import { createTimelineFixture, verifyTimelineLayout } from './browser-timeline.mjs';
 import { verifyEventEditor } from './browser-event-editor.mjs';
 import {
@@ -1360,8 +1362,10 @@ try {
   await verifyExplorer(page, 'C3D');
   await verifyCrossFormat(page, analyticsEvents);
   await verifyRotationExport(page, analyticsEvents);
+  await verifyWarningBanners(page);
   await verifyModelTiming(page);
   await verifyCropPreview(page);
+  await verifyFullRangeCropCancellation(page);
   await verifyTimelineLayout(page);
   await verifyEventEditor(page);
   await verifyEventClusters(page);
