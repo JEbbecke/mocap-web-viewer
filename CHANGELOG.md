@@ -10,6 +10,8 @@ branches describe the planned release until its tag is published.
 
 ### Fixed
 
+- Expanding a provisional crop back to the full current working range now cancels
+  the selection, preserving any previously applied crop.
 - Import warning banners can be dismissed together or note by note for the current
   recording; later imports show their warnings again. Scientific limitations and
   mandatory export loss disclosures remain intact.

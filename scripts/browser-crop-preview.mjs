@@ -144,6 +144,8 @@ export async function verifyCropPreview(page) {
     0,
     'full range has no shading',
   );
+  assert(await page.getByRole('button', { name: 'Apply crop', exact: true }).isDisabled());
+  assert.equal(await page.getByRole('button', { name: 'Cancel crop', exact: true }).count(), 0);
   await middleCrop(page);
   await page.waitForFunction(
     () =>
