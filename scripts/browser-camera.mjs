@@ -11,6 +11,7 @@ import { verifyMarkerInteractions } from './browser-marker-interactions.mjs';
 import { verifyMarkerDeletion } from './browser-marker-deletion.mjs';
 import { verifyMarkerPicking } from './browser-marker-picking.mjs';
 import { createGlobalAxesFixture, verifyGlobalAxes } from './browser-global-axes.mjs';
+import { verifyKeyboardShortcuts } from './browser-keyboard-shortcuts.mjs';
 const browserChannel = process.env.BROWSER_CHANNEL || 'chrome';
 
 await mkdir('.local', { recursive: true });
@@ -220,6 +221,7 @@ try {
     'canvas suppresses native menu before a file is loaded',
   );
   const snapshot = () => page.evaluate(() => window.cameraProbe.snapshot());
+  await verifyKeyboardShortcuts(page, false);
   const settle = async () => {
     await page.waitForTimeout(200);
     await page.evaluate(() => window.cameraProbe.settleControls());
@@ -346,6 +348,7 @@ try {
     mm[key].forEach((v, i) => assert(Math.abs(v - metres[key][i]) < 1e-6));
   await verifyMarkerPicking(page);
   await verifyMarkerInteractions(page);
+  await verifyKeyboardShortcuts(page);
   await verifyMarkerDeletion(page);
   await verifyGlobalAxes(page);
   for (const [i, file] of [
@@ -411,6 +414,7 @@ try {
           'marker focus/context menu/rename/shortcuts',
           '12 CSS pixel marker picking, close/far, resize, DPR=2, ambiguity and drag safety',
           'original global axis lengths, 3 CSS pixel widths, grid/plate visibility, DPR and resize',
+          'shortcut reference inventory, modal focus/keyboard isolation and responsive header/dialog',
           'full marker deletion/history/C3D/H5 round trips',
         ],
       },

@@ -8,6 +8,11 @@ branches describe the planned release until its tag is published.
 
 ## [Unreleased]
 
+### Added
+
+- Header keyboard-shortcut reference with context-specific groups, keyboard focus
+  containment and Escape dismissal; existing shortcut behavior is unchanged.
+
 ### Fixed
 
 - Global XYZ axes retain their original lengths with 3 CSS pixel lines that stay

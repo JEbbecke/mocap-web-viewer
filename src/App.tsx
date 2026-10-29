@@ -25,6 +25,7 @@ import { ExportControl } from './components/ExportControl';
 import { ImportWarnings } from './components/ImportWarnings';
 import { trackEvent } from './analytics';
 import { LicenseInfo } from './components/LicenseInfo';
+import { KeyboardShortcuts } from './components/KeyboardShortcuts';
 class ViewerBoundary extends Component<{ children: ReactNode }, { error: string | null }> {
   state = { error: null as string | null };
   static getDerivedStateFromError(error: Error) {
@@ -229,6 +230,7 @@ export function App() {
           </div>
         )}
         <div className="file-actions">
+          <KeyboardShortcuts />
           {data && (
             <ExportControl data={data} disabled={busy || !sourceFile || Boolean(cropSelection)} />
           )}

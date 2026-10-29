@@ -62,6 +62,9 @@ Open the local URL printed by Vite, normally http://127.0.0.1:5173. On Windows P
 
 ## Keyboard shortcuts
 
+Open **Keyboard shortcuts** (keyboard icon) in the header for the in-app reference,
+including focus-specific Timeline, Explorer and panel-resizing controls.
+
 | Shortcut                   | Action                                                                            |
 | -------------------------- | --------------------------------------------------------------------------------- |
 | Space                      | Play/Pause                                                                        |

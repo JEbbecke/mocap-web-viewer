@@ -114,10 +114,6 @@ export async function verifyGlobalAxes(page) {
     await page.setViewportSize({ width, height: 1000 });
     for (const distance of [3.25, 15])
       for (const below of [false, true]) {
-        await page.evaluate(
-          ({ distance, below, dpr }) => window.cameraProbe.setAxesView(distance, below, dpr),
-          { distance, below, dpr },
-        );
         for (const [grid, plates] of [
           [true, false],
           [false, true],
@@ -133,6 +129,16 @@ export async function verifyGlobalAxes(page) {
             { grid, plates },
           );
           await page.waitForTimeout(80);
+          // Resize can reconfigure R3F's default DPR. Apply the test viewport
+          // after layout settles, then let the new drawing buffer paint.
+          await page.evaluate(
+            ({ distance, below, dpr }) => window.cameraProbe.setAxesView(distance, below, dpr),
+            { distance, below, dpr },
+          );
+          await page.evaluate(
+            () =>
+              new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+          );
           const state = await page.evaluate(() => window.cameraProbe.globalAxesState());
           assert.equal(state.visible, true);
           assert.equal(state.interactive, false);
