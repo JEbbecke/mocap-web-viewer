@@ -10,6 +10,8 @@ branches describe the planned release until its tag is published.
 
 ### Fixed
 
+- Marker picking now adds a bounded 12 CSS pixel tolerance across zoom levels,
+  rejecting ambiguous misses and camera drags while preserving direct hits.
 - Expanding a provisional crop back to the full current working range now cancels
   the selection, preserving any previously applied crop.
 - Import warning banners can be dismissed together or note by note for the current

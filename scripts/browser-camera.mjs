@@ -9,6 +9,7 @@ import assert from 'node:assert/strict';
 import * as h5 from 'h5wasm/node';
 import { verifyMarkerInteractions } from './browser-marker-interactions.mjs';
 import { verifyMarkerDeletion } from './browser-marker-deletion.mjs';
+import { verifyMarkerPicking } from './browser-marker-picking.mjs';
 const browserChannel = process.env.BROWSER_CHANNEL || 'chrome';
 
 await mkdir('.local', { recursive: true });
@@ -16,7 +17,7 @@ await writeFile(
   '.local/camera-probe.ts',
   `
 import { _roots } from '@react-three/fiber';
-import { Vector3 } from 'three';
+import { Vector2, Vector3, Raycaster } from 'three';
 import { CameraController } from '../src/viewer/cameraController';
 import { dataCameraBounds } from '../src/viewer/cameraBounds';
 import { useSession } from '../src/state/session';
@@ -33,6 +34,21 @@ export function markerPoint(marker) {
   const rect = root.gl.domElement.getBoundingClientRect();
   return { world, x: rect.left + (ndc.x + 1) * rect.width / 2,
     y: rect.top + (1 - ndc.y) * rect.height / 2 };
+}
+export function scaleDistance(factor) {
+  const { camera, controls } = _roots.get(document.querySelector('.viewport canvas')).store.getState();
+  camera.position.sub(controls.target).multiplyScalar(factor).add(controls.target);
+  controls.update();
+  camera.updateMatrixWorld();
+}
+export function markerHits(x, y) {
+  const root = _roots.get(document.querySelector('.viewport canvas')).store.getState();
+  const rect = root.gl.domElement.getBoundingClientRect();
+  const ray = new Raycaster();
+  ray.setFromCamera(new Vector2((x-rect.left)/rect.width*2-1, 1-(y-rect.top)/rect.height*2), root.camera);
+  let markers;
+  root.scene.traverse(object => { if (object.isInstancedMesh) markers = object; });
+  return markers ? ray.intersectObject(markers).map(hit => hit.instanceId) : [];
 }
 export const attempts = [];
 export function settleControls() {
@@ -149,7 +165,10 @@ try {
     headless: true,
     args: ['--enable-unsafe-swiftshader'],
   });
-  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  const page = await browser.newPage({
+    viewport: { width: 1440, height: 1000 },
+    deviceScaleFactor: 2,
+  });
   await page.route('https://je-motion-analytics.jonasebbecke97.workers.dev/**', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: '{}' }),
   );
@@ -292,6 +311,7 @@ try {
   framed(metres);
   for (const key of ['position', 'target'])
     mm[key].forEach((v, i) => assert(Math.abs(v - metres[key][i]) < 1e-6));
+  await verifyMarkerPicking(page);
   await verifyMarkerInteractions(page);
   await verifyMarkerDeletion(page);
   for (const [i, file] of [
@@ -306,6 +326,7 @@ try {
     await load(file);
     const state = await snapshot();
     framed(state);
+    if (i === 0) await verifyMarkerPicking(page, { demo: true });
     await page.screenshot({ path: `.local/camera-fixture-${i}.png` });
     results.push({
       fixture: file.split('/').at(-1),
@@ -354,6 +375,7 @@ try {
           'H5/C3D switching',
           'StrictMode once-only fit',
           'marker focus/context menu/rename/shortcuts',
+          '12 CSS pixel marker picking, close/far, resize, DPR=2, ambiguity and drag safety',
           'full marker deletion/history/C3D/H5 round trips',
         ],
       },
