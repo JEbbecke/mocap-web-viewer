@@ -15,7 +15,9 @@ import { markerFrameAt, useScientificFrame } from './scientificScene';
 import { VideoExportBridge } from './VideoExportBridge';
 import type { VideoExportRequest } from './videoExport';
 import { CameraController } from './cameraController';
+import { createGlobalAxes } from './globalAxes';
 import { markerScenePosition } from './markerPosition';
+import { MarkerPickGesture, pickMarkerInScreenSpace } from './markerPicking';
 import { openSelectedMarkerMenu, selectMarker } from '../state/markerCommands';
 import { MarkerContextMenu } from '../components/MarkerContextMenu';
 import {
@@ -75,7 +77,29 @@ function Camera({ data, active }: { data: MotionData; active: boolean }) {
 function Markers({ data }: { data: MotionData }) {
   const ref = useRef<THREE.InstancedMesh>(null),
     matrix = useMemo(() => new THREE.Matrix4(), []),
-    color = useMemo(() => new THREE.Color(), []);
+    color = useMemo(() => new THREE.Color(), []),
+    gesture = useMemo(() => new MarkerPickGesture(), []);
+  const { camera, gl } = useThree();
+  useEffect(() => {
+    const canvas = gl.domElement;
+    const down = (event: PointerEvent) => gesture.down(event);
+    const move = (event: PointerEvent) => gesture.move(event);
+    const up = (event: PointerEvent) => gesture.up(event);
+    const cancel = () => gesture.cancel();
+    // Capture records the gesture before R3F dispatch. OrbitControls owns pointer
+    // capture; these local observers never prevent navigation or capture pointers.
+    canvas.addEventListener('pointerdown', down, true);
+    canvas.addEventListener('pointermove', move, true);
+    canvas.addEventListener('pointerup', up, true);
+    canvas.addEventListener('pointercancel', cancel, true);
+    return () => {
+      canvas.removeEventListener('pointerdown', down, true);
+      canvas.removeEventListener('pointermove', move, true);
+      canvas.removeEventListener('pointerup', up, true);
+      canvas.removeEventListener('pointercancel', cancel, true);
+      gesture.cancel();
+    };
+  }, [gl, gesture, data]);
   const count = data.markers.labels.length;
   const extent = useMemo(
     () => markerPickingBounds(data),
@@ -85,7 +109,7 @@ function Markers({ data }: { data: MotionData }) {
     if (ref.current)
       ref.current.boundingSphere = new THREE.Sphere(extent.center, extent.size / 2 + 0.03);
   }, [extent]);
-  const click = (event: ThreeEvent<MouseEvent>) => {
+  const directHit = (event: ThreeEvent<MouseEvent>) => {
     const s = useSession.getState();
     if (
       event.delta > 4 ||
@@ -94,28 +118,82 @@ function Markers({ data }: { data: MotionData }) {
       !s.display.markers ||
       !markerScenePosition(data, s.frame, event.instanceId)
     )
-      return;
+      return null;
     event.stopPropagation();
-    selectMarker(event.instanceId);
+    // A frontmost surface is a clear hit; coincident surfaces are not. Do not
+    // break exact depth ties by the order of marker labels in the file.
+    if (
+      event.intersections.some(
+        (hit) =>
+          hit.object === ref.current &&
+          hit.instanceId !== event.instanceId &&
+          Math.abs(hit.distance - event.distance) < 1e-6,
+      )
+    )
+      return null;
+    return event.instanceId;
+  };
+  const click = (event: ThreeEvent<MouseEvent>) => {
+    const marker = directHit(event);
+    if (marker !== null) gesture.pick(event.nativeEvent, () => selectMarker(marker));
   };
   const contextMenu = (event: ThreeEvent<MouseEvent>) => {
-    const s = useSession.getState();
-    if (
-      event.delta > 4 ||
-      event.instanceId == null ||
-      s.busy ||
-      !s.display.markers ||
-      s.hidden.has(event.instanceId) ||
-      !markerScenePosition(data, s.frame, event.instanceId)
-    )
-      return;
-    event.stopPropagation();
+    if (useSession.getState().busy) return;
+    const marker = directHit(event);
+    if (marker === null) return;
     event.nativeEvent.preventDefault();
-    (event.nativeEvent.target as HTMLElement)
-      .closest<HTMLElement>('.viewport')
-      ?.focus({ preventScroll: true });
-    selectMarker(event.instanceId);
-    openSelectedMarkerMenu(event.nativeEvent.clientX, event.nativeEvent.clientY);
+    gesture.pick(event.nativeEvent, () => {
+      const current = useSession.getState();
+      if (
+        current.busy ||
+        !current.display.markers ||
+        current.hidden.has(marker) ||
+        !markerScenePosition(data, current.frame, marker)
+      )
+        return;
+      gl.domElement.closest<HTMLElement>('.viewport')?.focus({ preventScroll: true });
+      selectMarker(marker);
+      openSelectedMarkerMenu(event.nativeEvent.clientX, event.nativeEvent.clientY);
+    });
+  };
+  const missed = (event: MouseEvent) => {
+    if (event.type !== 'click' && event.type !== 'contextmenu') return;
+    if (event.type === 'click' && event.button !== 0) return;
+    gesture.pick(event, () => {
+      const s = useSession.getState();
+      if (!s.display.markers || s.busy || !ref.current?.visible) return;
+      const marker = pickMarkerInScreenSpace({
+        data,
+        frame: s.frame,
+        hidden: s.hidden,
+        camera,
+        rect: gl.domElement.getBoundingClientRect(),
+        clientX: event.clientX,
+        clientY: event.clientY,
+      });
+      if (marker === null) return;
+      // Existing picking only depth-orders markers (other scene objects have no
+      // pointer handlers). Do not extend a fully occluded marker's hit area.
+      const centre = markerScenePosition(data, s.frame, marker)!.project(camera);
+      const raycaster = new THREE.Raycaster();
+      raycaster.setFromCamera(new THREE.Vector2(centre.x, centre.y), camera);
+      const hits: THREE.Intersection[] = [];
+      ref.current.raycast(raycaster, hits);
+      const front = hits
+        .filter(
+          (hit) =>
+            hit.instanceId != null &&
+            !s.hidden.has(hit.instanceId) &&
+            !!markerScenePosition(data, s.frame, hit.instanceId),
+        )
+        .sort((a, b) => a.distance - b.distance)[0];
+      if (front?.instanceId !== marker) return;
+      selectMarker(marker);
+      if (event.type === 'contextmenu') {
+        gl.domElement.closest<HTMLElement>('.viewport')?.focus({ preventScroll: true });
+        openSelectedMarkerMenu(event.clientX, event.clientY);
+      }
+    });
   };
   const point = useMemo(() => new THREE.Vector3(), []);
   useScientificFrame(data, (time, state, object) => {
@@ -152,6 +230,7 @@ function Markers({ data }: { data: MotionData }) {
       frustumCulled={false}
       onClick={click}
       onContextMenu={contextMenu}
+      onPointerMissed={missed}
     >
       <sphereGeometry args={[1, 12, 8]} />
       <meshStandardMaterial roughness={0.55} />
@@ -522,13 +601,24 @@ function RigidBodies({ data }: { data: MotionData }) {
     </group>
   );
 }
+function GlobalAxes() {
+  const axes = useMemo(createGlobalAxes, []);
+  useEffect(
+    () => () => {
+      axes.geometry.dispose();
+      axes.material.dispose();
+    },
+    [axes],
+  );
+  return <primitive object={axes} />;
+}
 function Ground() {
   const grid = useSession((s) => s.display.grid),
     axes = useSession((s) => s.display.axes);
   return (
     <>
       {grid && <gridHelper args={[20, 40, '#3c4d5b', '#24333f']} rotation={[Math.PI / 2, 0, 0]} />}{' '}
-      {axes && <axesHelper args={[0.5]} />}
+      {axes && <GlobalAxes />}
     </>
   );
 }

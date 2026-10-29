@@ -4,11 +4,19 @@ JE Motion Lab uses Semantic Versioning. Before 1.0, minor releases may include b
 
 Preparation, review, tagging, deployment, and promotion are separate steps.
 
-Current published baseline: **v0.5.1**, dated **2026-10-12**. The **v0.6.0** candidate is prepared on `release/0.6.0`; its intended publication date is **2026-10-26**. Publication and deployment of v0.6.0 remain pending. Use v0.5.1 as the comparison baseline until v0.6.0 is published.
+Current published baseline: **v0.6.0**, dated **2026-10-26**, as confirmed by the
+project owner. The v0.6.1 UX work remains under **Unreleased**; package, lockfile,
+citation and footer versions stay at 0.6.0 until release preparation is approved.
+The v0.6.0 acceptance section below is a historical preparation record, including
+its then-pending publication wording.
 
 ## Establish the release baseline
 
-Work on a dedicated release-preparation branch created from an up-to-date `main` branch.
+Work on a dedicated release-preparation branch created from the reviewed release
+integration state, or up-to-date `main` when there is no separate integration
+branch. For the v0.6.1 UX work, first integrate all three feature PRs into
+`feature/ux-polish-v0.6.1`; later create `release/0.6.1` from that reviewed state
+and open its release PR against `main`. Do not omit the integration-only commits.
 
 Before preparing a release:
 

@@ -9,6 +9,9 @@ import assert from 'node:assert/strict';
 import * as h5 from 'h5wasm/node';
 import { verifyMarkerInteractions } from './browser-marker-interactions.mjs';
 import { verifyMarkerDeletion } from './browser-marker-deletion.mjs';
+import { verifyMarkerPicking } from './browser-marker-picking.mjs';
+import { createGlobalAxesFixture, verifyGlobalAxes } from './browser-global-axes.mjs';
+import { verifyKeyboardShortcuts } from './browser-keyboard-shortcuts.mjs';
 const browserChannel = process.env.BROWSER_CHANNEL || 'chrome';
 
 await mkdir('.local', { recursive: true });
@@ -16,7 +19,7 @@ await writeFile(
   '.local/camera-probe.ts',
   `
 import { _roots } from '@react-three/fiber';
-import { Vector3 } from 'three';
+import { Vector2, Vector3, Raycaster } from 'three';
 import { CameraController } from '../src/viewer/cameraController';
 import { dataCameraBounds } from '../src/viewer/cameraBounds';
 import { useSession } from '../src/state/session';
@@ -33,6 +36,53 @@ export function markerPoint(marker) {
   const rect = root.gl.domElement.getBoundingClientRect();
   return { world, x: rect.left + (ndc.x + 1) * rect.width / 2,
     y: rect.top + (1 - ndc.y) * rect.height / 2 };
+}
+export function scaleDistance(factor) {
+  const { camera, controls } = _roots.get(document.querySelector('.viewport canvas')).store.getState();
+  camera.position.sub(controls.target).multiplyScalar(factor).add(controls.target);
+  controls.update();
+  camera.updateMatrixWorld();
+}
+export function setAxesView(distance, below, dpr, axial = false) {
+  const root = _roots.get(document.querySelector('.viewport canvas')).store.getState();
+  root.setDpr(dpr);
+  root.controls.target.set(0, 0, 0);
+  root.camera.position.set(...(axial ? [0,0,below ? -1 : 1] : [1.4,-1.8,below ? -1.2 : 1.2])).normalize().multiplyScalar(distance);
+  root.controls.update();
+  root.camera.updateMatrixWorld();
+}
+export function globalAxesState(fractions = [.15,.25,.35]) {
+  const root = _roots.get(document.querySelector('.viewport canvas')).store.getState();
+  const axes = root.scene.getObjectByName('Global coordinate axes');
+  const project = p => {
+    p.project(root.camera);
+    return [(p.x+1)*root.size.width/2, (1-p.y)*root.size.height/2];
+  };
+  const samples = [];
+  if (axes) for(let axis=0; axis<3; axis++) {
+    const end = new Vector3().setComponent(axis, .5);
+    const start = project(new Vector3()), finish = project(end);
+    const dx=finish[0]-start[0], dy=finish[1]-start[1], length=Math.hypot(dx,dy);
+    for(const t of fractions) samples.push({ axis, point:project(new Vector3().setComponent(axis,.5*t)), normal:[-dy/length,dx/length] });
+  }
+  let plateVisible=false;
+  root.scene.traverse(object => { if (object.material?.color?.getHex() === 0x3b8e8d && object.visible) plateVisible=true; });
+  return {
+    visible:!!axes, samples, plateVisible,
+    size:[root.size.width,root.size.height], dpr:root.gl.getPixelRatio(),
+    resolution:axes?.material.resolution.toArray(),
+    linewidth:axes?.material.linewidth, worldUnits:axes?.material.worldUnits,
+    interactive:axes && root.internal.interaction.includes(axes),
+  };
+}
+export function markerHits(x, y) {
+  const root = _roots.get(document.querySelector('.viewport canvas')).store.getState();
+  const rect = root.gl.domElement.getBoundingClientRect();
+  const ray = new Raycaster();
+  ray.setFromCamera(new Vector2((x-rect.left)/rect.width*2-1, 1-(y-rect.top)/rect.height*2), root.camera);
+  let markers;
+  root.scene.traverse(object => { if (object.isInstancedMesh) markers = object; });
+  return markers ? ray.intersectObject(markers).map(hit => hit.instanceId) : [];
 }
 export const attempts = [];
 export function settleControls() {
@@ -67,6 +117,7 @@ export function snapshot() {
 `,
 );
 await h5.ready;
+createGlobalAxesFixture();
 for (const unit of ['mm', 'm']) {
   const file = new h5.File(resolve(`.local/camera-${unit}.h5`), 'w');
   try {
@@ -149,7 +200,10 @@ try {
     headless: true,
     args: ['--enable-unsafe-swiftshader'],
   });
-  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  const page = await browser.newPage({
+    viewport: { width: 1440, height: 1000 },
+    deviceScaleFactor: 2,
+  });
   await page.route('https://je-motion-analytics.jonasebbecke97.workers.dev/**', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: '{}' }),
   );
@@ -168,6 +222,7 @@ try {
     'canvas suppresses native menu before a file is loaded',
   );
   const snapshot = () => page.evaluate(() => window.cameraProbe.snapshot());
+  await verifyKeyboardShortcuts(page, false);
   const settle = async () => {
     await page.waitForTimeout(200);
     await page.evaluate(() => window.cameraProbe.settleControls());
@@ -292,8 +347,11 @@ try {
   framed(metres);
   for (const key of ['position', 'target'])
     mm[key].forEach((v, i) => assert(Math.abs(v - metres[key][i]) < 1e-6));
+  await verifyMarkerPicking(page);
   await verifyMarkerInteractions(page);
+  await verifyKeyboardShortcuts(page);
   await verifyMarkerDeletion(page);
+  await verifyGlobalAxes(page);
   for (const [i, file] of [
     'reference-data/example_data.h5',
     '.local/camera-small.c3d',
@@ -306,6 +364,7 @@ try {
     await load(file);
     const state = await snapshot();
     framed(state);
+    if (i === 0) await verifyMarkerPicking(page, { demo: true });
     await page.screenshot({ path: `.local/camera-fixture-${i}.png` });
     results.push({
       fixture: file.split('/').at(-1),
@@ -354,6 +413,9 @@ try {
           'H5/C3D switching',
           'StrictMode once-only fit',
           'marker focus/context menu/rename/shortcuts',
+          '12 CSS pixel marker picking, close/far, resize, DPR=2, ambiguity and drag safety',
+          'original global axis lengths, world-space thickness with perspective scaling, grid/plate visibility, DPR and resize',
+          'shortcut reference inventory, modal focus/keyboard isolation and responsive header/dialog',
           'full marker deletion/history/C3D/H5 round trips',
         ],
       },

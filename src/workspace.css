@@ -126,6 +126,24 @@ header {
   gap: 8px;
   flex: none;
 }
+.keyboard-shortcuts-trigger {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 30px;
+  height: 32px;
+  padding: 5px;
+  background: transparent;
+  color: #a5b8c8;
+}
+.keyboard-shortcuts-trigger svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+}
 .export-control {
   position: relative;
 }
@@ -1727,6 +1745,103 @@ footer .privacy-dot {
   font-size: 13px;
   margin-bottom: 8px;
 }
+.shortcuts-dialog {
+  width: min(650px, calc(100vw - 24px));
+  max-height: min(720px, calc(100dvh - 40px));
+  padding: 20px;
+  overflow: hidden;
+}
+.shortcuts-dialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+.shortcuts-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.shortcuts-heading h2 {
+  margin: 0;
+  font-size: 18px;
+}
+.shortcuts-heading button {
+  padding: 3px 8px;
+  font-size: 18px;
+}
+.shortcuts-dialog > p {
+  margin: 8px 0 16px;
+}
+.shortcuts-content {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 24px;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 2px 8px 2px 2px;
+}
+.shortcuts-content:focus-visible {
+  outline: 2px solid #7edec8;
+  outline-offset: -2px;
+}
+.shortcuts-content h3 {
+  margin: 0 0 5px;
+  color: #8ce0c9;
+}
+.shortcuts-content p {
+  margin-bottom: 9px;
+  color: #899cac;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.shortcuts-content dl {
+  margin: 0;
+}
+.shortcut-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 8px;
+  padding: 6px 0;
+  border-top: 1px solid #2a3b49;
+  border-bottom: 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.shortcut-row dt {
+  color: #c5d4df;
+}
+.shortcut-row dd {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  margin: 0;
+}
+.shortcut-row kbd {
+  border: 1px solid #3b5264;
+  border-radius: 4px;
+  background: #15232f;
+  padding: 1px 5px;
+  font: inherit;
+  font-size: 11px;
+  white-space: nowrap;
+  color: #dce7ef;
+}
+.shortcuts-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 14px;
+}
+@media (max-width: 620px) {
+  .shortcuts-dialog {
+    padding: 16px;
+  }
+  .shortcuts-content {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 .conversion-details {
   max-height: 55dvh;
   overflow: auto;
@@ -2045,7 +2160,7 @@ footer .privacy-dot {
     font-size: 34px;
   }
 }
-@media (max-width: 600px) {
+@media (max-width: 640px) {
   header .brand {
     display: none;
   }
@@ -2069,6 +2184,25 @@ footer .privacy-dot {
   }
   .history-controls button {
     padding: 8px;
+  }
+}
+@media (max-width: 360px) {
+  header {
+    gap: 3px;
+    padding-inline: 8px;
+  }
+  .workspace-nav button,
+  .history-controls button {
+    padding: 6px;
+  }
+  header .file-actions {
+    gap: 2px;
+  }
+  header button.primary {
+    padding-inline: 6px;
+  }
+  .keyboard-shortcuts-trigger {
+    width: 28px;
   }
 }
 .brand-mark circle {
