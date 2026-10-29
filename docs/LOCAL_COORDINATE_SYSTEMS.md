@@ -16,6 +16,21 @@ lengths cross the existing 0.001 scene-units/mm boundary. Rotations keep lab XYZ
 the viewer does not transpose matrices, remap axes or flip a plate's normal to
 face the camera. Helpers do not intercept marker picking.
 
+## Global axes are a separate reference
+
+The existing **Coordinate axes** display switch controls the world-origin XYZ
+reference independently of these local helpers. Its positive red/green/blue arms
+retain their original 500 mm length with a constant 20 mm world-space width.
+Perspective makes the lines thinner with distance; there is no pixel floor or
+camera-dependent compensation.
+
+The global reference stays at the actual origin and remains visible over the grid
+and force-platform surfaces. It does not intercept marker picking or participate
+in camera fitting. This display behavior does not change other objects' depth
+behavior, the 100 mm local helpers or scientific data. See [viewer architecture](ARCHITECTURE.md)
+for the global-only line/depth implementation and [units](UNITS.md#viewer-and-ui)
+for scene conversion.
+
 ## Force-platform frames and origins
 
 - Declared global `Position`/`Rotation` poses take priority. `Position` is the

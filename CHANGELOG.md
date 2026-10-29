@@ -8,9 +8,32 @@ branches describe the planned release until its tag is published.
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-10-29
+
+### Added
+
+- Header keyboard-shortcut reference with context-specific groups, keyboard focus
+  containment and Escape dismissal; existing shortcut behavior is unchanged.
+
+### Fixed
+
+- Global XYZ axes retain their 500 mm lengths with a 20 mm world-space thickness
+  that scales naturally with perspective distance. Visibility over the grid and force
+  plates is preserved; scientific scale and local axes are unchanged.
+- Marker picking now adds a bounded 12 CSS pixel tolerance across zoom levels,
+  rejecting ambiguous misses and camera drags while preserving direct hits.
+- Expanding a provisional crop back to the full current working range now cancels
+  the selection, preserving any previously applied crop.
+- Import warning banners can be dismissed together or note by note for the current
+  recording; later imports show their warnings again. Scientific limitations and
+  mandatory export loss disclosures remain intact.
+- Disabled camera damping so orbit and pan respond directly and stop on mouse release.
+- Suppressed the native browser context menu on the 3D canvas while preserving
+  right-button pan and the custom marker context menu.
+
 ## [0.6.0] - 2026-10-26
 
-Intended publication date: 2026-10-26. Publication and deployment remain pending.
+Published on 2026-10-26.
 
 ### Added
 
@@ -218,7 +241,8 @@ The published tag retained `0.1.0` in its package files despite being released a
 `v0.4.0`. That historical mismatch was corrected after publication and is recorded under
 `[0.5.0]`; the existing release and tag have not been rewritten.
 
-[Unreleased]: https://github.com/JEbbecke/mocap-web-viewer/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/JEbbecke/mocap-web-viewer/compare/v0.6.1...HEAD
+[0.6.1]: https://github.com/JEbbecke/mocap-web-viewer/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/JEbbecke/mocap-web-viewer/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/JEbbecke/mocap-web-viewer/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/JEbbecke/mocap-web-viewer/compare/v0.4.0...v0.5.0

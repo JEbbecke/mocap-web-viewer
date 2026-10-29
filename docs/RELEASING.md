@@ -4,11 +4,23 @@ JE Motion Lab uses Semantic Versioning. Before 1.0, minor releases may include b
 
 Preparation, review, tagging, deployment, and promotion are separate steps.
 
-Current published baseline: **v0.5.1**, dated **2026-10-12**. The **v0.6.0** candidate is prepared on `release/0.6.0`; its intended publication date is **2026-10-26**. Publication and deployment of v0.6.0 remain pending. Use v0.5.1 as the comparison baseline until v0.6.0 is published.
+Current published baseline: **v0.6.0**, dated **2026-10-26**, as confirmed by the
+project owner. The prepared **v0.6.1** candidate on `release/0.6.1` includes all
+three reviewed UX feature groups from `feature/ux-polish-v0.6.1`. Package,
+lockfile, citation and generated footer versions are 0.6.1; publication is pending.
+The [v0.6.1 changelog](../CHANGELOG.md#061---2026-10-29) and `CITATION.cff` both
+record the confirmed publication date, **2026-10-29**. The maintainer has confirmed
+completion of manual v0.6.1 acceptance. v0.6.0 remains the published version until
+v0.6.1 deployment, tagging and release publication are complete.
+The v0.6.0 acceptance section below preserves the historical owner-confirmed results.
 
 ## Establish the release baseline
 
-Work on a dedicated release-preparation branch created from an up-to-date `main` branch.
+Work on a dedicated release-preparation branch created from the reviewed release
+integration state, or up-to-date `main` when there is no separate integration
+branch. For v0.6.1, all three feature PRs are integrated into
+`feature/ux-polish-v0.6.1`, and `release/0.6.1` starts from that reviewed state.
+Its release PR targets `main`. Do not omit the integration-only commits.
 
 Before preparing a release:
 
@@ -42,7 +54,8 @@ For each release:
   publication date before tagging;
 - leave a new empty `Unreleased` section;
 - update comparison links;
-- synchronize `CITATION.cff` version and release date;
+- synchronize `CITATION.cff` version and confirmed publication date before
+  publication;
 - validate `CITATION.cff` against the current CFF schema;
 - review README and technical documentation for stale behavior, screenshots, links, branding, limitations, and terminology.
 
@@ -173,10 +186,9 @@ executed by the release-preparation agent. Automated candidate results are
 recorded separately in ignored `.local/release-readiness-v0.6.0.md`; historical
 audit reports retain their original findings.
 
-The v0.6.0 changelog and `CITATION.cff` are synchronized to the intended
-publication date, **2026-10-26**. This records the planned release, not completed
-publication or deployment. If promotion moves to another date, update both dates
-before tagging.
+The v0.6.0 release was published on **2026-10-26**, with its changelog and
+`CITATION.cff` synchronized to that release date. The current citation metadata
+now describes the prepared v0.6.1 candidate.
 
 ## Review before promotion
 

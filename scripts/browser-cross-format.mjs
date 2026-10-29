@@ -186,14 +186,17 @@ export async function verifyExportToolbar(page) {
     const layout = await page.evaluate(() => {
       const header = document.querySelector('header');
       const timeline = document.querySelector('.timeline');
-      const actions = [...document.querySelector('.file-actions').children].map((el) =>
-        el.getBoundingClientRect(),
-      );
+      // Help precedes the file controls; measure the intended Export/Open pair.
+      const exportControl = document.querySelector('.file-actions .export-control');
+      const openFile = document.querySelector('.file-actions > .primary');
+      const actions = [exportControl, openFile].map((el) => el.getBoundingClientRect());
       return {
         headerFits: header.scrollWidth <= header.clientWidth + 1,
         timelineFits: timeline.scrollWidth <= timeline.clientWidth + 1,
         adjacent:
-          Math.abs(actions[0].top - actions[1].top) < 1 && actions[0].right < actions[1].left,
+          exportControl.nextElementSibling === openFile &&
+          Math.abs(actions[0].top - actions[1].top) < 1 &&
+          actions[0].right < actions[1].left,
         height: timeline.getBoundingClientRect().height,
       };
     });

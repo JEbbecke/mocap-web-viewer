@@ -23,6 +23,13 @@ outside clicks, selection changes and file/workspace transitions dismiss it.
 Arrow keys navigate the menu; Enter or Space activates an enabled action.
 The menu uses a portal and clamps to the browser viewport, including after resize.
 
+Small visible markers also have a 12 CSS-pixel screen-space picking radius around
+their current projected centres. Direct sphere hits retain priority; ambiguous
+misses, hidden/invalid samples and camera drags preserve the current selection.
+This does not enlarge rendered markers or change their coordinates. The Viewer
+suppresses the native browser context menu while retaining the marker menu and
+right-drag panning; other application areas keep their native context menus.
+
 | Action                                          | Shortcut                   |
 | ----------------------------------------------- | -------------------------- |
 | Focus camera on selected marker                 | C                          |
@@ -35,6 +42,11 @@ The menu uses a portal and clamps to the browser viewport, including after resiz
 | First/last frame                                | Home/End                   |
 | Undo                                            | Ctrl/Cmd+Z                 |
 | Redo                                            | Ctrl/Cmd+Shift+Z or Ctrl+Y |
+
+The header **Keyboard shortcuts** reference also lists local Timeline, Explorer
+and panel-resizing keys. It is a modal reference: Tab stays inside, Escape closes
+it, and application shortcuts are inactive until it closes. Rename uses
+Ctrl+Shift+U on all platforms; Cmd is not an alternative for that binding.
 
 Focus uses the exact current valid sample in normalized scene coordinates. The
 camera and orbit target translate together, retaining viewing direction and

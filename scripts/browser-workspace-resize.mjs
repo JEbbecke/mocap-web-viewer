@@ -134,6 +134,13 @@ try {
     near((await box('#signal-panel')).height, 354, 'editor preserves plot height');
     await page.getByRole('button', { name: 'Cancel', exact: true }).click();
     near((await box('#signal-panel')).height, 354, 'closing editor preserves plot height');
+    // Closing the editor changes available height. Wait for R3F's asynchronous
+    // ResizeObserver update before reading canvas geometry and camera aspect.
+    await page.waitForFunction(() => {
+      const scene = document.querySelector('.scene-wrap').getBoundingClientRect();
+      const canvas = document.querySelector('.scene-wrap canvas').getBoundingClientRect();
+      return Math.abs(canvas.width - scene.width) < 2 && Math.abs(canvas.height - scene.height) < 2;
+    });
     const after = await page.evaluate(() => window.resizeProbe.camera());
     for (const key of ['position', 'target'])
       pose[key].forEach((value, i) =>

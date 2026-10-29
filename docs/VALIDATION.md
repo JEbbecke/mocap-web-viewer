@@ -40,6 +40,31 @@ Explorer polish covers Details placement/scroll/focus, exact clipboard scopes,
 pending/failed clipboard writes, compact empty plots and preferred-height
 restoration. Reports and development probes stay under ignored `.local/`.
 
+Set `BROWSER_CHANNEL=chrome` or `BROWSER_CHANNEL=msedge` to exercise the installed
+browser. Run production smoke for both where available; focused probe-based
+scripts use development mode and are not substitutes for the production build.
+Archive reports per run/channel before another invocation overwrites the scripts'
+standard output paths. Missing browsers or private fixtures are reported as skips,
+not passes.
+
+### Viewer usability regressions
+
+Camera coverage includes direct and 12 CSS-pixel fallback marker picks, ambiguity,
+invalid/hidden samples, device pixel ratios, resize and returning camera drags.
+It checks immediate camera stopping, Viewer-only native context-menu suppression,
+the custom marker menu, and the modal keyboard reference's focus/shortcut scope
+with and without a recording. Header layout is checked at narrow and wide widths.
+Global-axis checks retain 500 mm arms, a 20 mm world-space width, natural
+perspective scaling and the existing global-only depth/render-order fix across
+grid/plate combinations, orbit angles, dimensions and pixel ratios. Local axes,
+scientific coordinates, picking and camera fit remain independent.
+
+Production smoke includes `browser-warnings.mjs` and `browser-crop-cancel.mjs`:
+individual/all-note dismissal must preserve import limitations and mandatory
+export disclosures, and successful re-import must show notes again. Returning
+handles to the full current working range cancels only the provisional crop;
+previously applied crops, source offsets, data/history and exports stay intact.
+
 Tests cover Intel integer/IEEE and MIPS C3D, signed/unsigned analog scaling and
 subframes, residual validity, units, TYPE-2/3/4 force calibration and COP,
 moving geometry, crop clocks, event edits, all data-label collections, history,
@@ -55,7 +80,7 @@ against an independent byte scanner. Timing tests retain the Xsens files' declar
 source metadata and applies no automatic correction. They cover 60–240 Hz clocks,
 rendering-rate independence, speed multipliers, events, plots, crops and exports.
 `browser-rotation.mjs`, invoked by smoke, reuses the tiny independent synthetic
-Rotation encoder. In the built app it verifies persistent omission notes, both
+Rotation encoder. In the built app it verifies omission notes, both
 export previews, nonblocking export and full/cropped C3D/H5 re-imports. It compares
 known marker XYZ, validity, residuals, analog values, rates and nonzero source
 frames through Explorer, and checks that C3D output has no stale Rotation group.

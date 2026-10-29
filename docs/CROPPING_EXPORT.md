@@ -4,6 +4,11 @@ Open a recording and drag the two handles on the timeline slider to select the c
 
 ## One interval convention
 
+Before **Apply crop**, moving both handles back to the full current working range
+automatically cancels the provisional selection, just like **Cancel crop**. This
+clears the preview without changing data or history. Any previously applied crop
+stays applied; restoring removed frames still requires **Restore original**.
+
 `cropMotionData(data, start, end)` accepts zero-based **array boundaries** `[start, end)`, with `0 <= start < end <= frameCount`. A single-frame crop is valid. The end handle represents an exclusive boundary and may be one past the final frame. Slider readouts use source frame numbers: raw one-based C3D numbering, or stored H5 numbering. These are distinct from the playback slider's ordinal frames. Both handles and the playhead share the full recording-interval time axis.
 
 The selected physical interval is `[start / pointRate, end / pointRate)`. At 200 Hz, `[100, 300)` contains 200 point frames and covers one second; a synchronized 2000 Hz channel contributes samples `[1000, 3000)`, exactly 2000 samples. No interpolation, filtering or requantization is performed.

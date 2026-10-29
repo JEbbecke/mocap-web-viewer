@@ -88,8 +88,32 @@ export async function verifyMarkerInteractions(page) {
   assert.equal(await menu.count(), 0);
   assert.equal(
     await page.evaluate(() => window.lastMarkerContextPrevented),
+    true,
+    'empty canvas suppresses native menu',
+  );
+  await page.keyboard.press('Escape');
+
+  const beforePan = await snapshot();
+  await page.mouse.move(box.x + 20, box.y + box.height - 45);
+  await page.mouse.down({ button: 'right' });
+  await page.mouse.move(box.x + 60, box.y + box.height - 60, { steps: 8 });
+  await page.mouse.up({ button: 'right' });
+  await settle();
+  assert.notDeepEqual((await snapshot()).target, beforePan.target, 'right drag still pans');
+  assert.equal(await menu.count(), 0, 'panning empty canvas does not open marker menu');
+  assert.equal(await page.evaluate(() => window.lastMarkerContextPrevented), true);
+  const markerAfterPan = await point(0);
+  await page.mouse.click(markerAfterPan.x, markerAfterPan.y);
+  assert.equal((await state()).selected, 0, 'marker selection works after panning');
+  await openMenu(1);
+  await page.keyboard.press('Escape');
+  assert.equal(await menu.count(), 0, 'Escape closes right-click marker menu');
+
+  await page.locator('header').click({ button: 'right', position: { x: 5, y: 5 } });
+  assert.equal(
+    await page.evaluate(() => window.lastMarkerContextPrevented),
     false,
-    'empty canvas keeps native menu',
+    'outside viewer leaves native menu available',
   );
   await page.keyboard.press('Escape');
 
