@@ -8,12 +8,11 @@ Current published baseline: **v0.6.0**, dated **2026-10-26**, as confirmed by th
 project owner. The prepared **v0.6.1** candidate on `release/0.6.1` includes all
 three reviewed UX feature groups from `feature/ux-polish-v0.6.1`. Package,
 lockfile, citation and generated footer versions are 0.6.1; publication is pending.
-The [v0.6.1 changelog](../CHANGELOG.md#061---unreleased) uses **Unreleased** in
-place of a publication date. `CITATION.cff` retains the previous release's
-`date-released` until the actual v0.6.1 date is confirmed. Synchronize both dates
-before publication; do not treat the retained citation date as the v0.6.1 date.
-The v0.6.0 acceptance section below is a historical preparation record, including
-its then-pending publication wording.
+The [v0.6.1 changelog](../CHANGELOG.md#061---2026-10-29) and `CITATION.cff` both
+record the confirmed publication date, **2026-10-29**. The maintainer has confirmed
+completion of manual v0.6.1 acceptance. v0.6.0 remains the published version until
+v0.6.1 deployment, tagging and release publication are complete.
+The v0.6.0 acceptance section below preserves the historical owner-confirmed results.
 
 ## Establish the release baseline
 
@@ -55,9 +54,8 @@ For each release:
   publication date before tagging;
 - leave a new empty `Unreleased` section;
 - update comparison links;
-- synchronize `CITATION.cff` version; set its release date to the confirmed
-  publication date before publication, leaving the previous date explicitly
-  marked as pending during preparation if the new date is not yet known;
+- synchronize `CITATION.cff` version and confirmed publication date before
+  publication;
 - validate `CITATION.cff` against the current CFF schema;
 - review README and technical documentation for stale behavior, screenshots, links, branding, limitations, and terminology.
 
@@ -188,10 +186,9 @@ executed by the release-preparation agent. Automated candidate results are
 recorded separately in ignored `.local/release-readiness-v0.6.0.md`; historical
 audit reports retain their original findings.
 
-The v0.6.0 changelog and `CITATION.cff` are synchronized to the intended
-publication date, **2026-10-26**. This records the planned release, not completed
-publication or deployment. If promotion moves to another date, update both dates
-before tagging.
+The v0.6.0 release was published on **2026-10-26**, with its changelog and
+`CITATION.cff` synchronized to that release date. The current citation metadata
+now describes the prepared v0.6.1 candidate.
 
 ## Review before promotion
 

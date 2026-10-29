@@ -8,7 +8,7 @@ branches describe the planned release until its tag is published.
 
 ## [Unreleased]
 
-## [0.6.1] - Unreleased
+## [0.6.1] - 2026-10-29
 
 ### Added
 
@@ -33,7 +33,7 @@ branches describe the planned release until its tag is published.
 
 ## [0.6.0] - 2026-10-26
 
-Intended publication date: 2026-10-26. Publication and deployment remain pending.
+Published on 2026-10-26.
 
 ### Added
 
