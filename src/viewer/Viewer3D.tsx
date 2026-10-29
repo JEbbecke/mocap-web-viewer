@@ -15,6 +15,7 @@ import { markerFrameAt, useScientificFrame } from './scientificScene';
 import { VideoExportBridge } from './VideoExportBridge';
 import type { VideoExportRequest } from './videoExport';
 import { CameraController } from './cameraController';
+import { createGlobalAxes } from './globalAxes';
 import { markerScenePosition } from './markerPosition';
 import { MarkerPickGesture, pickMarkerInScreenSpace } from './markerPicking';
 import { openSelectedMarkerMenu, selectMarker } from '../state/markerCommands';
@@ -600,13 +601,24 @@ function RigidBodies({ data }: { data: MotionData }) {
     </group>
   );
 }
+function GlobalAxes() {
+  const axes = useMemo(createGlobalAxes, []);
+  useEffect(
+    () => () => {
+      axes.geometry.dispose();
+      axes.material.dispose();
+    },
+    [axes],
+  );
+  return <primitive object={axes} />;
+}
 function Ground() {
   const grid = useSession((s) => s.display.grid),
     axes = useSession((s) => s.display.axes);
   return (
     <>
       {grid && <gridHelper args={[20, 40, '#3c4d5b', '#24333f']} rotation={[Math.PI / 2, 0, 0]} />}{' '}
-      {axes && <axesHelper args={[0.5]} />}
+      {axes && <GlobalAxes />}
     </>
   );
 }

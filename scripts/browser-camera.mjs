@@ -10,6 +10,7 @@ import * as h5 from 'h5wasm/node';
 import { verifyMarkerInteractions } from './browser-marker-interactions.mjs';
 import { verifyMarkerDeletion } from './browser-marker-deletion.mjs';
 import { verifyMarkerPicking } from './browser-marker-picking.mjs';
+import { createGlobalAxesFixture, verifyGlobalAxes } from './browser-global-axes.mjs';
 const browserChannel = process.env.BROWSER_CHANNEL || 'chrome';
 
 await mkdir('.local', { recursive: true });
@@ -40,6 +41,37 @@ export function scaleDistance(factor) {
   camera.position.sub(controls.target).multiplyScalar(factor).add(controls.target);
   controls.update();
   camera.updateMatrixWorld();
+}
+export function setAxesView(distance, below, dpr) {
+  const root = _roots.get(document.querySelector('.viewport canvas')).store.getState();
+  root.setDpr(dpr);
+  root.controls.target.set(0, 0, 0);
+  root.camera.position.set(1.4, -1.8, below ? -1.2 : 1.2).normalize().multiplyScalar(distance);
+  root.controls.update();
+  root.camera.updateMatrixWorld();
+}
+export function globalAxesState() {
+  const root = _roots.get(document.querySelector('.viewport canvas')).store.getState();
+  const axes = root.scene.getObjectByName('Global coordinate axes');
+  const project = p => {
+    p.project(root.camera);
+    return [(p.x+1)*root.size.width/2, (1-p.y)*root.size.height/2];
+  };
+  const samples = [];
+  if (axes) for(let axis=0; axis<3; axis++) {
+    const end = new Vector3().setComponent(axis, .5);
+    const start = project(new Vector3()), finish = project(end);
+    const dx=finish[0]-start[0], dy=finish[1]-start[1], length=Math.hypot(dx,dy);
+    for(const t of [.4,.65,.8]) samples.push({ axis, point:project(new Vector3().setComponent(axis,.5*t)), normal:[-dy/length,dx/length] });
+  }
+  let plateVisible=false;
+  root.scene.traverse(object => { if (object.material?.color?.getHex() === 0x3b8e8d && object.visible) plateVisible=true; });
+  return {
+    visible:!!axes, samples, plateVisible,
+    size:[root.size.width,root.size.height], dpr:root.gl.getPixelRatio(),
+    resolution:axes?.material.resolution.toArray(),
+    interactive:axes && root.internal.interaction.includes(axes),
+  };
 }
 export function markerHits(x, y) {
   const root = _roots.get(document.querySelector('.viewport canvas')).store.getState();
@@ -83,6 +115,7 @@ export function snapshot() {
 `,
 );
 await h5.ready;
+createGlobalAxesFixture();
 for (const unit of ['mm', 'm']) {
   const file = new h5.File(resolve(`.local/camera-${unit}.h5`), 'w');
   try {
@@ -314,6 +347,7 @@ try {
   await verifyMarkerPicking(page);
   await verifyMarkerInteractions(page);
   await verifyMarkerDeletion(page);
+  await verifyGlobalAxes(page);
   for (const [i, file] of [
     'reference-data/example_data.h5',
     '.local/camera-small.c3d',
@@ -376,6 +410,7 @@ try {
           'StrictMode once-only fit',
           'marker focus/context menu/rename/shortcuts',
           '12 CSS pixel marker picking, close/far, resize, DPR=2, ambiguity and drag safety',
+          'original global axis lengths, 3 CSS pixel widths, grid/plate visibility, DPR and resize',
           'full marker deletion/history/C3D/H5 round trips',
         ],
       },
