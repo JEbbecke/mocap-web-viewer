@@ -15,7 +15,7 @@ branches describe the planned release until its tag is published.
 
 ### Fixed
 
-- Global XYZ axes retain their original lengths with a 20 mm world-space thickness
+- Global XYZ axes retain their 500 mm lengths with a 20 mm world-space thickness
   that scales naturally with perspective distance. Visibility over the grid and force
   plates is preserved; scientific scale and local axes are unchanged.
 - Marker picking now adds a bounded 12 CSS pixel tolerance across zoom levels,

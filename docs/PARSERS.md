@@ -53,8 +53,11 @@ not a filename or manufacturer. Other Rotation variants remain unsupported.
 
 `MotionData.source.partialImport` records the omitted signal count/labels,
 sampling rate/ratio, frame count, original block/byte range and known encoding.
-Persistent import notes visibly identify the partial import; the existing notes
-summary also exposes it while collapsed. These are warnings, not fatal errors.
+Import notes identify the partial import, including in their collapsed summary.
+Notes can be dismissed individually or together for the current recording; a new
+import shows them again. Dismissal changes presentation only: warnings and
+`source.partialImport` remain in MotionData and both export previews still disclose
+the omission. These are warnings, not fatal errors.
 Raw rotation matrices, translations and reliability metrics are unavailable in
 the Viewer, Inspector and Explorer. They remain in the immutable original file.
 

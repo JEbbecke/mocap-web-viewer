@@ -89,6 +89,12 @@ this scale, with one centralized 100 mm axis length and unchanged XYZ rotation
 columns. Their origins follow the established object frame rather than a
 rendering bounding box.
 
+The separate global world-origin axes retain 500 mm arms (0.5 scene units) and
+use a 20 mm world-space line width (0.020 scene units). Their apparent thickness
+decreases with camera distance. The 12 CSS-pixel marker-picking tolerance is an
+input aid only; marker radii, scientific coordinates and the rendering scale
+remain unchanged. See [global versus local axes](LOCAL_COORDINATE_SYSTEMS.md#global-axes-are-a-separate-reference).
+
 The arrow setting is a visual length in **mm/N**, default 1. A 500 N force draws
 a 500 mm arrow (0.5 scene units). Its origin is the scaled COP; its direction and
 the force threshold use unchanged N values. This is not a force-unit conversion.

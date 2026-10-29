@@ -65,6 +65,20 @@ transactions reconcile selection/visibility and affected plot/Explorer reference
 atomically. Explicit plot/Explorer keys use source IDs, including the second plot;
 an unavailable plot resolves safely without displaying another marker's data.
 
+`viewer/markerPicking.ts` adds a 12 CSS-pixel projected-centre fallback when direct
+marker raycasting misses. Direct surface hits retain priority and marker-depth
+ordering. Candidate checks use current valid visible samples and reject ambiguous
+misses; canvas-local gesture tracking rejects drags even if they return to their
+start. The fallback does not change marker mesh radii or scientific positions.
+OrbitControls damping is disabled. Native context-menu suppression is scoped to
+the Viewer and leaves its custom marker menu and right-drag pan intact.
+
+`viewer/globalAxes.ts` copies the original 0.5-scene-unit AxesHelper endpoints and
+colors into `LineSegments2`. Its `LineMaterial` uses a 0.020-scene-unit world-space
+width without pixel clamping. The reference alone disables depth testing/writing,
+uses render order 10 in the transparent pass and disables raycasting. Camera fit
+continues to use scientific bounds; local coordinate helpers remain unchanged.
+
 Same-format workers receive retained source indices alongside labels. C3D's
 `c3dMarkers.ts` compacts raw point records and copies analog tails unchanged,
 updates header/POINT counts, segmented labels/descriptions, numeric marker metadata
@@ -86,6 +100,12 @@ Explorer retains its independent table selection and scoped handlers; its former
 global Escape listener is handled by this dispatcher. Local menu and editor keys
 remain on their own elements. The live viewer readiness flag gates camera commands
 and is cleared when the renderer unmounts or becomes inactive.
+
+`state/shortcutReference.ts` describes the existing bindings without dispatching
+them. `KeyboardShortcuts` presents that reference in a native modal dialog with
+focus containment/restoration and Escape dismissal. Local key handling prevents
+application shortcuts behind the dialog; contract tests compare the reference
+with existing dispatcher and widget bindings.
 
 Initial framing uses one representative pose, starting at the active zero-based
 frame (source `firstFrame` is provenance). It seeks at least half the marker channels
