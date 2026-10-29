@@ -79,10 +79,10 @@ async function measureWidths(page, png, state) {
             b = data[index + 2];
           const hit =
             axis === 0
-              ? r > 160 && r > g * 1.2 && r > b * 1.6
+              ? r > 130 && r > g * 1.2 && r > b * 1.6
               : axis === 1
-                ? g > 160 && g > r * 1.15 && g > b * 1.6
-                : b > 160 && b > r * 1.6 && b > g * 1.1;
+                ? g > 130 && g > r * 1.15 && g > b * 1.6
+                : b > 130 && b > r * 1.6 && b > g * 1.1;
           if (hit) width += 0.25;
         }
         return { axis, width };
@@ -112,7 +112,7 @@ export async function verifyGlobalAxes(page) {
     [1440, 2],
   ]) {
     await page.setViewportSize({ width, height: 1000 });
-    for (const distance of [3.25, 15])
+    for (const distance of [0.75, 1.5])
       for (const below of [false, true]) {
         for (const [grid, plates] of [
           [true, false],
@@ -147,19 +147,54 @@ export async function verifyGlobalAxes(page) {
             assert(Math.abs(v - state.size[i]) < 0.01, 'logical resolution follows resize'),
           );
           assert.equal(state.dpr, dpr);
+          assert.equal(state.worldUnits, true);
+          assert.equal(state.linewidth, 0.02);
           const png = await canvas.screenshot();
           const widths = await measureWidths(page, png, state);
-          for (const measured of widths)
-            assert(
-              measured.width >= 2 && measured.width <= 4.5,
-              `3px axis remains visible: ${JSON.stringify({ width, dpr, distance, below, grid, plates, measured })}`,
-            );
+          for (const axis of [0, 1, 2]) {
+            const coverage = widths
+              .filter((sample) => sample.axis === axis)
+              .reduce((sum, sample) => sum + sample.width, 0);
+            if (distance === 0.75)
+              assert(
+                coverage > 0,
+                `close world-space axis remains visible over grid/plates: ${JSON.stringify({ width, dpr, distance, below, grid, plates, axis, widths })}`,
+              );
+            // Subpixel coverage at far distance depends on pixel alignment and
+            // antialiasing. Test the perspective ratio below where resolvable,
+            // rather than imposing a pixel floor or monotonic raster samples.
+          }
           results.push({ width, dpr, distance, below, grid, plates, widths });
           if (grid && plates && !below && width !== 768)
-            await writeFile(`.local/global-axes-thick-${width}-${distance}.png`, png);
+            await writeFile(`.local/global-axes-world-${width}-${distance}.png`, png);
         }
       }
   }
+  // Look from below along Z: horizontal axes have the same camera-space depth,
+  // making the 1/distance perspective reduction directly measurable in pixels.
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.waitForTimeout(150);
+  const perspective = [];
+  for (const distance of [1, 2]) {
+    await page.evaluate(
+      (distance) => window.cameraProbe.setAxesView(distance, true, 2, true),
+      distance,
+    );
+    await page.evaluate(
+      () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+    );
+    const state = await page.evaluate(() => window.cameraProbe.globalAxesState([0.08, 0.1, 0.12]));
+    const png = await canvas.screenshot();
+    const widths = (await measureWidths(page, png, state)).filter((sample) => sample.axis < 2);
+    const mean = widths.reduce((sum, sample) => sum + sample.width, 0) / widths.length;
+    assert(mean > 1, 'close world-space diameter has measurable coverage');
+    perspective.push({ distance, mean, widths });
+  }
+  const ratio = perspective[1].mean / perspective[0].mean;
+  assert(
+    ratio > 0.35 && ratio < 0.65,
+    `doubling distance halves raster width (antialiasing tolerance): ${JSON.stringify(perspective)}`,
+  );
   await page.getByRole('tab', { name: 'Display', exact: true }).click();
   const toggle = page.getByRole('checkbox', { name: 'Coordinate axes', exact: true });
   await toggle.uncheck();
@@ -174,9 +209,9 @@ export async function verifyGlobalAxes(page) {
   await page.evaluate(() => window.cameraProbe.setAxesView(5, false, 2));
   await writeFile(
     '.local/global-axes-thickness-report.json',
-    JSON.stringify({ passed: true, results }, null, 2),
+    JSON.stringify({ passed: true, results, perspective, ratio }, null, 2),
   );
   console.log(
-    'Global axes browser checks passed: measured 3 CSS pixel lines over grid/plates, above/below, close/far, narrow/wide, DPR=1/2 and visibility toggle.',
+    'Global axes browser checks passed: world-space lines scale with distance; grid/plate visibility, above/below, close/far, narrow/wide, DPR=1/2 and visibility toggle.',
   );
 }

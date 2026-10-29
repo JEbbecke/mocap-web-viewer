@@ -15,8 +15,9 @@ branches describe the planned release until its tag is published.
 
 ### Fixed
 
-- Global XYZ axes retain their original lengths with 3 CSS pixel lines that stay
-  visible over the grid and force plates; scientific scale and local axes are unchanged.
+- Global XYZ axes retain their original lengths with a 20 mm world-space thickness
+  that scales naturally with perspective distance. Visibility over the grid and force
+  plates is preserved; scientific scale and local axes are unchanged.
 - Marker picking now adds a bounded 12 CSS pixel tolerance across zoom levels,
   rejecting ambiguous misses and camera drags while preserving direct hits.
 - Expanding a provisional crop back to the full current working range now cancels
