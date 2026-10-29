@@ -10,7 +10,7 @@ Visit the [project website](https://jemolab.com/) or [open JE Motion Lab](https:
 
 ![JE Motion Lab | MoCap Viewer & Editor with generated example data](docs/screenshot.png)
 
-The viewer screenshot is a historical capture whose footer displays `v0.4.0`; the application version remains `v0.6.0` while the next UX update is unreleased.
+The viewer screenshot is a historical capture whose footer displays `v0.4.0`. The prepared application version is `v0.6.1`, pending publication; the published baseline remains `v0.6.0`. See the [v0.6.1 changelog](CHANGELOG.md#061---unreleased) and [release process](docs/RELEASING.md).
 
 ## Basic usage
 

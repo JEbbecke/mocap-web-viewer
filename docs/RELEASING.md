@@ -5,8 +5,13 @@ JE Motion Lab uses Semantic Versioning. Before 1.0, minor releases may include b
 Preparation, review, tagging, deployment, and promotion are separate steps.
 
 Current published baseline: **v0.6.0**, dated **2026-10-26**, as confirmed by the
-project owner. The v0.6.1 UX work remains under **Unreleased**; package, lockfile,
-citation and footer versions stay at 0.6.0 until release preparation is approved.
+project owner. The prepared **v0.6.1** candidate on `release/0.6.1` includes all
+three reviewed UX feature groups from `feature/ux-polish-v0.6.1`. Package,
+lockfile, citation and generated footer versions are 0.6.1; publication is pending.
+The [v0.6.1 changelog](../CHANGELOG.md#061---unreleased) uses **Unreleased** in
+place of a publication date. `CITATION.cff` retains the previous release's
+`date-released` until the actual v0.6.1 date is confirmed. Synchronize both dates
+before publication; do not treat the retained citation date as the v0.6.1 date.
 The v0.6.0 acceptance section below is a historical preparation record, including
 its then-pending publication wording.
 
@@ -14,9 +19,9 @@ its then-pending publication wording.
 
 Work on a dedicated release-preparation branch created from the reviewed release
 integration state, or up-to-date `main` when there is no separate integration
-branch. For the v0.6.1 UX work, first integrate all three feature PRs into
-`feature/ux-polish-v0.6.1`; later create `release/0.6.1` from that reviewed state
-and open its release PR against `main`. Do not omit the integration-only commits.
+branch. For v0.6.1, all three feature PRs are integrated into
+`feature/ux-polish-v0.6.1`, and `release/0.6.1` starts from that reviewed state.
+Its release PR targets `main`. Do not omit the integration-only commits.
 
 Before preparing a release:
 
@@ -50,7 +55,9 @@ For each release:
   publication date before tagging;
 - leave a new empty `Unreleased` section;
 - update comparison links;
-- synchronize `CITATION.cff` version and release date;
+- synchronize `CITATION.cff` version; set its release date to the confirmed
+  publication date before publication, leaving the previous date explicitly
+  marked as pending during preparation if the new date is not yet known;
 - validate `CITATION.cff` against the current CFF schema;
 - review README and technical documentation for stale behavior, screenshots, links, branding, limitations, and terminology.
 

@@ -8,6 +8,8 @@ branches describe the planned release until its tag is published.
 
 ## [Unreleased]
 
+## [0.6.1] - Unreleased
+
 ### Added
 
 - Header keyboard-shortcut reference with context-specific groups, keyboard focus
@@ -239,7 +241,8 @@ The published tag retained `0.1.0` in its package files despite being released a
 `v0.4.0`. That historical mismatch was corrected after publication and is recorded under
 `[0.5.0]`; the existing release and tag have not been rewritten.
 
-[Unreleased]: https://github.com/JEbbecke/mocap-web-viewer/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/JEbbecke/mocap-web-viewer/compare/v0.6.1...HEAD
+[0.6.1]: https://github.com/JEbbecke/mocap-web-viewer/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/JEbbecke/mocap-web-viewer/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/JEbbecke/mocap-web-viewer/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/JEbbecke/mocap-web-viewer/compare/v0.4.0...v0.5.0
